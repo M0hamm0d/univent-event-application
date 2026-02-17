@@ -34,10 +34,9 @@ UniVent is a modern web and mobile-friendly platform designed for **university s
 - **Personalized Dashboard:** Save favorite events, set reminders, track participation, see trending events.
 - **Event Creation & Management:** Organizers can create, edit, and manage events with detailed info.
 - **Notifications & Alerts:** Receive push notifications or emails for upcoming events or updates.
-- **Interactive Engagement:** RSVP, comment, and share events.
-- **Secure Authentication:** University email verification; optional OAuth login (Google/Facebook).
+- **Interactive Engagement:** RSVP, share events.
 - **Admin & Analytics:** Monitor events, approve submissions, and track attendance.
-- **Mobile-Friendly Design:** Responsive UI with Vue 3 and Tailwind CSS.
+- **Mobile-Friendly Design:** Responsive UI with Vue 3 and supabase.
 - **Environment Security:** API keys and sensitive info stored in `.env` files, not in GitHub.
 
 ---
@@ -46,12 +45,11 @@ UniVent is a modern web and mobile-friendly platform designed for **university s
 
 | Layer                   | Technology / Tool                                  |
 |-------------------------|---------------------------------------------------|
-| Frontend                | Vue 3 (Composition API), Tailwind CSS, Pinia      |
+| Frontend                | Vue 3 (Composition API), Pinia      |
 | Backend / Database      | Supabase (PostgreSQL), REST APIs                  |
 | Authentication          | Supabase Auth / OAuth                             |
-| Hosting / Deployment    | Vercel / Netlify / GitHub Pages                   |
+| Hosting / Deployment    | Vercel                    |
 | Version Control         | Git & GitHub                                     |
-| Notifications           | Supabase Functions / Node.js / Web Push           |
 | Security                | Environment variables, GitHub push protection    |
 
 ---
