@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 import nodemailer from 'nodemailer'
-import cron from 'node-cron'
+// import cron from 'node-cron'
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
 const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
