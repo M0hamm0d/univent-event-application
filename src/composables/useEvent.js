@@ -44,14 +44,13 @@ export const useEvents = () => {
           description: eventData.description,
           category: eventData.categories,
           date: eventData.date,
+          end_date: eventData.end_date,
           location: eventData.location,
-          email: eventData.email,
           time: eventData.time,
           image_url: eventData.imageUrl,
-          price: eventData.price,
-          is_interested: eventData.isInterested,
-          free_or_paid: eventData.isPaid,
           link_to_register: eventData.linkToRegister,
+          event_format: eventData.event_format,
+          requires_registration: eventData.requires_registration,
         },
       ])
 
