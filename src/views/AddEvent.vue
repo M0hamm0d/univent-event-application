@@ -14,14 +14,13 @@ const eventData = ref({
   time: '',
   location: '',
   categories: [],
-  email: '',
   imageUrl: '',
-  price: '',
-  isPaid: false,
   linkToRegister: '',
-  isInterested: false,
   requires_registration: false,
+  end_date: '',
+  event_format: '',
 })
+const is_multi_day = ref(false)
 
 const loading = ref(false)
 const errorMessage = ref('')
@@ -67,13 +66,6 @@ async function handleSaveEvent() {
     toast.error(`Missing: ${missing.join(', ')}`)
     return
   }
-  // if (!/^\d{2}:\d{2}\s?(AM|PM)$/i.test(eventData.value.time)) {
-  //   errorMessage.value = 'Invalid time format. Use HH:MM AM/PM'
-  //   setTimeout(() => {
-  //     errorMessage.value = ''
-  //   }, 4000)
-  //   return
-  // }
   if (eventData.value.time) {
     const [hour, min] = eventData.value.time.split(':')
     if (hour > 12) {
@@ -87,14 +79,53 @@ async function handleSaveEvent() {
     }
   }
 
-  if (eventData.value.isPaid) {
-    if (!/^\d+$/.test(eventData.value.price)) {
-      errorMessage.value = 'Invalid price format'
-      setTimeout(() => {
-        errorMessage.value = ''
-      }, 4000)
+  if (is_multi_day.value && !eventData.value.end_date) {
+    toast.error('Please provide an end date for multi-day events')
+    return
+  }
+
+  if (is_multi_day.value && eventData.value.end_date < eventData.value.date) {
+    toast.error('End date cannot be before start date')
+    return
+  }
+
+  if (eventData.value.requires_registration && eventData.value.capacity) {
+    const capacityNum = parseInt(eventData.value.capacity)
+    if (isNaN(capacityNum) || capacityNum < 0) {
+      toast.error('Capacity must be a positive number')
       return
     }
+  }
+
+  if (
+    eventData.value.event_format === 'virtual' ||
+    (eventData.value.event_format === 'hybrid' && !eventData.value.linkToRegister)
+  ) {
+    toast.error('Please provide a meeting or streaming link')
+    return
+  }
+
+  if (eventData.value.event_format === 'physical' && !eventData.value.location) {
+    toast.error('Please provide a location for physical events')
+    return
+  }
+
+  if (
+    eventData.value.event_format === 'hybrid' &&
+    (!eventData.value.location || !eventData.value.linkToRegister)
+  ) {
+    toast.error('Please provide both a location and a link for hybrid events')
+    return
+  }
+
+  if (selectedCategories.value.length === 0) {
+    toast.error('Please select at least one category')
+    return
+  }
+
+  if (eventData.value.imageUrl === '') {
+    toast.error('Please upload an event image')
+    return
   }
 
   const result = await saveEvent({
@@ -115,18 +146,19 @@ function resetForm() {
     title: '',
     description: '',
     date: '',
+    end_date: '',
     time: '',
     location: '',
     categories: [],
-    // email: '',
     imageUrl: '',
-    price: '',
-    isPaid: false,
     linkToRegister: '',
-    isInterested: false,
+    requires_registration: false,
+    capacity: '',
+    event_format: '',
   }
   selectedCategories.value = []
   currentFileName.value = ''
+  is_multi_day.value = false
 }
 </script>
 <template>
@@ -177,40 +209,80 @@ function resetForm() {
       </div>
       <div class="time-and-place">
         <h1>Time and Place</h1>
+        <div class="multi-day">
+          <input v-model="is_multi_day" type="checkbox" id="multi-day" />
+          <label for="multi-day">Multi-day event?</label>
+        </div>
         <div class="date-time">
           <div class="date">
+            <p v-if="is_multi_day">Start Date</p>
             <input v-model="eventData.date" type="date" placeholder=" " />
           </div>
-          <div class="time">
-            <input v-model="eventData.time" type="time" placeholder=" " />
-            <p>Time</p>
-            <!-- <div class="condition">* Use the format HH:MM AM/PM</div> -->
+          <div class="end-date" v-if="is_multi_day">
+            <p>End Date</p>
+            <input v-model="eventData.end_date" type="date" placeholder=" " />
           </div>
         </div>
 
-        <div class="location">
+        <div
+          class="location"
+          v-if="eventData.event_format === 'physical' || eventData.event_format === 'hybrid'"
+        >
           <input v-model="eventData.location" type="text" placeholder=" " />
           <p>Location</p>
         </div>
+        <div class="time">
+          <input v-model="eventData.time" type="time" placeholder=" " />
+          <p>Time</p>
+          <!-- <div class="condition">* Use the format HH:MM AM/PM</div> -->
+        </div>
+        <div class="event-format">
+          <h3>Event Format</h3>
+          <div class="event-format-options">
+            <div class="">
+              <label for="physical">Physical</label>
+              <input type="radio" id="physical" value="physical" v-model="eventData.event_format" />
+            </div>
+            <div class="">
+              <label for="virtual">Virtual</label>
+              <input type="radio" id="virtual" value="virtual" v-model="eventData.event_format" />
+            </div>
+            <div class="">
+              <label for="hybrid">Hybrid</label>
+              <input type="radio" id="hybrid" value="hybrid" v-model="eventData.event_format" />
+            </div>
+          </div>
+          <div
+            class="location"
+            v-if="eventData.event_format === 'physical' || eventData.event_format === 'hybrid'"
+          >
+            <input v-model="eventData.location" type="text" placeholder=" " />
+            <p>Location</p>
+          </div>
+          <div
+            class="category"
+            v-if="eventData.event_format === 'virtual' || eventData.event_format === 'hybrid'"
+          >
+            <input v-model="eventData.linkToRegister" type="text" placeholder=" " />
+            <p>Paste meeting or streaming link (Zoom, Google Meet, etc.)</p>
+          </div>
+        </div>
       </div>
 
-      <div class="price">
-        <input v-model="eventData.isPaid" type="checkbox" />
-        <p>Paid? {{ eventData.isPaid }}</p>
+      <div class="requires-registration">
+        <input v-model="eventData.requires_registration" type="checkbox" />
+        <p>Requires Registration? {{ eventData.requires_registration }}</p>
       </div>
-
-      <div v-if="eventData.isPaid" class="amount">
-        <p>Amount</p>
+      <div v-if="eventData.requires_registration" class="amount">
+        <p>Capacity</p>
         <div class="amountInput">
-          <span>₦</span>
-          <input v-model="eventData.price" type="text" placeholder="Enter Ticket Amount" />
+          <input
+            v-model="eventData.capacity"
+            type="text"
+            placeholder="Leave empty for unlimited attendance"
+          />
         </div>
         <div class="condition">* Use numbers only, no symbols</div>
-      </div>
-
-      <div class="category">
-        <input v-model="eventData.linkToRegister" type="text" placeholder=" " />
-        <p>Link to register</p>
       </div>
 
       <div class="event-image">
@@ -225,11 +297,6 @@ function resetForm() {
           <img loading="lazy" :src="eventData.imageUrl" alt="event image" />
         </div>
       </div>
-
-      <!-- <div class="org-email">
-        <input v-model="eventData.email" type="text" placeholder=" " />
-        <p>Organizer Email</p>
-      </div> -->
     </div>
 
     <div v-if="errorMessage" class="error">
@@ -260,16 +327,17 @@ function resetForm() {
   border-radius: 5px;
 }
 .error,
-.amount .condition,
+.capacity .condition,
 .time .condition {
   color: red;
+  margin-top: 4px;
 }
-.amountInput {
+.capacityValue {
   position: relative;
   position: 100%;
   display: flex;
 }
-.amountInput span {
+.capacityValue span {
   position: absolute;
   left: 17px;
   top: 17px;
@@ -279,11 +347,14 @@ function resetForm() {
   grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 24px;
 }
-.price {
+.requires-registration {
   display: flex;
   align-items: center;
 }
-.amount input {
+.requires-registration p {
+  margin: 7px 0;
+}
+.capacity input {
   width: 100%;
   outline: none;
   color: #8c8c8b;
@@ -292,6 +363,9 @@ function resetForm() {
   padding: 0 35px;
   font-size: 16px;
   font-size: 16px;
+}
+.capacity > p {
+  margin-top: 0;
 }
 .imageDisplay {
   width: 250px;
@@ -403,13 +477,29 @@ textarea {
   top: -9px;
   background-color: #fff;
 }
+.event-format {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+.event-format h3,
+.event-format p {
+  margin: 0;
+}
+.event-format-options {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+}
 .date-time {
   display: flex;
   width: 100%;
-  gap: 3rem;
+  gap: 1rem;
 }
 .date,
-.time {
+.time,
+.end-date {
   flex: 1;
   width: 100%;
 }
@@ -420,11 +510,12 @@ textarea {
   flex-direction: column;
   height: 100%;
 }
-.date input {
+.date input,
+.end-date input {
   width: 100%;
   height: 54px;
   border: 1px solid #dfdfdf;
-  padding: 0 17px;
+  /* padding: 0 17px; */
 }
 .save-cancel-btn {
   margin: 40px 0 40px auto;

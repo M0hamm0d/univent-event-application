@@ -209,6 +209,7 @@ async function setReminder() {
     console.error('Error sending reminder emails:', err)
   }
 }
+// await setReminder()
 export default async function handler(req, res) {
   try {
     await setReminder()
