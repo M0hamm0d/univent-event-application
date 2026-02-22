@@ -51,6 +51,8 @@ export const useEvents = () => {
           link_to_register: eventData.linkToRegister,
           event_format: eventData.event_format,
           requires_registration: eventData.requires_registration,
+          user_email: eventData.user_email,
+          user_name: eventData.user_name,
         },
       ])
 
