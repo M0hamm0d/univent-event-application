@@ -225,6 +225,15 @@ export function useEventFilters() {
     filterUpcomingEventOnlyAndInterested,
   }
 }
+
+generateEmailTemplate({
+  name: event.user_id.user_name,
+  title: event.event_id.event_title,
+  date: event.event_id.date,
+  time: event.event_id.time,
+  location: event.event_id.location,
+  type: 'happening tomorrow',
+})
 </script>
 
 <template>

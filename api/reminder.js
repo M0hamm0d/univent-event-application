@@ -72,55 +72,6 @@ async function fetchInterestedEvents() {
   }
 }
 
-function generateEmailTemplate({ name, title, date, time, location, type }) {
-  return `
-  <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:20px;">
-    <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden; box-shadow:0 4px 10px rgba(0,0,0,0.08);">
-
-      <div style="background:#4f46e5; color:white; padding:20px; text-align:center;">
-        <h2 style="margin:0;">🎉 UniVent Reminder</h2>
-      </div>
-
-      <div style="padding:25px;">
-        <p style="font-size:16px;">Hi <strong>${name}</strong>,</p>
-
-        <p style="font-size:15px; line-height:1.6;">
-          This is a reminder that the event you are interested in is
-          <strong>${type}</strong>.
-        </p>
-
-        <div style="background:#f9fafb; padding:15px; border-radius:8px; margin:20px 0;">
-          <p><strong>📌 Event:</strong> ${title}</p>
-          <p><strong>📅 Date:</strong> ${date}</p>
-          <p><strong>⏰ Time:</strong> ${time}</p>
-          <p><strong>📍 Location:</strong> ${location}</p>
-        </div>
-
-        <p style="font-size:15px;">
-          Don't miss it! We hope to see you there.
-        </p>
-
-        <div style="text-align:center; margin:25px 0;">
-          <a href="https://univent.vercel.app"
-             style="background:#4f46e5; color:white; padding:12px 20px; text-decoration:none; border-radius:6px; font-weight:bold;">
-             View Event
-          </a>
-        </div>
-
-        <p style="font-size:13px; color:#666;">
-          Best regards,<br/>
-          <strong>UniVent Team</strong>
-        </p>
-      </div>
-
-      <div style="background:#f1f1f1; padding:12px; text-align:center; font-size:12px; color:#777;">
-        © ${new Date().getFullYear()} UniVent. All rights reserved.
-      </div>
-
-    </div>
-  </div>
-  `
-}
 let events = await fetchInterestedEvents()
 
 console.log('----- TOMORROW EVENTS ---------')
@@ -163,14 +114,7 @@ async function setReminder() {
           from: process.env.EMAIL_USER,
           to: event.user_id.user_email,
           subject: `Reminder: ${event.event_id.event_title} is happening tomorrow!`,
-          html: generateEmailTemplate({
-            name: event.user_id.user_name,
-            title: event.event_id.event_title,
-            date: event.event_id.date,
-            time: event.event_id.time,
-            location: event.event_id.location,
-            type: 'happening tomorrow',
-          }),
+          html: `Hi ${event.user_id.user_name}, \n\nThis is a reminder that the event "${event.event_id.event_title}" you are interested in is happening tomorrow (${event.event_id.date} at ${event.event_id.time}). Don't miss it!. \n\nEvent Details:\n- Date: ${event.event_id.date}\n- Time: ${event.event_id.time}\n- Location: ${event.event_id.location}\n\nBest regards,\nUniVent Team`,
         })
         await supabaseAdmin
           .from('interested_events')
@@ -187,14 +131,7 @@ async function setReminder() {
           from: process.env.EMAIL_USER,
           to: event.user_id.user_email,
           subject: `Reminder: ${event.event_id.event_title} is happening in an hour!`,
-          html: generateEmailTemplate({
-            name: event.user_id.user_name,
-            title: event.event_id.event_title,
-            date: event.event_id.date,
-            time: event.event_id.time,
-            location: event.event_id.location,
-            type: 'starting in 1 hour',
-          }),
+          html: `Hi ${event.user_id.user_name}, \n\nThis is a reminder that the event "${event.event_id.event_title}" you are interested in is happening in an hour (${event.event_id.date} at ${event.event_id.time}). Don't miss it!. \n\nEvent Details:\n- Date: ${event.event_id.date}\n- Time: ${event.event_id.time}\n- Location: ${event.event_id.location}\n\nBest regards,\nUniVent Team`,
         })
         await supabaseAdmin
           .from('interested_events')

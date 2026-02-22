@@ -3,9 +3,11 @@ import { ref } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useEvents } from '@/composables/useEvent'
 import DownloadIcon from '@/components/icons/DownloadIcon.vue'
+import { supabase } from '@/supabase'
 
 const toast = useToast()
 const { uploadFile, saveEvent } = useEvents()
+const currentUser = ref('')
 
 const eventData = ref({
   title: '',
@@ -19,9 +21,10 @@ const eventData = ref({
   requires_registration: false,
   end_date: '',
   event_format: '',
+  user_name: '',
+  user_email: '',
 })
 const is_multi_day = ref(false)
-
 const loading = ref(false)
 const errorMessage = ref('')
 const currentFileName = ref('')
@@ -37,6 +40,30 @@ const categoryOptions = [
   'Organization',
   'Tech',
 ]
+
+async function getUserId() {
+  try {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
+    let { data: profile, error: profile_error } = await supabase
+      .from('profile')
+      .select('*')
+      .eq('id', `${user.id}`)
+
+    eventData.value.user_email = profile[0].user_email
+    eventData.value.user_name = profile[0].user_name
+    currentUser.value = user
+    if (error || profile_error) throw error
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+getUserId()
+
 async function handleFileUpload(e) {
   const file = e.target.files?.[0]
   if (!file) return
@@ -60,12 +87,7 @@ async function handleFileUpload(e) {
 }
 
 async function handleSaveEvent() {
-  const requiredFields = ['title', 'description', 'date', 'time', 'location', 'imageUrl']
-  const missing = requiredFields.filter((f) => !eventData.value[f])
-  if (missing.length) {
-    toast.error(`Missing: ${missing.join(', ')}`)
-    return
-  }
+  console.log(eventData.value.date)
   if (eventData.value.time) {
     const [hour, min] = eventData.value.time.split(':')
     if (hour > 12) {
@@ -109,6 +131,10 @@ async function handleSaveEvent() {
     toast.error('Please provide a location for physical events')
     return
   }
+  if (eventData.value.date === '') {
+    toast.error('Please provide a date for the event')
+    return
+  }
 
   if (
     eventData.value.event_format === 'hybrid' &&
@@ -128,9 +154,15 @@ async function handleSaveEvent() {
     return
   }
 
+  if (eventData.value.event_format === 'virtual') {
+    eventData.value.location = ''
+  }
+
   const result = await saveEvent({
     ...eventData.value,
     categories: selectedCategories.value,
+    end_date: eventData.value.end_date || null,
+    date: eventData.value.date || null,
   })
 
   if (result.success) {
@@ -155,6 +187,8 @@ function resetForm() {
     requires_registration: false,
     capacity: '',
     event_format: '',
+    user_name: '',
+    user_email: '',
   }
   selectedCategories.value = []
   currentFileName.value = ''
@@ -167,7 +201,6 @@ function resetForm() {
       <span>←</span>
       <h2>Create Event</h2>
     </RouterLink>
-
     <div class="create-event">
       <div class="basic-info">
         <h1>Event Info</h1>
@@ -222,14 +255,6 @@ function resetForm() {
             <p>End Date</p>
             <input v-model="eventData.end_date" type="date" placeholder=" " />
           </div>
-        </div>
-
-        <div
-          class="location"
-          v-if="eventData.event_format === 'physical' || eventData.event_format === 'hybrid'"
-        >
-          <input v-model="eventData.location" type="text" placeholder=" " />
-          <p>Location</p>
         </div>
         <div class="time">
           <input v-model="eventData.time" type="time" placeholder=" " />
