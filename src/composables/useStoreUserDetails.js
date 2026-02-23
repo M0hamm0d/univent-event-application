@@ -9,7 +9,6 @@ export async function useStoreUserDetails() {
 
 
   // Adds the current user's details to event's registered_students,
-  // and adds the event to user's registered_events array in profile.
   async function addUserToEvent(event, localEvents) {
     loading.value = true
     const {
@@ -34,12 +33,12 @@ export async function useStoreUserDetails() {
     return
   }
 
-  const eventIndex = localEvents.value.findIndex((e) => e.id === event.id)
-  if (eventIndex === -1) return
+  // const eventIndex = localEvents.value.findIndex((e) => e.id === event.id)
+  // if (eventIndex === -1) return
 
   if (existing) {
     toast.info('You are already registered for this event')
-    localEvents.value[eventIndex].is_interest = true
+    // localEvents.value[eventIndex].is_interest = true
     return
   } else {
     const { error: insertError } = await supabase

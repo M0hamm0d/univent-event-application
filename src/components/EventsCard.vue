@@ -128,7 +128,7 @@ watch(
       </div>
 
       <div class="interest-details-btn">
-        <div :class="['interest', { interested: event.is_interest || checkEventRegistered(event) }]"
+        <div :class="['interest', { interested: event.is_interest } || checkEventRegistered(event)]"
           v-if="route.path.startsWith('/discover')" @click="onInterestClick(event)">
           <template v-if="event.requires_registration">
             <span v-if="checkEventRegistered(event)">Registered ✓</span>
