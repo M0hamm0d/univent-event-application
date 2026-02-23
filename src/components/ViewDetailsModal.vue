@@ -8,6 +8,7 @@ import RegisterIcon from './icons/RegisterIcon.vue'
 import ShareIcon from './icons/ShareIcon.vue'
 import dayjs from 'dayjs'
 import CancelBtn from './icons/CancelBtn.vue'
+import { useRoute } from 'vue-router'
 const emit = defineEmits(['close', 'update-interested', 'share-clicked'])
 let prop = defineProps({
   event: {
@@ -17,6 +18,8 @@ let prop = defineProps({
     type: String,
   },
 })
+
+const route = useRoute()
 function updateInterested(e) {
   emit('update-interested', { checked: e.target.checked, event: prop.event })
 }
@@ -85,7 +88,7 @@ watch(is_interested, (newVal) => {
           </div>
           <div class="divider-line"></div>
           <div class="interested-share">
-            <div class="interested">
+            <div class="interested" v-if="route.path.startsWith('/discover')">
               <input
                 type="checkbox"
                 name="interested"

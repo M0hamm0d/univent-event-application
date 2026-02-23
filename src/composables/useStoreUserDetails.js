@@ -34,12 +34,12 @@ export async function useStoreUserDetails() {
     return
   }
 
-  // const eventIndex = localEvents.value.findIndex((e) => e.id === event.id)
-  // if (eventIndex === -1) return
+  const eventIndex = localEvents.value.findIndex((e) => e.id === event.id)
+  if (eventIndex === -1) return
 
   if (existing) {
     toast.info('You are already registered for this event')
-    // localEvents.value[eventIndex].is_interest = true
+    localEvents.value[eventIndex].is_interest = true
     return
   } else {
     const { error: insertError } = await supabase

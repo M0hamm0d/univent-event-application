@@ -75,11 +75,84 @@ export function useInterestedEvents(toast) {
         .range(from, to)
       const totalPageNo = Math.ceil(count / perPage.value)
       if (!error) {
-        interest.value = data
+        // Fetch registered events for the user and apply filters
+        let regQuery = supabase
+          .from('registered_events')
+          .select('id, event_id, events!inner(*)', { count: 'exact' })
+          .eq('user_id', user.id)
+        if (active.value === 'upcoming') {
+          regQuery = regQuery.gte('events.date', today)
+        }
+        if (active.value === 'past') {
+          regQuery = regQuery.lt('events.date', today)
+        }
+        if (filters.date) {
+          if (filters.date === 'today') {
+            regQuery = regQuery.eq('events.date', today)
+          } else if (filters.date === 'this week') {
+            const todayObj = new Date()
+            const weekFirstDay = new Date(todayObj.setDate(todayObj.getDate() - todayObj.getDay()))
+            const weekLastDay = new Date(weekFirstDay)
+            weekLastDay.setDate(weekFirstDay.getDate() + 6)
+            const formattedLastWeekDay = weekLastDay.toISOString().split('T')[0]
+            const formattedFirstWeekDay = weekFirstDay.toISOString().split('T')[0]
+            regQuery = regQuery
+              .gte('events.date', formattedFirstWeekDay)
+              .lte('events.date', formattedLastWeekDay)
+          } else if (filters.date === 'this month') {
+            const todayObj = new Date()
+            const firstDayOfMonth = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1)
+              .toISOString()
+              .split('T')[0]
+            const lastDayOfMonth = new Date(todayObj.getFullYear(), todayObj.getMonth() + 1, 0)
+              .toISOString()
+              .split('T')[0]
+            regQuery = regQuery.gte('events.date', firstDayOfMonth).lte('events.date', lastDayOfMonth)
+          } else {
+            regQuery = regQuery.eq('events.date', filters.date)
+          }
+        }
+        if (filters.price == 'below 2000') {
+          regQuery = regQuery.lt('events.price', 2000)
+        }
+        if (filters.price == 'between 2000 and 5000') {
+          regQuery = regQuery.gte('events.price', 2000).lte('events.price', 5000)
+        }
+        if (filters.price == 'above 5000') {
+          regQuery = regQuery.gt('events.price', 5000)
+        }
+        if (filters.category && filters.category.length > 0) {
+          regQuery = regQuery.overlaps('events.category', filters.category)
+        }
+        if (filters.searchInput) {
+          regQuery = regQuery.ilike('events.event_title', `%${filters.searchInput}%`)
+        }
+        const { data: registeredRows, error: regError } = await regQuery.order('created_at', { ascending: false })
+        .range(from, to)
+        let registeredEvents = []
+        if (!regError && registeredRows) {
+          registeredEvents = registeredRows.map(row => ({ ...row, is_registered: true }))
+        } else if (regError && regError.code !== 'PGRST116') {
+          // console.error('Error fetching registered events:', regError)
+        }
+        // Merge interested and registered events, avoiding duplicates
+        const allEventsMap = new Map()
+        data.forEach(ev => {
+          allEventsMap.set(ev.event_id, { ...ev, is_interested: true })
+        })
+        registeredEvents.forEach(ev => {
+          if (allEventsMap.has(ev.event_id)) {
+            allEventsMap.get(ev.event_id).is_registered = true
+          } else {
+            allEventsMap.set(ev.event_id, ev)
+          }
+        })
+        const allEvents = Array.from(allEventsMap.values())
+        interest.value = allEvents
         return {
           success: true,
-          events: data,
-          count: count,
+          events: allEvents,
+          count: allEvents.length,
           currentPage: page,
           pageSum: totalPageNo,
         }

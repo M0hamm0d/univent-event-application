@@ -112,7 +112,7 @@ watch(
       <div class="upcoming-events-container">
         <div class="" v-if="!res.length >= 1 && !loading">No Interested Events</div>
         <EventsCard
-          :events="interest.map((e) => e.events)"
+          :events="interest.map((e) => ({ ...e.events, is_interested: e.is_interested || false, is_registered: e.is_registered || false }))"
           v-if="res.length >= 1 && !loading"
           @deleteEvent="handleDelete"
           @show-filter="showFilter"
