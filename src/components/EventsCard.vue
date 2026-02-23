@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { useInterestedEvents } from '@/composables/useInterestedEvents'
+import { useRegistrable } from '@/composables/useRegistrable'
 import { useRoute, useRouter } from 'vue-router'
 import DeleteIcon from './icons/DeleteIcon.vue'
 import ShareIcon from './icons/ShareIcon.vue'
@@ -9,12 +10,15 @@ import CalendarIcon from './icons/CalendarIcon.vue'
 import ViewDetailsModal from './ViewDetailsModal.vue'
 import LocationIcon from './icons/LocationIcon.vue'
 import { useUniventStore } from '@/stores/counter'
+import RegisterModal from './RegisterModal.vue'
 // import BellIcon from './icons/BellIcon.vue'
 
 const univentStore = useUniventStore()
 const route = useRoute()
 const router = useRouter()
 const { toggleInterest } = useInterestedEvents()
+const { isEventRegistrable } = useRegistrable()
+import { isEventRegistered } from '@/composables/useRegisteredEvents'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -24,12 +28,45 @@ const props = defineProps({
 const emit = defineEmits(['deleteEvent'])
 const localEvents = ref([...props.events])
 const selectedEvent = ref(null)
+const showModal = ref(false)
+
+
+
+async function checkEventRegistered(event) {
+  const userId = univentStore.userProfile?.id
+  return await isEventRegistered(event, userId)
+}
 
 function handleDelete(event) {
   emit('deleteEvent', event)
 }
 async function handleInterest(event) {
   await toggleInterest(event, localEvents)
+}
+
+async function handleRegister() {
+  showModal.value = true
+}
+
+async function onInterestClick(event) {
+  try {
+    let registrable = false
+    if (typeof event.requires_registration !== 'undefined') {
+      registrable = !!event.requires_registration
+      console.log('Event requires_registration:', registrable)
+    } else {
+      registrable = await isEventRegistrable(event.id)
+    }
+
+    if (registrable) {
+      await handleRegister()
+    } else {
+      await handleInterest(event)
+    }
+  } catch (err) {
+    console.error('onInterestClick error:', err)
+    await handleInterest(event)
+  }
 }
 
 async function updateInterested(e) {
@@ -91,14 +128,24 @@ watch(
       </div>
 
       <div class="interest-details-btn">
-        <div
-          :class="['interest', { interested: event.is_interest }]"
-          v-if="route.path.startsWith('/discover')"
-          @click="handleInterest(event)"
-        >
-          {{ event.is_interest ? 'Interested ✓ ' : 'I am Interested' }}
+        <div :class="['interest', { interested: event.is_interest }]"
+          v-if="route.path.startsWith('/discover')" @click="onInterestClick(event)">
+          <template v-if="event.requires_registration">
+            <span v-if="checkEventRegistered(event)">Registered ✓</span>
+            <span v-else>Register Now</span>
+          </template>
+          <template v-else>
+            <span class="interested">{{ event.is_interest ? 'Interested ✓ ' : 'I am Interested' }}</span>
+          </template>
         </div>
 
+        <div>
+          <teleport to="body">
+            <Transition name="modal-fade">
+        <RegisterModal v-if="showModal" :event="event" :local_Events ="localEvents" :show-modal="showModal" @close="showModal = false" />
+            </Transition>
+          </teleport>
+          </div>
         <div class="view-details" @click="selectedEvent = event">
           <p>View Details</p>
 
@@ -106,15 +153,9 @@ watch(
 
           <teleport to="body">
             <Transition name="modal-fade">
-              <ViewDetailsModal
-                v-if="selectedEvent"
-                :event="selectedEvent"
-                class-name="open"
-                @close="selectedEvent = null"
-                @update-interested="updateInterested"
-                @share-clicked="univentStore.shareEvent(selectedEvent)"
-                @click.stop
-              />
+              <ViewDetailsModal v-if="selectedEvent" :event="selectedEvent" class-name="open"
+                @close="selectedEvent = null" @update-interested="updateInterested"
+                @share-clicked="univentStore.shareEvent(selectedEvent)" @click.stop />
             </Transition>
           </teleport>
         </div>
@@ -124,7 +165,9 @@ watch(
             <ShareIcon />
           </button>
 
-          <button class="delete-btn" @click="handleDelete(event)"><DeleteIcon /></button>
+          <button class="delete-btn" @click="handleDelete(event)">
+            <DeleteIcon />
+          </button>
           <!-- <button class="delete-btn" @click="checkInterestedStatus(event)"><DeleteIcon /></button> -->
         </div>
       </div>
@@ -137,11 +180,13 @@ p,
 h3 {
   margin: 0;
 }
+
 .events-grid-wrapper {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
 }
+
 .event-card {
   padding: 16px;
   border-radius: 24px;
@@ -152,36 +197,43 @@ h3 {
   border: 1px solid #eaeaea;
   position: relative;
 }
+
 .interest-btn {
   position: absolute;
   right: 25px;
   top: 30px;
   cursor: pointer;
 }
+
 .event-content {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
+
 .event-flier {
   width: 100%;
   max-height: 250px;
   height: 100%;
 }
+
 .event-flier img {
   width: 100%;
   height: 100%;
   border-radius: 15px;
 }
+
 .categories {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
+
 .category {
   display: flex;
   gap: 4px;
 }
+
 .category-0,
 .category-1,
 .category-2 {
@@ -190,34 +242,41 @@ h3 {
   font-weight: 500;
   border-radius: 20px;
 }
+
 .category-0 {
   color: #ff2e92;
   border: 1px solid #ffc0de;
   background-color: #ffeaf4;
 }
+
 .category-1 {
   border: 1px solid #bad2ff;
   background-color: #e8f0ff;
   color: #1969fe;
 }
+
 .category-2 {
   border: 1px solid #bce6bf;
   background-color: #e7f6e8;
   color: #25ad32;
 }
+
 .price {
   font-size: 19px;
   font-weight: 600;
 }
+
 .event-block {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+
 .event-block h3 {
   font-size: 23px;
   line-height: 120%;
 }
+
 .event-meta {
   display: flex;
   gap: 4px;
@@ -227,6 +286,7 @@ h3 {
   line-height: 22.5px;
   color: #aaaaaa;
 }
+
 .event-meta-not-home {
   display: flex;
   flex-direction: column;
@@ -236,26 +296,31 @@ h3 {
   line-height: 22.5px;
   color: #aaaaaa;
 }
+
 .event-date-and-location {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   color: #aaaaaa;
 }
+
 .event-date-and-location.notHomePage {
   flex-direction: column;
   gap: 4px;
   align-items: flex-start;
 }
+
 .event-location {
   display: flex;
   align-items: center;
 }
+
 .event-meta-not-home div {
   display: flex;
   align-items: center;
   gap: 4px;
 }
+
 .interest {
   background-color: transparent;
   border: 1px solid #eaeaea;
@@ -268,6 +333,7 @@ h3 {
   width: 100%;
   cursor: pointer;
 }
+
 .view-details {
   width: 100%;
   border: 1px solid #eaeaea;
@@ -277,10 +343,12 @@ h3 {
   display: flex;
   align-items: center;
 }
+
 .view-details {
   transition: all 0.5s;
 }
-.view-details > p {
+
+.view-details>p {
   width: 100%;
   /* padding: 16px 0; */
   font-size: 19px;
@@ -288,6 +356,7 @@ h3 {
   text-align: center;
   transition: all 0.5s;
 }
+
 .detail-modal {
   position: fixed;
   top: 0;
@@ -298,38 +367,47 @@ h3 {
   height: 100%;
   z-index: 3;
 }
+
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: all 0.4s ease;
 }
+
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
   transform: translateY(500px);
 }
+
 .interest.interested {
   background-color: #1969fe;
   color: #fff;
 }
+
 .view-details:hover {
   background-color: #1969fe;
 }
-.view-details:hover > p {
+
+.view-details:hover>p {
   color: #fff;
 }
+
 .interest {
   border: 1px solid #1969fe;
   color: #1969fe;
 }
+
 .interest-details-btn {
   display: flex;
   width: 100%;
   gap: 8px;
 }
+
 .share-and-delete {
   display: flex;
   gap: 5px;
 }
+
 .share-and-delete button {
   border: 1px solid #eaeaea;
   padding: 16px;
@@ -340,21 +418,26 @@ h3 {
   justify-content: center;
   cursor: pointer;
 }
+
 @media screen and (max-width: 500px) {
   .event-block h3 {
     font-size: 18px;
   }
+
   .event-meta {
     font-size: 12px;
   }
+
   .view-details,
   .interest {
     padding: 14px;
     font-size: 15px;
   }
-  .view-details > p {
+
+  .view-details>p {
     font-size: 15px;
   }
+
   .price {
     font-size: 15px;
   }
