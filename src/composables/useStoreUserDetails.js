@@ -9,7 +9,7 @@ export async function useStoreUserDetails() {
 
 
   // Adds the current user's details to event's registered_students,
-  async function addUserToEvent(event, localEvents) {
+  async function addUserToEvent(event) {
     loading.value = true
     const {
     data: { user },
