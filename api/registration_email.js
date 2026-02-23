@@ -1,11 +1,18 @@
 /* eslint-disable no-undef */
-import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
-export async function POST(req) {
+export async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' })
+  }
   const { email, name, event } = await req.json();
+  try {
   const result = await sendEmail({ to: email, name, event });
-  return NextResponse.json(result);
+  return res.status(200).json(result);
+  } catch (err) {
+    console.error('Error sending registration email:', err);
+    return res.status(500).json({ message: 'Failed to send email' });
+  }
 }
 
 

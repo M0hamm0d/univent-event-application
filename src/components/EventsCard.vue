@@ -128,7 +128,7 @@ watch(
       </div>
 
       <div class="interest-details-btn">
-        <div :class="['interest', { interested: event.is_interest }]"
+        <div :class="['interest', { interested: event.is_interest || checkEventRegistered(event) }]"
           v-if="route.path.startsWith('/discover')" @click="onInterestClick(event)">
           <template v-if="event.requires_registration">
             <span v-if="checkEventRegistered(event)">Registered ✓</span>
@@ -165,7 +165,7 @@ watch(
             <ShareIcon />
           </button>
 
-          <button class="delete-btn" @click="handleDelete(event)">
+          <button class="delete-btn" v-if="event.is_interested === true" @click="handleDelete(event)">
             <DeleteIcon />
           </button>
           <!-- <button class="delete-btn" @click="checkInterestedStatus(event)"><DeleteIcon /></button> -->

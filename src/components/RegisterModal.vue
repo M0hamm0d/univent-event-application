@@ -91,8 +91,14 @@ button {
   color: #fff;
   font-weight: 600;
   cursor: pointer;
+
 }
 button:first-child {
   background: #aaa;
+}
+
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 </style>
