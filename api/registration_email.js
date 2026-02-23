@@ -1,11 +1,11 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer';
 
-export async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
-  const { email, name, event } = await req.json();
+  const { email, name, event } = req.body;
   try {
   const result = await sendEmail({ to: email, name, event });
   return res.status(200).json(result);
