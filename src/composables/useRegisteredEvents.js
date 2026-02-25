@@ -6,7 +6,7 @@ export async function isEventRegistered(event, userId) {
     .from('registered_events')
     .select('id')
     .eq('user_id', userId)
-    .eq('event_id', event.id)
+    .eq('event_id', event?.id)
     .maybeSingle()
   // console.log('isEventRegistered check:', { eventId: event.id, userId, data, error })
   // if (error) return false

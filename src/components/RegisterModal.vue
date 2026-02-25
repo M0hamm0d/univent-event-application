@@ -1,34 +1,14 @@
-<template>
-  <div v-if="showModal" class="register-modal">
-    <div class="modal-content">
-      <div v-if="!isLoggedIn">
-        <p>You must be logged in to register for an event.</p>
-        <button @click="openLogin">Login</button>
-      </div>
-      <div v-else>
-        <p>
-          Do you consent to sharing your profile details (name, email, phone) with the event organizer?
-        </p>
-        <div class="modal-actions">
-          <button @click="cancel">Cancel</button>
-          <button @click="agree" :disabled="loading">{{ loading ? 'Processing...' : 'Yes, I Agree' }}</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, computed } from 'vue'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
 import { useUniventStore } from '@/stores/counter'
 
 const props = defineProps({
- event: {
+  event: {
     type: Object,
     required: true,
   },
-  local_Events : ref([]),
+  local_Events: ref([]),
   showModal: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close', 'registered'])
@@ -57,6 +37,29 @@ async function agree() {
   }
 }
 </script>
+<template>
+  <div v-if="showModal" class="register-modal" @click="emit('close')">
+    <div class="modal-content">
+      <div v-if="!isLoggedIn">
+        <p>You must be logged in to register for an event.</p>
+        <button @click="openLogin">Login</button>
+      </div>
+      <div v-else>
+        <p>You're about to register for this event</p>
+        <p>
+          We’ll share your name, email, and phone number with the organizer so they can reserve your
+          spot and keep you updated.
+        </p>
+        <div class="modal-actions">
+          <button @click="cancel">Cancel</button>
+          <button @click="agree" :disabled="loading">
+            {{ loading ? 'Processing...' : 'Yes, I Agree' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .register-modal {
@@ -65,7 +68,7 @@ async function agree() {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,7 +79,7 @@ async function agree() {
   border-radius: 12px;
   padding: 32px;
   min-width: 320px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
 }
 .modal-actions {
   display: flex;
@@ -91,7 +94,6 @@ button {
   color: #fff;
   font-weight: 600;
   cursor: pointer;
-
 }
 button:first-child {
   background: #aaa;

@@ -8,7 +8,7 @@ import { useRequestedEvents } from '@/composables/useRequestedEvents'
 import { useUniventStore } from '@/stores/counter'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { supabase } from '@/supabase'
+// import { supabase } from '@/supabase'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,41 +24,39 @@ const count = ref(null)
 const searchFromId = ref([])
 const isFilterActive = ref(false)
 
-async function fetchInterestedEvents() {
-  try {
-    // let { data: interested_events, error } = await supabase.from('interested_events').select('*')
+// async function fetchInterestedEvents() {
+//   try {
+//     let { data: interested_events, error } = await supabase.from('interested_events').select(`
+//     id,
+//     user_id (
+//       id,
+//       user_name,
+//       user_email
+//     ),
+//     event_id (
+//       id,
+//       event_title,
+//       date,
+//       time,
+//       location,
+//       category,
+//       price,
+//       description,
+//       image_url
+//     )
+//   `)
 
-    let { data: interested_events, error } = await supabase.from('interested_events').select(`
-    id,
-    user_id (
-      id,
-      user_name,
-      user_email
-    ),
-    event_id (
-      id,
-      event_title,
-      date,
-      time,
-      location,
-      category,
-      price,
-      description,
-      image_url
-    )
-  `)
+//     if (error) {
+//       console.error('Error fetching interested events:', error)
+//       return []
+//     }
+//     console.log('This is interested event', interested_events)
+//   } catch (err) {
+//     console.error('Error fetching interested events:', err)
+//   }
+// }
 
-    if (error) {
-      console.error('Error fetching interested events:', error)
-      return []
-    }
-    console.log('This is interested event', interested_events)
-  } catch (err) {
-    console.error('Error fetching interested events:', err)
-  }
-}
-
-fetchInterestedEvents()
+// fetchInterestedEvents()
 
 async function loadEvents() {
   univentStore.dateDropdown = false
