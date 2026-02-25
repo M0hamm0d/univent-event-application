@@ -41,7 +41,7 @@ async function loadRegistrations(event) {
 
 function onRegisterClick(event) {
   registeredMap.value[event.id] = true
-  showModal.value = false
+  // showModal.value = false
 }
 
 function handleDelete(event) {
@@ -177,7 +177,6 @@ watch(
                 :show-modal="showModal"
                 @close="showModal = false"
                 @registered="onRegisterClick(selectedRegisterEvent)"
-                @click.stop
               />
             </Transition>
           </teleport>
