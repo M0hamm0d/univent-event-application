@@ -39,7 +39,7 @@ async function agree() {
 </script>
 <template>
   <div v-if="showModal" class="register-modal" @click="emit('close')">
-    <div class="modal-content">
+    <div class="modal-content" @click.stop>
       <div v-if="!isLoggedIn">
         <p>You must be logged in to register for an event.</p>
         <button @click="openLogin">Login</button>
