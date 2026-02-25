@@ -37,42 +37,72 @@ async function handlePushToEvent(id) {
     }
 
     if (events && events.length > 0) {
-      console.log('Duplicate event detected')
-
-      const { data, error } = await supabase.functions.invoke('duplicate-event', {
-        body: {
-          to: requestData.user_email,
-          subject: 'Duplicate Event Notification',
-          text: `Hello,
-
-      Thank you for submitting your event to our platform.
-
-      We noticed that the event you recently added appears to have already been submitted by another organizer earlier. To avoid duplicate listings and ensure the best experience for users, we were unable to publish your submission at this time.
-
-      If you believe this was flagged in error or you have additional information to provide (such as a different session, update, or collaboration with the original organizer), please feel free to reply to this email and we will be happy to review it.
-
-      We appreciate your understanding and your effort in sharing events with the community.
-
-      Best regards,
-      The UniVent Team`,
-        },
-      })
-
-      if (error) {
-        console.error('Email send error:', error)
-      } else {
+      try {
+        const res = await fetch('/api/send-duplicate-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: requestData.user_email,
+          }),
+        })
+        if (!res.ok) {
+          throw new Error('Failed to send duplicate email')
+        }
         toast.success('Duplicate email sent successfully')
-        console.log('Duplicate email sent successfully:', data)
+        request.value = request.value.filter((r) => r.id !== id)
+        const { error: deleteError } = await supabase.from('requested-event').delete().eq('id', id)
+        if (deleteError) {
+          console.error('Error deleting request:', deleteError)
+        } else {
+          console.log('Request deleted successfully')
+        }
+        return
+      } catch (emailError) {
+        console.error('Error sending duplicate email:', emailError)
+        toast.error('Failed to send duplicate email')
+        return
       }
-      request.value = request.value.filter((r) => r.id !== id)
-      const { error: deleteError } = await supabase.from('requested-event').delete().eq('id', id)
-      if (deleteError) {
-        console.error('Error deleting request:', deleteError)
-      } else {
-        console.log('Request deleted successfully')
-      }
-      return
     }
+
+    // if (events && events.length > 0) {
+    //   console.log('Duplicate event detected')
+
+    //   const { data, error } = await supabase.functions.invoke('duplicate-event', {
+    //     body: {
+    //       to: requestData.user_email,
+    //       subject: 'Duplicate Event Notification',
+    //       text: `Hello,
+
+    //   Thank you for submitting your event to our platform.
+
+    //   We noticed that the event you recently added appears to have already been submitted by another organizer earlier. To avoid duplicate listings and ensure the best experience for users, we were unable to publish your submission at this time.
+
+    //   If you believe this was flagged in error or you have additional information to provide (such as a different session, update, or collaboration with the original organizer), please feel free to reply to this email and we will be happy to review it.
+
+    //   We appreciate your understanding and your effort in sharing events with the community.
+
+    //   Best regards,
+    //   The UniVent Team`,
+    //     },
+    //   })
+
+    //   if (error) {
+    //     console.error('Email send error:', error)
+    //   } else {
+    //     toast.success('Duplicate email sent successfully')
+    //     console.log('Duplicate email sent successfully:', data)
+    //   }
+    //   request.value = request.value.filter((r) => r.id !== id)
+    //   const { error: deleteError } = await supabase.from('requested-event').delete().eq('id', id)
+    //   if (deleteError) {
+    //     console.error('Error deleting request:', deleteError)
+    //   } else {
+    //     console.log('Request deleted successfully')
+    //   }
+    //   return
+    // }
 
     const result = await pushToEvents(requestData)
 
