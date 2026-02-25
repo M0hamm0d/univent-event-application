@@ -14,7 +14,9 @@ export const useRequestedEvents = () => {
     try {
       const { data: requested_event, error: reqError } = await supabase
         .from('requested-event')
-        .select('*')
+        .select(
+          'id,created_at, event_title, category, time, date,description,location,image_url, price,free_or_paid, link_to_register, end_date, capacity, event_format,requires_registration',
+        )
 
       let query = supabase.from('events').select('*', { count: 'exact' }).gte('date', today)
       if (filters.category && filters.category.length) {
@@ -81,7 +83,7 @@ export const useRequestedEvents = () => {
         return {
           success: true,
           requested_event: requested_event || [],
-          events: events.slice(from, to + 1) || [],
+          events: events ? events.slice(from, to + 1) : [],
           allEvents: events,
           pagesNo: univentStore.pageCount,
           count: count,

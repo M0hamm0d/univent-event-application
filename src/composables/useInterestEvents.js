@@ -184,7 +184,7 @@ export function useInterestedEvents(toast) {
       .select('id')
       .eq('user_id', user.id)
       .eq('event_id', event.id)
-      .single()
+      .maybeSingle()
     if (regData) {
       await supabase
         .from('registered_events')

@@ -13,6 +13,7 @@ import { useProfile } from '@/composables/useProfile'
 import { useUniventStore } from '@/stores/counter'
 import CautionIcon from './icons/CautionIcon.vue'
 import ProfileIcon from './icons/ProfileIcon.vue'
+import DropdownIcon from './icons/DropdownIcon.vue'
 
 const toast = useToast()
 const univentStore = useUniventStore()
