@@ -29,12 +29,19 @@ const emit = defineEmits(['deleteEvent'])
 const localEvents = ref([...props.events])
 const selectedEvent = ref(null)
 const showModal = ref(false)
+const registeredMap = ref({})
+const selectedRegisterEvent = ref(null)
+const loadingMap = ref({})
 
-
-
-async function checkEventRegistered(event) {
+async function loadRegistrations(event) {
   const userId = univentStore.userProfile?.id
-  return await isEventRegistered(event, userId)
+  if (!userId) return
+  registeredMap.value[event.id] = await isEventRegistered(event, userId)
+}
+
+function onRegisterClick(event) {
+  registeredMap.value[event.id] = true
+  showModal.value = false
 }
 
 function handleDelete(event) {
@@ -44,14 +51,18 @@ async function handleInterest(event) {
   await toggleInterest(event, localEvents)
 }
 
-async function handleRegister() {
+async function handleRegister(event) {
+  selectedRegisterEvent.value = event
   showModal.value = true
 }
 
 async function onInterestClick(event) {
+  const id = event.id
+  if (loadingMap.value[id]) return
+  loadingMap.value[id] = true
   try {
     let registrable = false
-    if (typeof event.requires_registration !== 'undefined') {
+    if (event.requires_registration != null) {
       registrable = !!event.requires_registration
       console.log('Event requires_registration:', registrable)
     } else {
@@ -59,13 +70,15 @@ async function onInterestClick(event) {
     }
 
     if (registrable) {
-      await handleRegister()
+      await handleRegister(event)
     } else {
       await handleInterest(event)
     }
   } catch (err) {
     console.error('onInterestClick error:', err)
     await handleInterest(event)
+  } finally {
+    loadingMap.value[id] = false
   }
 }
 
@@ -74,10 +87,14 @@ async function updateInterested(e) {
 }
 watch(
   () => props.events,
-  (newVal) => {
+  async (newVal) => {
     localEvents.value = [...(newVal || [])]
-    const eventSelected = ref(localEvents.value.find((e) => e.id === route.query.id))
-    selectedEvent.value = eventSelected.value
+    selectedEvent.value = localEvents.value.find((e) => e.id === route.query.id)
+    const userId = univentStore.userProfile?.id
+    if (!userId) return
+    for (const event of localEvents.value) {
+      await loadRegistrations(event)
+    }
   },
   { immediate: true },
 )
@@ -99,9 +116,8 @@ watch(
   },
 )
 </script>
-
 <template>
-  <div class="event-card" v-for="(event, i) in props.events" :key="i">
+  <div class="event-card" v-for="event in localEvents" :key="event.id">
     <div class="event-flier"><img loading="lazy" :src="event.image_url" alt="" /></div>
     <div class="event-content">
       <div class="categories">
@@ -128,34 +144,57 @@ watch(
       </div>
 
       <div class="interest-details-btn">
-        <div :class="['interest', { interested: event.is_interest } || checkEventRegistered(event)]"
-          v-if="route.path.startsWith('/discover')" @click="onInterestClick(event)">
-          <template v-if="event.requires_registration">
-            <span v-if="checkEventRegistered(event)">Registered ✓</span>
+        <div
+          :class="[
+            'interest',
+            {
+              interested: event.is_interest || registeredMap[event.id],
+              loading: loadingMap[event.id],
+            },
+          ]"
+          v-if="route.path.startsWith('/discover')"
+          @click="onInterestClick(event)"
+        >
+          <span v-if="loadingMap[event.id]">Loading...</span>
+          <template v-else-if="event.requires_registration">
+            <span v-if="registeredMap[event.id]">Registered ✓</span>
             <span v-else>Register Now</span>
           </template>
           <template v-else>
-            <span class="interested">{{ event.is_interest ? 'Interested ✓ ' : 'I am Interested' }}</span>
+            <span class="interested">{{
+              event.is_interest ? 'Interested ✓ ' : 'I am Interested'
+            }}</span>
           </template>
         </div>
 
         <div>
           <teleport to="body">
             <Transition name="modal-fade">
-        <RegisterModal v-if="showModal" :event="event" :local_Events ="localEvents" :show-modal="showModal" @close="showModal = false" />
+              <RegisterModal
+                v-if="showModal"
+                :event="selectedRegisterEvent"
+                :local_Events="localEvents"
+                :show-modal="showModal"
+                @close="showModal = false"
+                @registered="onRegisterClick(selectedRegisterEvent)"
+                @click.stop
+              />
             </Transition>
           </teleport>
-          </div>
+        </div>
         <div class="view-details" @click="selectedEvent = event">
           <p>View Details</p>
-
-          <!-- @share-clicked="univentStore.shareEvent(event?.id)" -->
-
           <teleport to="body">
             <Transition name="modal-fade">
-              <ViewDetailsModal v-if="selectedEvent" :event="selectedEvent" class-name="open"
-                @close="selectedEvent = null" @update-interested="updateInterested"
-                @share-clicked="univentStore.shareEvent(selectedEvent)" @click.stop />
+              <ViewDetailsModal
+                v-if="selectedEvent"
+                :event="selectedEvent"
+                class-name="open"
+                @close="selectedEvent = null"
+                @update-interested="updateInterested"
+                @share-clicked="univentStore.shareEvent(selectedEvent)"
+                @click.stop
+              />
             </Transition>
           </teleport>
         </div>
@@ -165,7 +204,11 @@ watch(
             <ShareIcon />
           </button>
 
-          <button class="delete-btn" v-if="event.is_interested === true" @click="handleDelete(event)">
+          <button
+            class="delete-btn"
+            v-if="event.is_interested === true || registeredMap[event.id]"
+            @click="handleDelete(event)"
+          >
             <DeleteIcon />
           </button>
           <!-- <button class="delete-btn" @click="checkInterestedStatus(event)"><DeleteIcon /></button> -->
@@ -174,13 +217,15 @@ watch(
     </div>
   </div>
 </template>
-"
 <style scoped>
 p,
 h3 {
   margin: 0;
 }
-
+.loading {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
 .events-grid-wrapper {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -348,7 +393,7 @@ h3 {
   transition: all 0.5s;
 }
 
-.view-details>p {
+.view-details > p {
   width: 100%;
   /* padding: 16px 0; */
   font-size: 19px;
@@ -388,7 +433,7 @@ h3 {
   background-color: #1969fe;
 }
 
-.view-details:hover>p {
+.view-details:hover > p {
   color: #fff;
 }
 
@@ -434,7 +479,7 @@ h3 {
     font-size: 15px;
   }
 
-  .view-details>p {
+  .view-details > p {
     font-size: 15px;
   }
 

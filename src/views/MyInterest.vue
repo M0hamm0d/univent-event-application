@@ -18,7 +18,9 @@ const { active, deleteInterest, loading, fetchInterest, filtersArray, interest }
 const searchInput = ref(route.query.q || '')
 
 function handleDelete(event) {
-  deleteInterest(event)
+  if (confirm('Are you sure you want to remove this event from your interests?')) {
+    deleteInterest(event)
+  }
 }
 const res = ref([])
 const isFilterActive = ref(false)
@@ -112,10 +114,15 @@ watch(
       <div class="upcoming-events-container">
         <div class="" v-if="!res.length >= 1 && !loading">No Interested Events</div>
         <EventsCard
-          :events="interest.map((e) => ({ ...e.events, is_interested: e.is_interested || false, is_registered: e.is_registered || false }))"
+          :events="
+            interest.map((e) => ({
+              ...e.events,
+              is_interested: e.is_interested || false,
+              is_registered: e.is_registered || false,
+            }))
+          "
           v-if="res.length >= 1 && !loading"
           @deleteEvent="handleDelete"
-          @show-filter="showFilter"
         />
         <div class="skeleton" v-if="loading">
           <SkeletonLoader v-for="i in 3" :key="i" />

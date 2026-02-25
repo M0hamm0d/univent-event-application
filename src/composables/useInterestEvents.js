@@ -107,7 +107,9 @@ export function useInterestedEvents(toast) {
             const lastDayOfMonth = new Date(todayObj.getFullYear(), todayObj.getMonth() + 1, 0)
               .toISOString()
               .split('T')[0]
-            regQuery = regQuery.gte('events.date', firstDayOfMonth).lte('events.date', lastDayOfMonth)
+            regQuery = regQuery
+              .gte('events.date', firstDayOfMonth)
+              .lte('events.date', lastDayOfMonth)
           } else {
             regQuery = regQuery.eq('events.date', filters.date)
           }
@@ -127,20 +129,21 @@ export function useInterestedEvents(toast) {
         if (filters.searchInput) {
           regQuery = regQuery.ilike('events.event_title', `%${filters.searchInput}%`)
         }
-        const { data: registeredRows, error: regError } = await regQuery.order('created_at', { ascending: false })
-        .range(from, to)
+        const { data: registeredRows, error: regError } = await regQuery
+          .order('created_at', { ascending: false })
+          .range(from, to)
         let registeredEvents = []
         if (!regError && registeredRows) {
-          registeredEvents = registeredRows.map(row => ({ ...row, is_registered: true }))
+          registeredEvents = registeredRows.map((row) => ({ ...row, is_registered: true }))
         } else if (regError && regError.code !== 'PGRST116') {
           // console.error('Error fetching registered events:', regError)
         }
         // Merge interested and registered events, avoiding duplicates
         const allEventsMap = new Map()
-        data.forEach(ev => {
+        data.forEach((ev) => {
           allEventsMap.set(ev.event_id, { ...ev, is_interested: true })
         })
-        registeredEvents.forEach(ev => {
+        registeredEvents.forEach((ev) => {
           if (allEventsMap.has(ev.event_id)) {
             allEventsMap.get(ev.event_id).is_registered = true
           } else {
@@ -176,10 +179,25 @@ export function useInterestedEvents(toast) {
       .eq('user_id', user.id)
       .eq('event_id', event.id)
 
-    if (error) {
-      toast.error(error.message)
+    const { data: regData, error: regError } = await supabase
+      .from('registered_events')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('event_id', event.id)
+      .single()
+    if (regData) {
+      await supabase
+        .from('registered_events')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('event_id', event.id)
+    }
+
+    if (error || regError) {
+      toast.error(error?.message || regError?.message)
       return
     }
+
     interest.value = interest.value.filter((item) => item.event_id !== event.id)
     toast.success('Removed from interested')
   }
