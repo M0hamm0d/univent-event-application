@@ -124,9 +124,9 @@ watch(
           v-if="res.length >= 1 && !loading"
           @deleteEvent="handleDelete"
         />
-        <div class="skeleton" v-if="loading">
-          <SkeletonLoader v-for="i in 3" :key="i" />
-        </div>
+      </div>
+      <div class="skeleton" v-if="loading">
+        <SkeletonLoader v-for="i in 3" :key="i" />
       </div>
       <p>{{ filtersArray }}</p>
       <div class="pagination" v-if="result?.pageSum > 1">
@@ -156,6 +156,13 @@ watch(
 </template>
 
 <style scoped>
+.skeleton {
+  display: flex;
+  gap: 16px;
+  max-width: 90%;
+  width: 100%;
+  margin: 0 auto;
+}
 .interest-container {
   transition: all 0.5s ease;
   transform: translateY(-70px);
@@ -248,6 +255,12 @@ watch(
     transform: 0;
     margin-top: 0px;
     margin-bottom: 80px;
+  }
+  .skeleton {
+    max-width: 90%;
+    width: 100%;
+    margin: 0 auto;
+    flex-direction: column;
   }
 }
 </style>

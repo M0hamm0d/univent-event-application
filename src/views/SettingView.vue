@@ -15,10 +15,6 @@ const active = ref('account')
 </script>
 <template>
   <div>
-    <!-- <EventSearchHeader
-      header="Settings & Support"
-      title="Customize your UniVent experience, manage your preferences, or get help when you need it. We're here to make campus life easier!"
-    /> -->
     <div class="content">
       <div class="side-nav">
         <div class="nav-container" @click="active = 'account'">
