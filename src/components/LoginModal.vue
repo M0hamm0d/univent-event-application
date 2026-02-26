@@ -1,9 +1,9 @@
 <script setup>
-// import GoogleLogo from './icons/GoogleLogo.vue'
+import GoogleLogo from './icons/GoogleLogo.vue'
 import UniventAuthLogo from './icons/UniventAuthLogo.vue'
 import { useUniventStore } from '../stores/counter'
 import { useToast } from 'vue-toastification'
-// import { supabase } from '@/supabase'
+import { supabase } from '@/supabase'
 import { ref } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import router from '@/router'
@@ -42,27 +42,44 @@ async function handleLogin() {
   }
   isLoading.value = false
 }
-// async function signIn() {
-//   isLoading.value = true
-//   try {
-//     let { data, error: signInError } = await supabase.auth.signInWithPassword({
-//       email: email.value,
-//       password: password.value,
-//     })
-//     if (signInError || !data.user) {
-//       error.value = signInError ? signInError.message : 'Login Failed'
-//     }
-//     if (data) {
-//       toast.success('logged in successfully')
-//       login.isAuthenticated = true
-//       login.loginModal = false
-//     }
-//   } catch {
-//     alert('Something went wrong. Please try again.')
-//   } finally {
-//     isLoading.value = false
-//   }
-// }
+async function signInWithGoogle() {
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    })
+    if (error) {
+      console.error('Error signing in with Google:', error.message)
+    }
+  } catch (err) {
+    console.error('Unexpected error:', err)
+  }
+}
+async function forgotPassword() {
+  if (!email.value) {
+    error.value = 'Please enter your email address to reset your password.'
+    setTimeout(() => {
+      error.value = ''
+    }, 4000)
+    return
+  }
+  try {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email.value, {
+      options: {
+        redirectTo: 'https://univent-event-application.vercel.app/update-password',
+      },
+    })
+    if (error) {
+      console.error('Error sending password reset email:', error.message)
+      toast.error('Failed to send password reset email. Please try again.')
+    } else {
+      console.log('Password reset email sent successfully:', data)
+      toast.success('Password reset email sent! Please check your inbox.')
+    }
+  } catch (err) {
+    console.error('Unexpected error:', err)
+    toast.error('An unexpected error occurred. Please try again later.')
+  }
+}
 </script>
 
 <template>
@@ -89,6 +106,7 @@ async function handleLogin() {
           v-model="password"
         />
         <div class="open-close" @click="togglePassword"></div>
+        <div class="forgot-password" @click="forgotPassword">Forgot Password?</div>
       </div>
       <p v-if="error" class="error">{{ error }}</p>
     </div>
@@ -102,12 +120,12 @@ async function handleLogin() {
       >
         {{ isLoading ? 'Signing In....' : 'Log in' }}
       </button>
-      <!-- <div class="or-continue-with">
+      <div class="or-continue-with">
         <div class=""></div>
         <p>or Login with</p>
         <div class=""></div>
       </div>
-      <button class="Oauth"><GoogleLogo /> <span>Google</span></button> -->
+      <button class="Oauth" @click="signInWithGoogle"><GoogleLogo /> <span>Google</span></button>
     </div>
     <div class="have-an-account">
       Don't have an account?
@@ -189,6 +207,14 @@ h4 {
 .password-input {
   position: relative;
 }
+.forgot-password {
+  position: absolute;
+  right: 0;
+  bottom: -23px;
+  font-size: 12px;
+  color: #1969fe;
+  cursor: pointer;
+}
 .open-close {
   width: 15px;
   height: 15px;
@@ -229,8 +255,8 @@ h4 {
   padding: 12px;
   font-weight: 600;
   color: #fff;
-  font-family: Geist;
   cursor: pointer;
+  margin-top: 10px;
 }
 .create-account-section .Oauth {
   background-color: transparent;
@@ -240,13 +266,12 @@ h4 {
   align-items: center;
   border: none;
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px;
   font-weight: 600;
   font-size: 12px;
   justify-content: center;
   gap: 8px;
   border: 1px solid #eaeaea;
-  font-family: Geist;
   cursor: pointer;
 }
 .or-continue-with {

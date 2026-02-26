@@ -2,23 +2,25 @@
 // import GoogleLogo from './icons/GoogleLogo.vue'
 import UniventAuthLogo from './icons/UniventAuthLogo.vue'
 import { useUniventStore } from '../stores/counter'
+import { supabase } from '@/supabase'
 import { ref } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import CancelBtn from './icons/CancelBtn.vue'
+import GoogleLogo from './icons/GoogleLogo.vue'
+const signupName = ref('')
+const signupEmail = ref('')
+const signupPassword = ref('')
+const signupConfirmPassword = ref('')
+const loading = ref(false)
 const login = useUniventStore()
 const emit = defineEmits(['closeBtn'])
+const { signupBtn, errorMessage } = useAuth()
 function openLoginModal() {
   login.loginModal = true
   login.signupModal = false
   console.log('login is' + login.loginModal)
 }
 // const error = ref('')
-const signupName = ref('')
-const signupEmail = ref('')
-const signupPassword = ref('')
-const signupConfirmPassword = ref('')
-const { signupBtn, errorMessage } = useAuth()
-const loading = ref(false)
 
 async function handleSignUp() {
   loading.value = true
@@ -34,6 +36,19 @@ async function handleSignUp() {
     }
   } finally {
     loading.value = false
+  }
+}
+
+async function signInWithGoogle() {
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    })
+    if (error) {
+      console.error('Error signing in with Google:', error.message)
+    }
+  } catch (err) {
+    console.error('Unexpected error:', err)
   }
 }
 </script>
@@ -90,12 +105,12 @@ async function handleSignUp() {
       <button @click="handleSignUp">
         {{ loading ? 'Creating account...' : 'Create Account' }}
       </button>
-      <!-- <div class="or-continue-with">
+      <div class="or-continue-with">
         <div class=""></div>
         <p>or continue with</p>
         <div class=""></div>
       </div>
-      <button class="Oauth"><GoogleLogo /> <span>Google</span></button> -->
+      <button class="Oauth" @click="signInWithGoogle"><GoogleLogo /> <span>Google</span></button>
     </div>
     <div class="have-an-account">
       Already have an account? <span @click="openLoginModal">Login</span>
@@ -205,7 +220,6 @@ h4 {
   padding: 12px;
   font-weight: 600;
   color: #fff;
-  font-family: Geist;
   cursor: pointer;
 }
 .create-account-section .Oauth {
@@ -216,13 +230,12 @@ h4 {
   align-items: center;
   border: none;
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px;
   font-weight: 600;
   font-size: 12px;
   justify-content: center;
   gap: 8px;
   border: 1px solid #eaeaea;
-  font-family: Geist;
   cursor: pointer;
 }
 .or-continue-with {

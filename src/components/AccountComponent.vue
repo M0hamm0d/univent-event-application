@@ -19,7 +19,6 @@ const toast = useToast()
 const univentStore = useUniventStore()
 const accordionContent = ref(false)
 
-// use composable
 const { formData, loading, handleFileChange, submitEditProfile } = useProfile(toast)
 
 const interestList = [
@@ -51,7 +50,7 @@ function interestIcon(interest) {
 }
 
 const fetchProfile = async (userId) => {
-  const { data, error } = await supabase.from('profile').select('*').eq('id', userId).single()
+  const { data, error } = await supabase.from('profile').select('*').eq('id', userId).maybeSingle()
 
   if (error) {
     console.error('Error fetching profile:', error.message)
@@ -65,20 +64,18 @@ const fetchSession = async () => {
     console.error('Error fetching session:', error.message)
     return null
   }
-  console.log(data.session)
   return data.session
 }
 
 onMounted(async () => {
   const session = await fetchSession()
   univentStore.userProfile = await fetchProfile(session?.user.id)
-  console.log('univentStore.userprofile', univentStore.userProfile)
 
   formData.value = {
-    fullname: univentStore.userProfile.user_name,
-    email: univentStore.userProfile.user_email,
-    image_url: univentStore.userProfile.profile_pics,
-    interest: univentStore.userProfile.interested_events || [],
+    fullname: univentStore.userProfile?.user_name || session.user.user_metadata.full_name || '',
+    email: univentStore.userProfile?.user_email || session.user.email || '',
+    image_url: univentStore.userProfile?.profile_pics,
+    interest: univentStore.userProfile?.interested_events || [],
   }
 })
 </script>
@@ -174,7 +171,7 @@ onMounted(async () => {
           <p><CautionIcon /> Select up to 3 to personalize your feed.</p>
         </div>
       </div>
-      <button class="save-changes" @click="submitEditProfile">Save Changes</button>
+      <button class="save-changes" @click="submitEditProfile()">Save Changes</button>
     </div>
   </div>
 </template>
