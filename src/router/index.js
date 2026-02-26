@@ -14,6 +14,11 @@ const router = createRouter({
       component: () => import('../views/DiscoverView.vue'),
     },
     {
+      path: '/update-password',
+      name: 'update password',
+      component: () => import('../views/UpdatePassword.vue'),
+    },
+    {
       path: '/interested',
       name: 'my interest',
       component: () => import('../views/MyInterest.vue'),
