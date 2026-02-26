@@ -32,11 +32,47 @@ export function useUserProfile() {
       loading.value = false
     }
   }
+  async function ensureProfile(user) {
+    const { data: existingUser, error } = await supabase
+      .from('profile')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (error && error.code !== 'PGRST116') {
+      console.error(error.message)
+      return null
+    }
+
+    if (!existingUser) {
+      console.log('no existing user')
+      const name = user.user_metadata?.full_name || user.user_metadata?.name || 'User'
+
+      const { data: insertedProfile, error: insertError } = await supabase
+        .from('profile')
+        .insert({
+          id: user.id,
+          user_name: name,
+          user_email: user.email,
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error(insertError.message)
+        return null
+      }
+
+      return insertedProfile
+    }
+    return existingUser
+  }
 
   return {
     loading,
     error,
     profile,
     fetchProfile,
+    ensureProfile,
   }
 }

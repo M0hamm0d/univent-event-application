@@ -18,7 +18,7 @@ import RequestEvent from './components/icons/RequestEvent.vue'
 import { useRoute } from 'vue-router'
 // import UniventAssistance from './components/UniventAssistance.vue'
 const route = useRoute()
-const { fetchProfile } = useUserProfile()
+const { ensureProfile } = useUserProfile()
 let univentStore = useUniventStore()
 const showDropdown = ref(false)
 const toast = useToast()
@@ -79,9 +79,15 @@ onMounted(async () => {
   univentStore.isAuthenticated = !!session?.user
   isAuthenticated.value = !!session?.user
   if (session?.user) {
-    const result = await fetchProfile(session.user.id)
-    univentStore.userProfile = result.data
+    const profileResult = await ensureProfile(session.user)
+    univentStore.userProfile = profileResult.data
   }
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      const profileResult = await ensureProfile(session.user)
+      univentStore.userProfile = profileResult.data
+    }
+  })
 })
 </script>
 
@@ -150,7 +156,7 @@ onMounted(async () => {
           <div class="authenticated" v-if="!univentStore.userProfile?.profile_pics">
             <div class="icon" @click="showDropdown = !showDropdown">
               <span class="avatar">{{
-                univentStore.userProfile?.user_name?.charAt(0).toUpperCase()
+                univentStore.userProfile?.user_name?.charAt(0).toUpperCase() || 'U'
               }}</span>
               <DropdownIcon />
             </div>
