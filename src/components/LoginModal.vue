@@ -64,9 +64,7 @@ async function forgotPassword() {
   }
   try {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email.value, {
-      options: {
-        redirectTo: 'https://univent-event-application.vercel.app/update-password',
-      },
+      redirectTo: 'https://univent.website/update-password',
     })
     if (error) {
       console.error('Error sending password reset email:', error.message)
