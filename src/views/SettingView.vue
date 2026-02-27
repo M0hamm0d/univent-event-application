@@ -1,12 +1,13 @@
 <script setup>
 import AccountComponent from '@/components/AccountComponent.vue'
+import dashboardComponent from '@/components/dashboardComponent.vue'
 // import EventSearchHeader from '@/components/EventSearchHeader.vue'
 import ProfileIcon from '@/components/icons/ProfileIcon.vue'
 import FaqIcon from '@/components/icons/FaqIcon.vue'
 import FaqComponent from '@/components/FaqComponent.vue'
 import SupportComponent from '@/components/SupportComponent.vue'
 // const tabs = { account: AccountComponent, faq: FaqComponent }
-const tabs = { account: AccountComponent, faq: FaqComponent, support: SupportComponent }
+const tabs = { account: AccountComponent, faq: FaqComponent, support: SupportComponent, dashboard: dashboardComponent }
 import { ref } from 'vue'
 import SupportSetting from '@/components/icons/SupportSetting.vue'
 // import PasswordIcon from '@/components/icons/PasswordIcon.vue'
@@ -23,6 +24,13 @@ const active = ref('account')
             <span>Account</span>
           </div>
           <div :class="['side-border', { active: active == 'account' }]"></div>
+        </div>
+        <div class="nav-container" @click="active = 'dashboard'">
+          <div :class="['nav', { activeNav: active == 'dashboard' }]">
+            <span><ProfileIcon :fill="active === 'dashboard' ? '#000' : '#aaa'" /> </span>
+            <span>Dashboard</span>
+          </div>
+          <div :class="['side-border', { active: active == 'dashboard' }]"></div>
         </div>
         <div class="nav-container" @click="active = 'faq'">
           <div :class="['nav', { activeNav: active == 'faq' }]">
