@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, onUnmounted } from 'vue'
 import { supabase } from '@/supabase'
 import { useUserProfile } from '@/composables/useUserProfile'
 import ViewDetailsModal from './components/ViewDetailsModal.vue'
@@ -23,10 +23,15 @@ let univentStore = useUniventStore()
 const showDropdown = ref(false)
 const toast = useToast()
 const { logout } = useAuth(toast)
+const loading = ref(false)
 
-function handleLogout() {
-  logout()
-  router.push('/')
+async function handleLogout() {
+  loading.value = true
+  const success = await logout()
+  loading.value = false
+  if (success) {
+    router.push('/')
+  }
 }
 
 const fetchSession = async () => {
@@ -74,20 +79,39 @@ watch(
   { immediate: true },
 )
 
+let subscription
 onMounted(async () => {
   const session = await fetchSession()
   univentStore.isAuthenticated = !!session?.user
   isAuthenticated.value = !!session?.user
   if (session?.user) {
     const profileResult = await ensureProfile(session.user)
-    univentStore.userProfile = profileResult.data
+    univentStore.userProfile = profileResult
   }
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-      const profileResult = await ensureProfile(session.user)
-      univentStore.userProfile = profileResult.data
+  const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('event-1', event)
+    if (event === 'SIGNED_OUT') {
+      univentStore.$reset()
+      toast.success('Logged out successfully')
     }
+    if (univentStore.userProfile?.id === session?.user.id) {
+      console.log('Same user already loaded — skipping')
+      console.log('just for fun', univentStore.userProfile?.id, session?.user.id)
+      return
+    }
+    const profileResult = await ensureProfile(session?.user)
+    univentStore.userProfile = profileResult
+    console.log('event:', event)
+    console.log('session:', session)
+    console.log('profile id', univentStore.userProfile?.id, 'session', session.user.id)
   })
+  subscription = data.subscription
+})
+onUnmounted(() => {
+  if (subscription) {
+    console.log('i have been unsubscribe')
+    subscription.unsubscribe()
+  }
 })
 </script>
 
@@ -165,7 +189,7 @@ onMounted(async () => {
               <RouterLink to="/settings" @click="showDropdown = !showDropdown">
                 <div>Settings</div>
               </RouterLink>
-              <div @click="handleLogout">Logout</div>
+              <div @click="handleLogout">{{ loading ? 'Logging Out...' : 'LogOut' }}</div>
             </div>
           </div>
           <div v-else class="authenticated">

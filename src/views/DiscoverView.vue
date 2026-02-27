@@ -24,40 +24,6 @@ const count = ref(null)
 const searchFromId = ref([])
 const isFilterActive = ref(false)
 
-// async function fetchInterestedEvents() {
-//   try {
-//     let { data: interested_events, error } = await supabase.from('interested_events').select(`
-//     id,
-//     user_id (
-//       id,
-//       user_name,
-//       user_email
-//     ),
-//     event_id (
-//       id,
-//       event_title,
-//       date,
-//       time,
-//       location,
-//       category,
-//       price,
-//       description,
-//       image_url
-//     )
-//   `)
-
-//     if (error) {
-//       console.error('Error fetching interested events:', error)
-//       return []
-//     }
-//     console.log('This is interested event', interested_events)
-//   } catch (err) {
-//     console.error('Error fetching interested events:', err)
-//   }
-// }
-
-// fetchInterestedEvents()
-
 async function loadEvents() {
   univentStore.dateDropdown = false
   univentStore.categoryDropdown = false

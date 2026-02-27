@@ -10,6 +10,7 @@ import { useToast } from 'vue-toastification'
 import { supabase } from '@/supabase'
 import { onMounted, ref } from 'vue'
 import { useProfile } from '@/composables/useProfile'
+import { useUserProfile } from '@/composables/useUserProfile'
 import { useUniventStore } from '@/stores/counter'
 import CautionIcon from './icons/CautionIcon.vue'
 import ProfileIcon from './icons/ProfileIcon.vue'
@@ -20,6 +21,7 @@ const univentStore = useUniventStore()
 const accordionContent = ref(false)
 
 const { formData, loading, handleFileChange, submitEditProfile } = useProfile(toast)
+const { fetchProfile } = useUserProfile()
 
 const interestList = [
   { icon: AcademicIcon, name: 'Academic Workshops', value: 'Academic Workshops', id: 'academic' },
@@ -48,16 +50,6 @@ function interestIcon(interest) {
   }
   return map[interest] || null
 }
-
-const fetchProfile = async (userId) => {
-  const { data, error } = await supabase.from('profile').select('*').eq('id', userId).maybeSingle()
-
-  if (error) {
-    console.error('Error fetching profile:', error.message)
-    return null
-  }
-  return data
-}
 const fetchSession = async () => {
   const { data, error } = await supabase.auth.getSession()
   if (error) {
@@ -69,7 +61,8 @@ const fetchSession = async () => {
 
 onMounted(async () => {
   const session = await fetchSession()
-  univentStore.userProfile = await fetchProfile(session?.user.id)
+  const profile = await fetchProfile(univentStore.userProfile?.id)
+  univentStore.userProfile = profile.data
 
   formData.value = {
     fullname: univentStore.userProfile?.user_name || session.user.user_metadata.full_name || '',
@@ -171,7 +164,7 @@ onMounted(async () => {
           <p><CautionIcon /> Select up to 3 to personalize your feed.</p>
         </div>
       </div>
-      <button class="save-changes" @click="submitEditProfile()">Save Changes</button>
+      <button class="save-changes" @click="submitEditProfile">Save Changes</button>
     </div>
   </div>
 </template>

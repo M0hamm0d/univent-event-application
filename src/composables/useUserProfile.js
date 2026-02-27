@@ -36,7 +36,7 @@ export function useUserProfile() {
     const { data: existingUser, error } = await supabase
       .from('profile')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', user?.id)
       .maybeSingle()
 
     if (error && error.code !== 'PGRST116') {
