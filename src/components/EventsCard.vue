@@ -496,6 +496,9 @@ import ViewDetailsModal from './ViewDetailsModal.vue'
 import LocationIcon from './icons/LocationIcon.vue'
 import { useUniventStore } from '@/stores/counter'
 import RegisterModal from './RegisterModal.vue'
+import { isEventRegistered } from '@/composables/useRegisteredEvents'
+import { isInWaitingList } from '@/composables/UseWaitingList'
+import {useStoreUserDetails} from '@/composables/useStoreUserDetails'
 // import BellIcon from './icons/BellIcon.vue'
 
 const univentStore = useUniventStore()
@@ -503,7 +506,7 @@ const route = useRoute()
 const router = useRouter()
 const { toggleInterest } = useInterestedEvents()
 const { isEventRegistrable } = useRegistrable()
-import { isEventRegistered } from '@/composables/useRegisteredEvents'
+const { removeUserFromEvent } = useStoreUserDetails()
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -515,6 +518,7 @@ const localEvents = ref([...props.events])
 const selectedEvent = ref(null)
 const showModal = ref(false)
 const registeredMap = ref({})
+const waitingListMap = ref({})
 const selectedRegisterEvent = ref(null)
 const loadingMap = ref({})
 
@@ -524,10 +528,22 @@ async function loadRegistrations(event) {
   registeredMap.value[event.id] = await isEventRegistered(event, userId)
 }
 
+async function loadWaitingListStatus(event) {
+  const userId = univentStore.userProfile?.id
+  if (!userId) return
+  waitingListMap.value[event.id] = await isInWaitingList(event, userId)
+}
+
 function onRegisterClick(event) {
   registeredMap.value[event.id] = true
   // showModal.value = false
 }
+
+// function onUnregisterClick(event) {
+//   registeredMap.value[event.id] = false
+//   removeUserFromEvent(event)
+//   // showModal.value = false
+// }
 
 function handleDelete(event) {
   emit('deleteEvent', event)
@@ -555,7 +571,12 @@ async function onInterestClick(event) {
     }
 
     if (registrable) {
+      if (registeredMap.value[event.id]) {
+        registeredMap.value[event.id] = false
+        await removeUserFromEvent(event)
+      } else {
       await handleRegister(event)
+      }
     } else {
       await handleInterest(event)
     }
@@ -578,7 +599,10 @@ watch(
     const userId = univentStore.userProfile?.id
     if (!userId) return
     for (const event of localEvents.value) {
-      await loadRegistrations(event)
+      await Promise.all([
+        loadRegistrations(event),
+        loadWaitingListStatus(event),
+      ])
     }
   },
   { immediate: true },
@@ -603,6 +627,7 @@ watch(
 </script>
 <template>
   <div class="event-card" v-for="event in localEvents" :key="event.id">
+    <div v-if="waitingListMap[event.id] === true" class="waitlist-badge">In Wait-list</div>
     <div class="event-flier"><img loading="lazy" :src="event.image_url" alt="" /></div>
     <div class="event-content">
       <div class="categories">
@@ -616,6 +641,7 @@ watch(
 
       <div class="event-block">
         <h3>{{ event.event_title }}</h3>
+        <p>{{ registeredMap[event.id] }}</p>
         <div :class="['event-date-and-location', { notHomePage: route.path !== '/' }]">
           <div class="">
             <CalendarIcon /> {{ dayjs(event.date).format('dddd, MMMM D') }} •
@@ -629,18 +655,15 @@ watch(
       </div>
 
       <div class="interest-details-btn">
-        <div
-          :class="[
-            'interest',
-            {
-              interested: event.is_interest || registeredMap[event.id],
-              loading: loadingMap[event.id],
-            },
-          ]"
-          v-if="route.path.startsWith('/discover')"
-          @click="onInterestClick(event)"
-        >
+        <div :class="[
+          'interest',
+          {
+            interested: event.is_interest || registeredMap[event.id],
+            loading: loadingMap[event.id],
+          },
+        ]" v-if="route.path.startsWith('/discover')" @click="onInterestClick(event)">
           <span v-if="loadingMap[event.id]">Loading...</span>
+
           <template v-else-if="event.requires_registration">
             <span v-if="registeredMap[event.id]">Registered ✓</span>
             <span v-else>Register Now</span>
@@ -655,14 +678,11 @@ watch(
         <div>
           <teleport to="body">
             <Transition name="modal-fade">
-              <RegisterModal
-                v-if="showModal"
-                :event="selectedRegisterEvent"
-                :local_Events="localEvents"
-                :show-modal="showModal"
-                @close="showModal = false"
-                @registered="onRegisterClick(selectedRegisterEvent)"
-              />
+              <div v-if="!registeredMap[event.id]">
+              <RegisterModal v-if="showModal" :event="selectedRegisterEvent" :local_Events="localEvents"
+                :show-modal="showModal" @close="showModal = false"
+                @registered="onRegisterClick(selectedRegisterEvent)" />
+              </div>
             </Transition>
           </teleport>
         </div>
@@ -670,15 +690,9 @@ watch(
           <p>View Details</p>
           <teleport to="body">
             <Transition name="modal-fade">
-              <ViewDetailsModal
-                v-if="selectedEvent"
-                :event="selectedEvent"
-                class-name="open"
-                @close="selectedEvent = null"
-                @update-interested="updateInterested"
-                @share-clicked="univentStore.shareEvent(selectedEvent)"
-                @click.stop
-              />
+              <ViewDetailsModal v-if="selectedEvent" :event="selectedEvent" class-name="open"
+                @close="selectedEvent = null" @update-interested="updateInterested"
+                @share-clicked="univentStore.shareEvent(selectedEvent)" @click.stop />
             </Transition>
           </teleport>
         </div>
@@ -688,11 +702,8 @@ watch(
             <ShareIcon />
           </button>
 
-          <button
-            class="delete-btn"
-            v-if="event.is_interested === true || registeredMap[event.id]"
-            @click="handleDelete(event)"
-          >
+          <button class="delete-btn" v-if="event.is_interested === true || registeredMap[event.id]"
+            @click="handleDelete(event)">
             <DeleteIcon />
           </button>
           <!-- <button class="delete-btn" @click="checkInterestedStatus(event)"><DeleteIcon /></button> -->
@@ -706,10 +717,12 @@ p,
 h3 {
   margin: 0;
 }
+
 .loading {
   cursor: not-allowed;
   opacity: 0.6;
 }
+
 .events-grid-wrapper {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -877,7 +890,7 @@ h3 {
   transition: all 0.5s;
 }
 
-.view-details > p {
+.view-details>p {
   width: 100%;
   /* padding: 16px 0; */
   font-size: 19px;
@@ -917,7 +930,7 @@ h3 {
   background-color: #1969fe;
 }
 
-.view-details:hover > p {
+.view-details:hover>p {
   color: #fff;
 }
 
@@ -948,6 +961,20 @@ h3 {
   cursor: pointer;
 }
 
+.waitlist-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #ffe066;
+  color: #a67c00;
+  border-radius: 16px;
+  padding: 6px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
 @media screen and (max-width: 500px) {
   .event-block h3 {
     font-size: 18px;
@@ -963,7 +990,7 @@ h3 {
     font-size: 15px;
   }
 
-  .view-details > p {
+  .view-details>p {
     font-size: 15px;
   }
 
