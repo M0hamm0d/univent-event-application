@@ -77,11 +77,11 @@ export function useProfile(toast) {
       toast?.error(error.message)
       return
     }
-
     if (newEmail !== previousEmail) {
       const { error: authError } = await supabase.auth.updateUser({
         email: newEmail,
       })
+      console.log('updated email in auth')
 
       if (authError) {
         toast?.error(`Profile updated but failed to update auth email: ${authError.message}`)

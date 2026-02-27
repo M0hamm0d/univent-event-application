@@ -115,9 +115,9 @@ export function useAuth(toast) {
       toast?.error('Sign out failed')
       return false
     }
-    uniVentStore.$reset()
-    toast?.success('Signed out successfully')
-    uniVentStore.isAuthenticated = false
+    // uniVentStore.$reset()
+    // toast?.success('Signed out successfully')
+    // uniVentStore.isAuthenticated = false
     return true
   }
 
