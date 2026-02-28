@@ -80,6 +80,9 @@ export function useProfile(toast) {
     if (newEmail !== previousEmail) {
       const { error: authError } = await supabase.auth.updateUser({
         email: newEmail,
+        options: {
+          emailRedirectTo: 'https://univent.website/email-verified',
+        },
       })
       console.log('updated email in auth')
 

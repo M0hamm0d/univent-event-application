@@ -109,6 +109,15 @@ export function useAuth(toast) {
   }
 
   async function logout() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session) {
+      console.log('No session, skipping logout')
+      return
+    }
+
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Sign out error:', error)
