@@ -25,6 +25,9 @@ const searchFromId = ref([])
 const isFilterActive = ref(false)
 
 async function loadEvents() {
+  if (loading.value) return
+  console.log('loadEvents running')
+  loading.value = true
   univentStore.dateDropdown = false
   univentStore.categoryDropdown = false
   univentStore.locationDropdown = false
@@ -44,7 +47,7 @@ async function loadEvents() {
     return
   } else {
     try {
-      loading.value = true
+      // loading.value = true
       const result = await fetchRequestedAndEvents(
         univentStore.currentPage,
         univentStore.activeFilters,
@@ -64,15 +67,6 @@ async function loadEvents() {
     }
   }
 }
-
-watch(
-  () => route.query.page,
-  () => {
-    loadEvents()
-  },
-)
-onMounted(loadEvents)
-
 async function pagination(param) {
   router.push({
     query: {
@@ -113,6 +107,17 @@ function backToDiscoverPage() {
 function showFilter() {
   isFilterActive.value = !isFilterActive.value
 }
+watch(
+  () => route.query.page,
+  (newVal, oldVal) => {
+    if (newVal && oldVal !== newVal) {
+      console.log('true, oldval !== newVal')
+      loadEvents()
+    }
+    console.log('new val', newVal, 'oldVal', oldVal)
+  },
+)
+onMounted(loadEvents)
 </script>
 <template>
   <div class="">

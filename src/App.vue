@@ -28,6 +28,7 @@ const loading = ref(false)
 async function handleLogout() {
   loading.value = true
   const success = await logout()
+  console.log('success', success)
   loading.value = false
   if (success) {
     router.push('/')
@@ -91,6 +92,7 @@ onMounted(async () => {
   const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('event-1', event)
     if (event === 'SIGNED_OUT') {
+      console.log('i just signed out')
       univentStore.$reset()
       toast.success('Logged out successfully')
     }
@@ -189,7 +191,9 @@ onUnmounted(() => {
               <RouterLink to="/settings" @click="showDropdown = !showDropdown">
                 <div>Settings</div>
               </RouterLink>
-              <div @click="handleLogout">{{ loading ? 'Logging Out...' : 'LogOut' }}</div>
+              <button @click="handleLogout" :disabled="loading" class="logout-btn">
+                {{ loading ? 'Logging Out...' : 'LogOut' }}
+              </button>
             </div>
           </div>
           <div v-else class="authenticated">
@@ -272,14 +276,23 @@ onUnmounted(() => {
   z-index: 5;
   flex-direction: column;
 }
-.profile-dropdown div {
+.profile-dropdown div,
+.profile-dropdown button {
   padding: 12px 16px;
   font-size: 15px;
   font-weight: 500;
   color: #5a5a5a;
   cursor: pointer;
+  width: auto;
+  background-color: transparent;
+  border: none;
 }
-.profile-dropdown div:hover {
+.profile-dropdown button {
+  border: 10px;
+  width: 100%;
+  text-align: left;
+}
+.profile-dropdown div:hover .profile-dropdown button:hover {
   background-color: #f4f4f4;
   border-radius: 10px;
 }

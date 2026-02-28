@@ -24,6 +24,11 @@ const router = createRouter({
       component: () => import('../views/MyInterest.vue'),
     },
     {
+      path: '/email-verified',
+      name: 'email verified',
+      component: () => import('../views/EmailVerified.vue'),
+    },
+    {
       path: '/add-event',
       name: 'add event',
       component: () => import('../views/AddEvent.vue'),
