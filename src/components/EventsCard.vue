@@ -742,14 +742,16 @@ h3 {
 
 .event-flier {
   width: 100%;
-  max-height: 250px;
+  max-height: 225px;
   height: 100%;
+  min-height: 160px;
 }
 
 .event-flier img {
   width: 100%;
   height: 100%;
   border-radius: 15px;
+  object-fit: cover;
 }
 
 .categories {
@@ -791,8 +793,8 @@ h3 {
 }
 
 .price {
-  font-size: 19px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .event-block {
@@ -802,8 +804,9 @@ h3 {
 }
 
 .event-block h3 {
-  font-size: 23px;
-  line-height: 120%;
+  font-size: 16px;
+  line-height: 1.3;
+  font-weight: 600;
 }
 
 .event-meta {
@@ -831,6 +834,7 @@ h3 {
   flex-wrap: wrap;
   align-items: center;
   color: #aaaaaa;
+  font-size: 14px;
 }
 
 .event-date-and-location.notHomePage {
@@ -855,12 +859,16 @@ h3 {
   border: 1px solid #eaeaea;
   border-radius: 64px;
   padding: 16px 5px;
-  font-size: 19px;
+  /* font-size: 19px; */
+  font-size: 16px;
   font-weight: 600;
   text-align: center;
   transition: all 0.5s;
   width: 100%;
   cursor: pointer;
+}
+.interest:hover {
+  background-color: #f3f4f6;
 }
 
 .view-details {
@@ -880,7 +888,7 @@ h3 {
 .view-details > p {
   width: 100%;
   /* padding: 16px 0; */
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 600;
   text-align: center;
   transition: all 0.5s;

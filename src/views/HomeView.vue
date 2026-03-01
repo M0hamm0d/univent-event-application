@@ -279,7 +279,7 @@ const categories = [
 .hero-content {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 35px;
   opacity: 0;
   transform: translateX(-60px);
   transition: all 0.8s ease;
@@ -287,12 +287,13 @@ const categories = [
 .hero-content.show {
   opacity: 1;
   transform: translateX(0px);
+  width: 100%;
 }
 .hero-content h1 {
   font-weight: 700;
   font-style: Bold;
-  font-size: 57px;
-  line-height: 120%;
+  font-size: 48px;
+  line-height: 56px;
   letter-spacing: 0%;
   color: #fff;
   margin: 0;
@@ -300,8 +301,8 @@ const categories = [
 .hero-content p {
   font-weight: 600;
   font-style: SemiBold;
-  font-size: 19px;
-  line-height: 120%;
+  font-size: 18px;
+  line-height: 140%;
   letter-spacing: 0%;
   /* color: #5a5a5a; */
   color: #d5d5d5;
@@ -341,7 +342,7 @@ const categories = [
 .hero-post-btn {
   padding: 16px 20px;
   display: flex;
-  font-size: 19px;
+  font-size: 16px;
   gap: 4px;
   border-radius: 64px;
   font-weight: 600;
@@ -355,7 +356,7 @@ const categories = [
   height: 50px;
 }
 .hero-image {
-  max-width: 612px;
+  /* max-width: 612px; */
   width: 100%;
   border: 10px solid #ffffff;
   border-radius: 24px;
@@ -424,6 +425,8 @@ const categories = [
 .event-cards {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /* overflow: auto; */
   gap: 1rem;
   opacity: 0;
   transform: translateY(40px);
@@ -592,7 +595,6 @@ const categories = [
   text-align: center;
   margin: 0;
 }
-/* ccc? */
 .carousel {
   position: relative;
   max-width: 90%;
@@ -639,14 +641,14 @@ const categories = [
 }
 .carousel-card-1 h3 {
   color: #f0eefa;
-  font-size: 46px;
+  font-size: 40px;
   line-height: 120%;
   margin: 0;
 }
 .carousel-card-0 h3 {
   color: #ffeaf4;
   margin: 0;
-  font-size: 46px;
+  font-size: 40px;
   line-height: 120%;
 }
 .carousel-card-0 button {

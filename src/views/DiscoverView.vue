@@ -230,8 +230,8 @@ onMounted(loadEvents)
 }
 .skeleton {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  max-width: 90%;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  max-width: 95%;
   margin: 30px auto;
   width: 100%;
   gap: 16px;
@@ -250,9 +250,9 @@ onMounted(loadEvents)
 }
 .events-section {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
-  max-width: 90%;
+  max-width: 95%;
   position: relative;
   z-index: 0;
   width: 100%;
@@ -263,26 +263,62 @@ onMounted(loadEvents)
 .events-section.open {
   transform: translateY(0px);
 }
-@media screen and (max-width: 500px) {
+@media screen and (max-width: 1024px) {
   .events-section {
-    grid-template-columns: 1fr;
-    margin-top: -300px;
-    /* margin-bottom: 350px; */
-  }
-  .pagination {
-    margin-top: 0px;
+    gap: 12px;
+    margin: 20px auto;
   }
   .skeleton {
-    grid-template-columns: 1fr;
-    margin-top: -300px;
+    gap: 12px;
+    margin: 20px auto;
+  }
+  .pagination {
+    justify-content: center;
+    transform: none;
+    margin: 16px auto;
+  }
+  .pagination .buttons {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .go-to-page {
+    gap: 10px;
+  }
+  .back-btn {
+    transform: none;
+    margin: 12px auto;
+    display: block;
   }
   .events-section.open,
   .skeleton.open {
     transform: none;
     margin-top: 0;
   }
+}
+
+@media screen and (max-width: 500px) {
+  .events-section {
+    grid-template-columns: 1fr;
+    margin-top: 0;
+    transform: translateY(-370px);
+  }
+  .pagination {
+    margin-top: 0px;
+    transform: translateY(-370px);
+  }
+  .skeleton {
+    grid-template-columns: 1fr;
+    margin-top: 0;
+  }
   .pagination.open {
     margin-bottom: 100px;
+  }
+  .go-to-page select {
+    min-width: 80px;
+  }
+  .no-result {
+    width: 100%;
+    padding: 0 16px;
   }
 }
 </style>

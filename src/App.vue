@@ -211,7 +211,9 @@ onUnmounted(() => {
               <RouterLink to="/settings" @click="showDropdown = !showDropdown">
                 <div>Settings</div>
               </RouterLink>
-              <div @click="handleLogout">Log out</div>
+              <button @click="handleLogout" :disabled="loading" class="logout-btn">
+                {{ loading ? 'Logging Out...' : 'LogOut' }}
+              </button>
             </div>
           </div>
         </div>
