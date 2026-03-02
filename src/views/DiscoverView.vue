@@ -25,7 +25,7 @@ const searchFromId = ref([])
 const isFilterActive = ref(false)
 
 async function loadEvents() {
-  if (loading.value) return
+  // if (loading.value) return
   console.log('loadEvents running')
   loading.value = true
   univentStore.dateDropdown = false
@@ -35,10 +35,11 @@ async function loadEvents() {
   univentStore.priceDropdown = false
   const pageFromUrl =
     route.query.page && !isNaN(Number(route.query.page)) ? Number(route.query.page) : 1
+  console.log('this is the route query', route.query)
   univentStore.currentPage = pageFromUrl
   if (route.query.eventId) {
     const allEvent = await fetchRequestedAndEvents(univentStore.currentPage)
-    const eventId = Number(route.query.eventId)
+    const eventId = route.query.eventId
     searchFromId.value = allEvent.allEvents.filter((e) => e.id === eventId)
     if (searchFromId.value.length === 0) {
       toast.error('Event is currently unavailable')
@@ -117,7 +118,9 @@ watch(
     console.log('new val', newVal, 'oldVal', oldVal)
   },
 )
-onMounted(loadEvents)
+onMounted(async () => {
+  await loadEvents()
+})
 </script>
 <template>
   <div class="">
@@ -194,7 +197,8 @@ onMounted(loadEvents)
 }
 .back-btn {
   transition: all 0.5s ease;
-  transform: translateY(-380px);
+  transform: translateY(-80px);
+  margin-left: 30px;
 }
 .back-btn.open {
   transform: translateY(0px);
@@ -319,6 +323,12 @@ onMounted(loadEvents)
   .no-result {
     width: 100%;
     padding: 0 16px;
+  }
+  .back-btn {
+    z-index: 10000;
+    position: relative;
+    transform: translateY(-380px);
+    margin: 0 0 12px 12px;
   }
 }
 </style>
