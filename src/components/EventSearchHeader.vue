@@ -199,7 +199,7 @@ onMounted(() => {
           </div>
         </button>
       </div>
-      <div :class="isFilterActive ? 'filters-btn active' : 'filters-btn'">
+      <div :class="isFilterActive ? 'filters-btn isActive' : 'filters-btn'">
         <div class="category" @click="showFilterDropdown('category')">
           <div class="">
             <span><CategoryIcon /></span>
@@ -404,15 +404,16 @@ p {
 }
 .title h2 {
   font-weight: 700;
-  font-size: 57px;
+  /* font-size: 57px; */
+  font-size: 48px;
   line-height: 120%;
   text-align: center;
   color: #fff;
 }
 .title p {
   color: #fff;
-  font-weight: 600;
-  font-size: 19px;
+  font-weight: 500;
+  font-size: 18px;
   line-height: 120%;
   text-align: center;
 }
@@ -446,12 +447,12 @@ p {
   padding: 16px 20px;
   border-radius: 8px;
   background-color: #f4f4f4;
-  font-size: 20px;
+  font-size: 16px;
 }
 .search-section button {
   background-color: #055dfa;
   color: #fff;
-  font-size: 19px;
+  font-size: 16px;
   padding: 16px;
   border-radius: 8px;
   border: none;
@@ -482,7 +483,7 @@ p {
   opacity: 0;
   visibility: hidden;
 }
-.category-filter .filters-btn.active {
+.category-filter .filters-btn.isActive {
   opacity: 1;
   visibility: visible;
   transform: translateY(0px);
