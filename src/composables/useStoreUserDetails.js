@@ -109,7 +109,7 @@ export function useStoreUserDetails() {
 
       toast.success('Registration successful')
       try {
-        const { data: profile, error: eventError } = await supabase
+        const { data: userName, error: eventError } = await supabase
           .from('profile')
           .select('user_name')
           .eq('id', user.id)
@@ -119,7 +119,7 @@ export function useStoreUserDetails() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: user.email,
-            name: profile.user_name,
+            name: userName,
             event: event,
           }),
         });

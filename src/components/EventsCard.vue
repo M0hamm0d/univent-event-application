@@ -548,7 +548,7 @@ function onRegisterClick(event) {
 async function handleDelete(event) {
   if (registeredMap.value[event.id]){
     await removeUserFromEvent(event)
-  }
+  } 
   emit('deleteEvent', event)
 
 }
