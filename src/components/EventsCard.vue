@@ -545,8 +545,12 @@ function onRegisterClick(event) {
 //   // showModal.value = false
 // }
 
-function handleDelete(event) {
+async function handleDelete(event) {
+  if (registeredMap.value[event.id]){
+    await removeUserFromEvent(event)
+  }
   emit('deleteEvent', event)
+
 }
 async function handleInterest(event) {
   await toggleInterest(event, localEvents)

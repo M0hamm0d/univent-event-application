@@ -71,6 +71,19 @@ export function useStoreUserDetails() {
         }
 
         toast.success('Added to waiting list')
+        try {
+         await fetch('/api/confirm_waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            name: event.user_id.user_name,
+            event: event,
+          }),
+        });
+        } catch (err) {
+          console.error('Error sending waitlist email:', err)
+        }
         return { success: true }
       } else {
       // return { success: false }
@@ -96,7 +109,7 @@ export function useStoreUserDetails() {
 
       toast.success('Registration successful')
       try {
-        const { data: event, error: eventError } = await supabase
+        const { data: regEvent, error: eventError } = await supabase
           .from('registered_events')
           .select('id')
           .eq('user_id', user.id)
@@ -107,8 +120,8 @@ export function useStoreUserDetails() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: user.email,
-            name: event.user_id.user_name,
-            event: event,
+            name: regEvent.user_id.user_name,
+            event: regEvent,
           }),
         });
       } catch (error) {
@@ -173,6 +186,16 @@ export function useStoreUserDetails() {
       }
 
       toast.success('Removed from registered')
+      await fetch('/api/move_waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: event,
+        }),
+      });
+      // localEvents.value[eventIndex].is_interest = false
+    } else {
+      toast.info('You are not registered for this event')
       return
     }
   }
