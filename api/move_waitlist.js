@@ -43,7 +43,7 @@ async function moveNextStudentToRegistered(event) {
 
     // Fetch user email and name for sending registration email
     const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
+      .from('profile')
       .select('user_email, user_name')
       .eq('id', student.user_id)
       .maybeSingle()
