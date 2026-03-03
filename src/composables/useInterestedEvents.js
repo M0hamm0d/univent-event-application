@@ -85,7 +85,20 @@ export function useInterestedEvents() {
           return { success: false }
         }
 
-        toast.success('Added to waiting list')
+        toast.success('Added to waiting list');
+        try {
+         await fetch('/api/confirm_waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            name: event.user_id.user_name,
+            event: event,
+          }),
+        });
+        } catch (err) {
+          console.error('Error sending waitlist email:', err)
+        }
         return { success: true }
       } else {
       const { error: insertError } = await supabase
