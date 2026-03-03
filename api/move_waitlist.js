@@ -21,6 +21,10 @@ async function moveNextStudentToRegistered(event) {
     return { success: false, message: 'No students on the waiting list for this event' }
   }
 
+  if (event.interested_students >= event.capacity && event.capacity !== 0 && event.capacity !== null) {
+    return { success: false, message: 'Event is still full, cannot move student from waiting list' }
+  }
+
   const student = waitingList[0]
 
   // Move student from waiting list to registered events

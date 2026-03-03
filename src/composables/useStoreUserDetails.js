@@ -112,7 +112,7 @@ export function useStoreUserDetails() {
         const { data: profile, error: eventError } = await supabase
           .from('profile')
           .select('user_name')
-          .eq('user_id', user.id)
+          .eq('id', user.id)
           .maybeSingle()
         await fetch('/api/registration_email', {
           method: 'POST',
