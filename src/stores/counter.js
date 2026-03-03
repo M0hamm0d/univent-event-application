@@ -39,8 +39,8 @@ export const useUniventStore = defineStore('appStore', () => {
     console.log(event)
     const url = `${window.location.origin}/discover?eventId=${event.id}`
     const shareData = {
-      title: event.event_title,
-      text: `Check out ${event.event_title} on Univent!`,
+      title: `Univent | ${event.event_title}`,
+      text: `Don't miss out! 🚀 Check out "${event.event_title}" ${event.date ? `on ${event.date}` : ''} at ${event.location || 'Unilorin'}. See more details on Univent:`,
       url,
     }
     try {
