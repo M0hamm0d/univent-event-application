@@ -20,6 +20,13 @@ export function useStoreUserDetails() {
       return
     }
 
+    const { data: userName, error: eventError } = await supabase
+      .from('profile')
+      .select('user_name')
+      .eq('id', user.id)
+      .maybeSingle()
+    console.log('Fetched user name:', userName)
+
     // Check if already registered
     const { data: existing, error: checkError } = await supabase
       .from('registered_events')
@@ -72,64 +79,60 @@ export function useStoreUserDetails() {
 
         toast.success('Added to waiting list')
         try {
-         await fetch('/api/confirm_waitlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: user.email,
-            name: event.user_id.user_name,
-            event: event,
-          }),
-        });
+          await fetch('/api/confirm_waitlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              name: userName,
+              event: event,
+            }),
+          });
         } catch (err) {
           console.error('Error sending waitlist email:', err)
         }
         return { success: true }
       } else {
-      // return { success: false }
+        // return { success: false }
 
-      const { error: insertError } = await supabase
-        .from('registered_events')
-        .insert([{ user_id: user.id, event_id: event.id }])
+        const { error: insertError } = await supabase
+          .from('registered_events')
+          .insert([{ user_id: user.id, event_id: event.id }])
 
-      const { error: updateError } = await supabase
-        .from('events')
-        .update({ interested_students: event.interested_students + 1 })
-        .eq('id', event.id)
+        const { error: updateError } = await supabase
+          .from('events')
+          .update({ interested_students: event.interested_students + 1 })
+          .eq('id', event.id)
 
-      if (updateError) {
-        toast.error(updateError.message)
-        return { success: false }
+        if (updateError) {
+          toast.error(updateError.message)
+          return { success: false }
+        }
+
+        if (insertError) {
+          toast.error(insertError.message)
+          return { success: false }
+        }
+
+        toast.success('Registration successful')
+        try {
+
+          await fetch('/api/registration_email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              name: userName,
+              event: event,
+            }),
+          });
+        } catch (error) {
+          // toast.error('An error occurred. Please try again.')
+          console.log('error sending registration email', error)
+        }
+
+        return { success: true }
       }
-
-      if (insertError) {
-        toast.error(insertError.message)
-        return { success: false }
-      }
-
-      toast.success('Registration successful')
-      try {
-        const { data: userName, error: eventError } = await supabase
-          .from('profile')
-          .select('user_name')
-          .eq('id', user.id)
-          .maybeSingle()
-        await fetch('/api/registration_email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: user.email,
-            name: userName,
-            event: event,
-          }),
-        });
-      } catch (error) {
-        // toast.error('An error occurred. Please try again.')
-        console.log('error sending registration email', error)
-      }
-
-      return { success: true }
-    }
       // localEvents.value[eventIndex].is_interest = true
     }
 
@@ -169,7 +172,7 @@ export function useStoreUserDetails() {
         .delete()
         .eq('id', existing.id)
 
-      const {error: updateError} = await supabase
+      const { error: updateError } = await supabase
         .from('events')
         .update({ interested_students: event.interested_students - 1 })
         .eq('id', event.id)
