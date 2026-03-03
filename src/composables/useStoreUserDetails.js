@@ -109,19 +109,18 @@ export function useStoreUserDetails() {
 
       toast.success('Registration successful')
       try {
-        const { data: regEvent, error: eventError } = await supabase
-          .from('registered_events')
-          .select('id')
+        const { data: profile, error: eventError } = await supabase
+          .from('profile')
+          .select('user_name')
           .eq('user_id', user.id)
-          .eq('event_id', event.id)
           .maybeSingle()
         await fetch('/api/registration_email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: user.email,
-            name: regEvent.user_id.user_name,
-            event: regEvent,
+            name: profile.user_name,
+            event: event,
           }),
         });
       } catch (error) {
