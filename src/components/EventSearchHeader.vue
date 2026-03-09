@@ -172,13 +172,9 @@ onMounted(() => {
             v-model="filterObject.searchInput"
             placeholder="Search events by keyword, organizer, or venue..."
           />
-          <!-- <input
-            type="text"
-            v-model="filterObject.searchInput"
-            @input="emit('search-performed')"
-            placeholder="Search events by keyword, organizer, or venue..."
-          /> -->
-          <button class="search">Search <Search2Icon /></button>
+          <button class="search" @click="emit('search-performed', filterObject.value)">
+            Search <Search2Icon />
+          </button>
         </div>
       </div>
     </div>
