@@ -128,6 +128,7 @@ onMounted(async () => {
       header="Discover Events on Campus"
       title="Find the best happenings on campus – from academic workshops to social hangouts."
       @filter-changed="handleFilters"
+      @search-performed="handleFilters"
       @show-filter="showFilter"
     />
     <div class="no-result" v-if="noEvent">
