@@ -84,7 +84,7 @@ export function useStoreUserDetails() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: user.email,
-              name: userName,
+              name: userName.user_name,
               event: event,
             }),
           });
@@ -122,7 +122,7 @@ export function useStoreUserDetails() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: user.email,
-              name: userName,
+              name: userName.user_name,
               event: event,
             }),
           });
