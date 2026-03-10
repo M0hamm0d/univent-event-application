@@ -120,7 +120,7 @@ watch(
 <template>
   <div class="dashboard-container">
     <div class="header">
-      <h2>Welcome back, {{ displayName }}</h2>
+      <h2>Welcome back, {{ displayName.split(' ')[0] }}</h2>
       <p class="subtext">Here’s a quick look at your UniVent activity</p>
     </div>
 

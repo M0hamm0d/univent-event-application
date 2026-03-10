@@ -7,7 +7,6 @@ export function useStoreUserDetails() {
   // const userDetails = ref(null)
   const loading = ref(false)
 
-
   // Adds the current user's details to event's registered_students,
   async function addUserToEvent(event) {
     loading.value = true
@@ -47,7 +46,11 @@ export function useStoreUserDetails() {
       toast.success('You have already registered.')
       return
     } else {
-      if (event.interested_students >= event.capacity && event.capacity !== 0 && event.capacity !== null) {
+      if (
+        event.interested_students >= event.capacity &&
+        event.capacity !== 0 &&
+        event.capacity !== null
+      ) {
         toast.error('Event is full, you will be added to the waiting list')
         // Add to waiting list
         // first check if already on waiting list
@@ -87,7 +90,7 @@ export function useStoreUserDetails() {
               name: userName.user_name,
               event: event,
             }),
-          });
+          })
         } catch (err) {
           console.error('Error sending waitlist email:', err)
         }
@@ -116,7 +119,6 @@ export function useStoreUserDetails() {
 
         toast.success('Registration successful')
         try {
-
           await fetch('/api/registration_email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -125,7 +127,7 @@ export function useStoreUserDetails() {
               name: userName.user_name,
               event: event,
             }),
-          });
+          })
         } catch (error) {
           // toast.error('An error occurred. Please try again.')
           console.log('error sending registration email', error)
@@ -135,10 +137,7 @@ export function useStoreUserDetails() {
       }
       // localEvents.value[eventIndex].is_interest = true
     }
-
-
   }
-
 
   async function removeUserFromEvent(event) {
     loading.value = true
@@ -194,7 +193,7 @@ export function useStoreUserDetails() {
         body: JSON.stringify({
           event: event,
         }),
-      });
+      })
       // localEvents.value[eventIndex].is_interest = false
     } else {
       toast.info('You are not registered for this event')
@@ -203,6 +202,7 @@ export function useStoreUserDetails() {
   }
 
   return {
-    addUserToEvent, removeUserFromEvent
+    addUserToEvent,
+    removeUserFromEvent,
   }
 }
