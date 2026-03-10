@@ -15,7 +15,7 @@ export const useRequestedEvents = () => {
       const { data: requested_event, error: reqError } = await supabase
         .from('requested-event')
         .select(
-          'id,created_at, event_title, category, time, date,description,location,image_url, price,free_or_paid, link_to_register, end_date, capacity, event_format,requires_registration',
+          'id,created_at, event_title, category, time, date,description,location,image_url, price,free_or_paid, link_to_register, end_date, capacity, event_format,requires_registration,user_id',
         )
 
       let query = supabase.from('events').select('*', { count: 'exact' }).gte('date', today)

@@ -8,15 +8,16 @@ const { fetchRequestedAndEvents, pushToEvents } = useRequestedEvents()
 const toast = useToast()
 
 const request = ref([])
+const requestData = ref([])
 const eventValue = ref([])
 const loading = ref(false)
 
 async function handlePushToEvent(id) {
   try {
     loading.value = true
-    const requestData = request.value.find((r) => r.id === id)
+    requestData.value = request.value.find((r) => r.id === id)
 
-    if (!requestData) {
+    if (!requestData.value) {
       alert('No request data found')
       return
     }
@@ -24,8 +25,8 @@ async function handlePushToEvent(id) {
     const { data: events, error: fetchError } = await supabase
       .from('events')
       .select('id')
-      .eq('event_title', requestData.event_title)
-      .eq('location', requestData.location)
+      .eq('event_title', requestData.value.event_title)
+      .eq('location', requestData.value.location)
 
     if (fetchError) {
       console.error('Error checking events:', fetchError)
@@ -40,7 +41,7 @@ async function handlePushToEvent(id) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            email: requestData.user_email,
+            email: requestData.value.user_email,
           }),
         })
         if (!res.ok) {
@@ -61,8 +62,14 @@ async function handlePushToEvent(id) {
         return
       }
     }
+    const { user_id, ...rest } = requestData.value
+    const eventData = {
+      ...rest,
+      created_by: user_id,
+    }
+    console.log(eventData)
 
-    const result = await pushToEvents(requestData)
+    const result = await pushToEvents(eventData)
 
     if (result.success) {
       eventValue.value.push(...result.data)
@@ -102,6 +109,7 @@ onMounted(async () => {
           <button>Reject</button>
         </div>
       </div>
+      <div class="">{{ requestData.value }}</div>
     </div>
   </div>
 </template>

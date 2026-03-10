@@ -53,6 +53,7 @@ export const useEvents = () => {
           requires_registration: eventData.requires_registration,
           user_email: eventData.user_email,
           user_name: eventData.user_name,
+          user_id: eventData.user_id,
         },
       ])
 
