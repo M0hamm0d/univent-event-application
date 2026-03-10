@@ -28,7 +28,6 @@ const loading = ref(false)
 async function handleLogout() {
   loading.value = true
   const success = await logout()
-  console.log('success', success)
   loading.value = false
   if (success) {
     router.push('/')
@@ -90,28 +89,20 @@ onMounted(async () => {
     univentStore.userProfile = profileResult
   }
   const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log('event-1', event)
     if (event === 'SIGNED_OUT') {
-      console.log('i just signed out')
       univentStore.$reset()
       toast.success('Logged out successfully')
     }
     if (univentStore.userProfile?.id === session?.user.id) {
-      console.log('Same user already loaded — skipping')
-      console.log('just for fun', univentStore.userProfile?.id, session?.user.id)
       return
     }
     const profileResult = await ensureProfile(session?.user)
     univentStore.userProfile = profileResult
-    console.log('event:', event)
-    console.log('session:', session)
-    console.log('profile id', univentStore.userProfile?.id, 'session', session.user.id)
   })
   subscription = data.subscription
 })
 onUnmounted(() => {
   if (subscription) {
-    console.log('i have been unsubscribe')
     subscription.unsubscribe()
   }
 })
