@@ -23,6 +23,7 @@ const eventData = ref({
   event_format: '',
   user_name: '',
   user_email: '',
+  user_id: '',
 })
 const is_multi_day = ref(false)
 const loading = ref(false)
@@ -52,9 +53,9 @@ async function getUserId() {
       .from('profile')
       .select('*')
       .eq('id', `${user.id}`)
-
     eventData.value.user_email = profile[0].user_email
     eventData.value.user_name = profile[0].user_name
+    eventData.value.user_id = profile[0].id
     currentUser.value = user
     if (error || profile_error) throw error
   } catch (error) {
@@ -189,6 +190,7 @@ function resetForm() {
     event_format: '',
     user_name: '',
     user_email: '',
+    user_id: '',
   }
   selectedCategories.value = []
   currentFileName.value = ''
