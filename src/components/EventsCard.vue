@@ -14,6 +14,7 @@ import RegisterModal from './RegisterModal.vue'
 import { isEventRegistered } from '@/composables/useRegisteredEvents'
 import { isInWaitingList } from '@/composables/UseWaitingList'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
+import { supabase } from '@/supabase'
 // import BellIcon from './icons/BellIcon.vue'
 
 const univentStore = useUniventStore()
@@ -61,11 +62,10 @@ function onRegisterClick(event) {
 // }
 
 async function handleDelete(event) {
-  if (registeredMap.value[event.id]){
+  if (registeredMap.value[event.id]) {
     await removeUserFromEvent(event)
-  } 
+  }
   emit('deleteEvent', event)
-
 }
 async function handleInterest(event) {
   await toggleInterest(event, localEvents)
@@ -105,6 +105,15 @@ async function onInterestClick(event) {
   } finally {
     loadingMap.value[id] = false
   }
+}
+
+async function toggleSelectedEvent(event) {
+  selectedEvent.value = event
+  await supabase
+    .from('events')
+    .update({ viewed_count: event.viewed_count + 1 })
+    .eq('id', event.id)
+  console.log({ ...event }, 'selected Event')
 }
 
 async function updateInterested(e) {
@@ -210,7 +219,7 @@ watch(
             </Transition>
           </teleport>
         </div>
-        <div class="view-details" @click="selectedEvent = event">
+        <div class="view-details" @click="toggleSelectedEvent(event)">
           <p>View Details</p>
           <teleport to="body">
             <Transition name="modal-fade">

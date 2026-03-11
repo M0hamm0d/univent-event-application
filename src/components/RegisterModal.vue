@@ -26,7 +26,7 @@ function cancel() {
 }
 async function agree() {
   loading.value = true
-  const { addUserToEvent } = await useStoreUserDetails()
+  const { addUserToEvent } = useStoreUserDetails()
   const result = await addUserToEvent(props.event, props.local_Events)
   loading.value = false
   if (result.success) {
