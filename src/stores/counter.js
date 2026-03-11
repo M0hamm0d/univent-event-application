@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useToast } from 'vue-toastification'
+import { supabase } from '@/supabase'
 const toast = useToast()
 
 export const useUniventStore = defineStore('appStore', () => {
@@ -36,7 +37,11 @@ export const useUniventStore = defineStore('appStore', () => {
     changePasswordModal.value = !changePasswordModal.value
   }
   async function shareEvent(event) {
-    console.log(event)
+    console.log({ ...event })
+    await supabase
+      .from('events')
+      .update({ shared_count: event.shared_count + 1 })
+      .eq('id', event.id)
     const url = `${window.location.origin}/discover?eventId=${event.id}`
     const shareData = {
       title: `Univent | ${event.event_title}`,

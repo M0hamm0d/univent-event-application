@@ -4,6 +4,7 @@ import { useToast } from 'vue-toastification'
 import { useEvents } from '@/composables/useEvent'
 import DownloadIcon from '@/components/icons/DownloadIcon.vue'
 import { supabase } from '@/supabase'
+import BackArrow from '@/components/icons/BackArrow.vue'
 
 const toast = useToast()
 const { uploadFile, saveEvent } = useEvents()
@@ -200,12 +201,11 @@ function resetForm() {
 <template>
   <div class="create-event-container">
     <RouterLink to="/" class="nav">
-      <span>←</span>
-      <h2>Create Event</h2>
+      <span><BackArrow /></span>
+      <p class="header">Create New Event</p>
     </RouterLink>
     <div class="create-event">
       <div class="basic-info">
-        <h1>Event Info</h1>
         <div class="title">
           <input v-model="eventData.title" type="text" placeholder="" />
           <p>Event Title</p>
@@ -217,10 +217,6 @@ function resetForm() {
         </div>
         <div class="categories">
           <p>Category</p>
-          <div class="no-of-categories">
-            <p>{{ selectedCategories }}</p>
-            <p>Pick up to 3</p>
-          </div>
           <div class="categoryContainer">
             <div v-for="(cat, i) in categoryOptions" :key="i" class="cat">
               <input
@@ -240,10 +236,13 @@ function resetForm() {
               </label>
             </div>
           </div>
+          <div class="no-of-categories">
+            <p>{{ selectedCategories.length }}/3</p>
+            <p>Select up to 3</p>
+          </div>
         </div>
       </div>
       <div class="time-and-place">
-        <h1>Time and Place</h1>
         <div class="multi-day">
           <input v-model="is_multi_day" type="checkbox" id="multi-day" />
           <label for="multi-day">Multi-day event?</label>
@@ -342,6 +341,10 @@ function resetForm() {
   display: flex;
   gap: 5px;
 }
+.header {
+  font-size: 20px;
+  font-weight: 500;
+}
 .categoryContainer .cat {
   display: flex;
   gap: 5px;
@@ -424,9 +427,7 @@ img {
   gap: 15px;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  border: 2px solid #0a99fe;
-  border-radius: 10px;
+  /* padding: 20px; */
 }
 textarea {
   outline: none;
@@ -467,6 +468,9 @@ textarea {
   padding: 0 17px;
   font-size: 16px;
   font-size: 16px;
+}
+.categories p {
+  margin: 10px 0;
 }
 .description textarea {
   width: 100%;
