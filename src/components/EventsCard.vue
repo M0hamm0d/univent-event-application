@@ -181,7 +181,7 @@ watch(
       </div>
 
       <div class="interest-details-btn">
-        <div
+        <button
           :class="[
             'interest',
             {
@@ -190,6 +190,7 @@ watch(
             },
           ]"
           v-if="route.path.startsWith('/discover')"
+          :disabled="waitingListMap[event.id] === true || loadingMap[event.id]"
           @click="onInterestClick(event)"
         >
           <span v-if="loadingMap[event.id]">Loading...</span>
@@ -203,7 +204,7 @@ watch(
               event.is_interest ? 'Interested ✓ ' : 'I am Interested'
             }}</span>
           </template>
-        </div>
+        </button>
 
         <div>
           <teleport to="body">
@@ -289,6 +290,11 @@ h3 {
   right: 25px;
   top: 30px;
   cursor: pointer;
+}
+
+.interest:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .event-content {
