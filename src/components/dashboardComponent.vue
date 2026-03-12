@@ -10,6 +10,7 @@ const registeredEvents = ref([])
 const interestedEvents = ref([])
 const createdEvents = ref([])
 const trendingEvents = ref([])
+const sharedCount = ref(0)
 const loadingUserData = ref(false)
 
 // upcoming = registered events whose date is in future
@@ -20,6 +21,10 @@ const upcomingEvents = computed(() => {
 
 const totalCreatedEvents = computed(() => {
   return createdEvents.value.length
+})
+
+const totalSharedEvents = computed(() => {
+  return sharedCount.value
 })
 
 const hasAnyEvents = computed(() => {
@@ -76,7 +81,6 @@ async function fetchInterested() {
     console.error('fetchInterested', error.message)
     return
   }
-  console.log('this is interested event in dashboard', data)
   //.select('event(*)')
   interestedEvents.value = data.map((r) => r.events)
 }
@@ -120,7 +124,7 @@ watch(
 <template>
   <div class="dashboard-container">
     <div class="header">
-      <h2>Welcome back, {{ displayName }}</h2>
+      <h2>Welcome back, {{ displayName.split(' ')[0] }}</h2>
       <p class="subtext">Here’s a quick look at your UniVent activity</p>
     </div>
 
@@ -153,19 +157,6 @@ watch(
 
     <!-- sections for event lists -->
     <div class="section-container">
-      <!-- <div class="section" v-if="registeredEvents.length">
-        <h3>Your Registered Events</h3>
-        <div class="card-container">
-          <EventsCard :events="registeredEvents" />
-        </div>
-      </div>
-
-      <div class="section" v-if="interestedEvents.length">
-        <h3>Events You’ve Marked as Interested</h3>
-        <div class="card-container">
-          <EventsCard :events="interestedEvents" />
-        </div>
-      </div> -->
       <div class="section" v-if="createdEvents.length">
         <h3>Your Created Events</h3>
 
@@ -179,6 +170,10 @@ watch(
             </p>
 
             <p v-else>Not Registrable</p>
+
+            <p>Shared: {{ event.shared_count || 0 }}</p>
+            <p>Viewed: {{ event.viewed_count || 0 }}</p>
+            <button disabled="true" class="analytics-button">View Analytics</button>
           </div>
         </div>
       </div>
@@ -280,6 +275,18 @@ watch(
   margin-bottom: 12px;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+.analytics-button {
+  margin-top: 8px;
+  padding: 9px 12px;
+  width: 100%;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: not-allowed;
+  font-size: 16px;
+  font-family: Satoshi;
 }
 .card-container {
   display: grid;

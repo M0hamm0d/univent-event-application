@@ -26,7 +26,6 @@ const isFilterActive = ref(false)
 
 async function loadEvents() {
   // if (loading.value) return
-  console.log('loadEvents running')
   loading.value = true
   univentStore.dateDropdown = false
   univentStore.categoryDropdown = false
@@ -35,7 +34,6 @@ async function loadEvents() {
   univentStore.priceDropdown = false
   const pageFromUrl =
     route.query.page && !isNaN(Number(route.query.page)) ? Number(route.query.page) : 1
-  console.log('this is the route query', route.query)
   univentStore.currentPage = pageFromUrl
   if (route.query.eventId) {
     const allEvent = await fetchRequestedAndEvents(univentStore.currentPage)
@@ -112,10 +110,8 @@ watch(
   () => route.query.page,
   (newVal, oldVal) => {
     if (newVal && oldVal !== newVal) {
-      console.log('true, oldval !== newVal')
       loadEvents()
     }
-    console.log('new val', newVal, 'oldVal', oldVal)
   },
 )
 onMounted(async () => {
