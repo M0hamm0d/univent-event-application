@@ -118,6 +118,7 @@ export function useStoreUserDetails() {
         }
 
         toast.success('Registration successful')
+        console.log('user', user, 'userName', userName, 'event', event)
         try {
           await fetch('/api/registration_email', {
             method: 'POST',

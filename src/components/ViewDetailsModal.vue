@@ -45,7 +45,7 @@ watch(is_interested, (newVal) => {
             </div>
           </div>
           <div class="event-flier">
-            <img loading="lazy" :src="event.image_url" alt="" />
+            <img loading="lazy" :src="event.image_url" alt="" width="400" height="225" />
           </div>
         </div>
         <div class="event-overview">
@@ -199,7 +199,8 @@ h4 {
 }
 .event-flier img {
   width: 100%;
-  height: 260px;
+  /* height: 260px; */
+  height: auto;
 }
 .event-overview {
   display: flex;
