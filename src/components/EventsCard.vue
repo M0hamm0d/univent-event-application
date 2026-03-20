@@ -153,7 +153,9 @@ watch(
 <template>
   <div class="event-card" v-for="event in localEvents" :key="event.id">
     <div v-if="waitingListMap[event.id] === true" class="waitlist-badge">In Wait-list</div>
-    <div class="event-flier"><img loading="lazy" :src="event.image_url" alt="" /></div>
+    <div class="event-flier">
+      <img loading="lazy" :src="event.image_url" width="400" height="225" alt="" />
+    </div>
     <div class="event-content">
       <div class="categories">
         <div class="category">
@@ -296,10 +298,13 @@ h3 {
 }
 
 .event-flier {
-  width: 100%;
+  /* width: 100%;
   max-height: 225px;
   height: 100%;
-  min-height: 160px;
+  min-height: 160px; */
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
 }
 
 .event-flier img {

@@ -42,6 +42,10 @@ const univentStore = useUniventStore()
 function guardRoute(param) {
   if (param == 'add-event') {
     if (univentStore.isAuthenticated) {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
       router.push('/add-event')
     } else {
       univentStore.loginModal = true
@@ -49,6 +53,10 @@ function guardRoute(param) {
   }
   if (param == 'interested') {
     if (univentStore.isAuthenticated) {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
       router.push('/interested')
     } else {
       univentStore.loginModal = true
@@ -148,7 +156,13 @@ const categories = [
           </div>
         </div>
         <div v-animate-on-scroll="'hero-image'">
-          <img loading="lazy" src="/hero-img.webp" alt="hero image" />
+          <img
+            src="/hero-img.webp"
+            fetchpriority="high"
+            alt="hero image"
+            width="1836"
+            height="1461"
+          />
         </div>
       </div>
     </div>
@@ -183,7 +197,7 @@ const categories = [
       <div class="categories">
         <button class="category" v-for="(category, i) in categories" :key="i">
           <div class="category-icon">
-            <img loading="lazy" :src="category.icon" alt="" />
+            <img loading="lazy" :src="category.icon" alt="" width="280" height="280" />
           </div>
           <p>{{ category.category }}</p>
         </button>
@@ -217,7 +231,7 @@ const categories = [
             </div>
           </div>
           <div v-animate-on-scroll="'img'">
-            <img loading="lazy" src="/uni-event.webp" alt="" />
+            <img loading="lazy" src="/uni-event.webp" alt="" width="2017" height="1130" />
           </div>
         </div>
       </div>
@@ -370,6 +384,7 @@ const categories = [
 }
 .hero-image img {
   width: 100%;
+  height: auto;
 }
 .upcoming-highlight-wrapper {
   background-color: #f4f4f4;
@@ -517,9 +532,10 @@ const categories = [
   color: #5a5a5a;
 }
 .category img {
-  max-width: 100px;
-  max-height: 100%;
+  /* max-width: 100px;
+  max-height: 100%; */
   width: 100%;
+  height: auto;
 }
 .how-univent-work-wrapper {
   max-width: 90%;
@@ -549,6 +565,7 @@ const categories = [
 }
 .img img {
   width: 105%;
+  height: auto;
 }
 .process {
   display: flex;

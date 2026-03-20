@@ -39,11 +39,6 @@ const router = createRouter({
       component: () => import('../views/SettingView.vue'),
     },
     {
-      path: '/kirah',
-      name: 'kirah',
-      component: () => import('../views/KirahHome.vue'),
-    },
-    {
       path: '/event-request',
       name: 'event request',
       component: () => import('../views/EventRequest.vue'),
