@@ -199,405 +199,373 @@ function resetForm() {
 }
 </script>
 <template>
-  <div class="create-event-container">
-    <RouterLink to="/" class="nav">
-      <span><BackArrow /></span>
-      <p class="header">Create New Event</p>
-    </RouterLink>
-    <div class="create-event">
-      <div class="basic-info">
-        <div class="title">
-          <input v-model="eventData.title" type="text" placeholder="" />
-          <p>Event Title</p>
-        </div>
+  <div class="create-event-page">
+    <div class="form-header">
+      <RouterLink to="/" class="back-nav">
+        <BackArrow />
+        <h1>Create New Event</h1>
+      </RouterLink>
+      <p class="subtitle">Kindly complete the form below to publish your event to the portal.</p>
+    </div>
 
-        <div class="description">
-          <textarea v-model="eventData.description" rows="6" placeholder=" "></textarea>
-          <p>Description</p>
+    <div class="form-container">
+      <section class="form-section">
+        <div class="section-info">
+          <h3>Event Details</h3>
+          <p>Provide the core information about your event.</p>
         </div>
-        <div class="categories">
-          <p>Category</p>
-          <div class="categoryContainer">
-            <div v-for="(cat, i) in categoryOptions" :key="i" class="cat">
-              <input
-                type="checkbox"
-                :id="cat"
-                :value="cat"
-                v-model="selectedCategories"
-                :disabled="selectedCategories.length >= 3 && !selectedCategories.includes(cat)"
-              />
-              <label
-                :for="cat"
-                :class="{
-                  disabled: selectedCategories.length >= 3 && !selectedCategories.includes(cat),
-                }"
+        <div class="section-fields card">
+          <div class="field-group">
+            <label>Event Title</label>
+            <input v-model="eventData.title" type="text" placeholder="e.g. Annual Tech Summit" />
+          </div>
+
+          <div class="field-group">
+            <label>Description</label>
+            <textarea
+              v-model="eventData.description"
+              rows="4"
+              placeholder="Tell us about the event..."
+            ></textarea>
+          </div>
+
+          <div class="field-group">
+            <label>Categories (Select up to 3)</label>
+            <div class="category-grid">
+              <div v-for="(cat, i) in categoryOptions" :key="i" class="cat-pill">
+                <input
+                  type="checkbox"
+                  :id="cat"
+                  :value="cat"
+                  v-model="selectedCategories"
+                  :disabled="selectedCategories.length >= 3 && !selectedCategories.includes(cat)"
+                />
+                <label :for="cat">{{ cat }}</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="divider" />
+
+      <section class="form-section">
+        <div class="section-info">
+          <h3>Time & Location</h3>
+          <p>Where and when is it happening?</p>
+        </div>
+        <div class="section-fields card">
+          <div class="row">
+            <div class="field-group checkbox-row">
+              <input v-model="is_multi_day" type="checkbox" id="multi-day" />
+              <label for="multi-day">This is a multi-day event</label>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field-group">
+              <label>{{ is_multi_day ? 'Start Date' : 'Event Date' }}</label>
+              <input v-model="eventData.date" type="date" />
+            </div>
+            <div class="field-group" v-if="is_multi_day">
+              <label>End Date</label>
+              <input v-model="eventData.end_date" type="date" />
+            </div>
+            <div class="field-group">
+              <label>Start Time</label>
+              <input v-model="eventData.time" type="time" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Event Format</label>
+            <div class="radio-group">
+              <label class="radio-item"
+                ><input type="radio" value="physical" v-model="eventData.event_format" />
+                Physical</label
               >
-                {{ cat }}
+              <label class="radio-item"
+                ><input type="radio" value="virtual" v-model="eventData.event_format" />
+                Virtual</label
+              >
+              <label class="radio-item"
+                ><input type="radio" value="hybrid" v-model="eventData.event_format" />
+                Hybrid</label
+              >
+            </div>
+          </div>
+
+          <div class="field-group" v-if="eventData.event_format !== 'virtual'">
+            <label>Physical Location</label>
+            <input v-model="eventData.location" type="text" placeholder="Venue or Address" />
+          </div>
+
+          <div class="field-group" v-if="eventData.event_format !== 'physical'">
+            <label>Meeting Link</label>
+            <input v-model="eventData.linkToRegister" type="text" placeholder="Zoom, Meet, etc." />
+          </div>
+        </div>
+      </section>
+
+      <hr class="divider" />
+
+      <section class="form-section">
+        <div class="section-info">
+          <h3>Attendance & Media</h3>
+          <p>Manage registration and upload flyers.</p>
+        </div>
+        <div class="section-fields card">
+          <div class="field-group checkbox-row">
+            <input v-model="eventData.requires_registration" type="checkbox" id="reg-req" />
+            <label for="reg-req">Requires Registration</label>
+          </div>
+
+          <div class="field-group" v-if="eventData.requires_registration">
+            <label>Capacity</label>
+            <input
+              v-model="eventData.capacity"
+              type="number"
+              placeholder="Leave empty for unlimited"
+            />
+          </div>
+
+          <div class="field-group">
+            <label>Event Flier (Max 3MB)</label>
+            <div class="upload-zone">
+              <input id="uploadFile" type="file" @change="handleFileUpload" hidden />
+              <label for="uploadFile" class="upload-label">
+                <DownloadIcon />
+                <span>{{ currentFileName || 'Click to upload image' }}</span>
               </label>
+              <div v-if="eventData.imageUrl" class="image-preview">
+                <img :src="eventData.imageUrl" alt="Preview" />
+              </div>
             </div>
           </div>
-          <div class="no-of-categories">
-            <p>{{ selectedCategories.length }}/3</p>
-            <p>Select up to 3</p>
-          </div>
         </div>
-      </div>
-      <div class="time-and-place">
-        <div class="multi-day">
-          <input v-model="is_multi_day" type="checkbox" id="multi-day" />
-          <label for="multi-day">Multi-day event?</label>
-        </div>
-        <div class="date-time">
-          <div class="date">
-            <p v-if="is_multi_day">Start Date</p>
-            <input v-model="eventData.date" type="date" placeholder=" " />
-          </div>
-          <div class="end-date" v-if="is_multi_day">
-            <p>End Date</p>
-            <input v-model="eventData.end_date" type="date" placeholder=" " />
-          </div>
-        </div>
-        <div class="time">
-          <input v-model="eventData.time" type="time" placeholder=" " />
-          <p>Time</p>
-          <!-- <div class="condition">* Use the format HH:MM AM/PM</div> -->
-        </div>
-        <div class="event-format">
-          <h3>Event Format</h3>
-          <div class="event-format-options">
-            <div class="">
-              <label for="physical">Physical</label>
-              <input type="radio" id="physical" value="physical" v-model="eventData.event_format" />
-            </div>
-            <div class="">
-              <label for="virtual">Virtual</label>
-              <input type="radio" id="virtual" value="virtual" v-model="eventData.event_format" />
-            </div>
-            <div class="">
-              <label for="hybrid">Hybrid</label>
-              <input type="radio" id="hybrid" value="hybrid" v-model="eventData.event_format" />
-            </div>
-          </div>
-          <div
-            class="location"
-            v-if="eventData.event_format === 'physical' || eventData.event_format === 'hybrid'"
-          >
-            <input v-model="eventData.location" type="text" placeholder=" " />
-            <p>Location</p>
-          </div>
-          <div
-            class="category"
-            v-if="eventData.event_format === 'virtual' || eventData.event_format === 'hybrid'"
-          >
-            <input v-model="eventData.linkToRegister" type="text" placeholder=" " />
-            <p>Paste meeting or streaming link (Zoom, Google Meet, etc.)</p>
-          </div>
-        </div>
-      </div>
+      </section>
 
-      <div class="requires-registration">
-        <input v-model="eventData.requires_registration" type="checkbox" />
-        <p>Requires Registration? {{ eventData.requires_registration }}</p>
+      <div class="form-actions">
+        <button class="btn-cancel">Cancel</button>
+        <button class="btn-save" @click="handleSaveEvent" :disabled="loading">
+          {{ loading ? 'Saving...' : 'Continue' }}
+        </button>
       </div>
-      <div v-if="eventData.requires_registration" class="amount">
-        <p>Capacity</p>
-        <div class="amountInput">
-          <input
-            v-model="eventData.capacity"
-            type="text"
-            placeholder="Leave empty for unlimited attendance"
-          />
-        </div>
-        <div class="condition">* Use numbers only, no symbols</div>
-      </div>
-
-      <div class="event-image">
-        <p>Upload Event Flier (Max 3MB)</p>
-        <input id="uploadFile" type="file" style="display: none" @change="handleFileUpload" />
-        <label for="uploadFile" class="label">
-          <DownloadIcon />
-          <span>Upload image</span>
-        </label>
-        <p v-if="loading">Loading...</p>
-        <div v-if="eventData.imageUrl" class="imageDisplay">
-          <img loading="lazy" :src="eventData.imageUrl" alt="event image" />
-        </div>
-      </div>
-    </div>
-
-    <div v-if="errorMessage" class="error">
-      {{ errorMessage }}
-    </div>
-
-    <div class="save-cancel-btn">
-      <button class="cancel">Cancel</button>
-      <button class="save" @click="handleSaveEvent">Save</button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.categoryContainer {
-  display: flex;
-  gap: 5px;
+.create-event-page {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #334155;
 }
-.header {
-  font-size: 20px;
-  font-weight: 500;
+
+/* Header Styling */
+.form-header {
+  margin-bottom: 40px;
 }
-.categoryContainer .cat {
-  display: flex;
-  gap: 5px;
-  padding: 10px;
-  border: 1px solid #e2e8f0;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  cursor: pointer;
-  border-radius: 5px;
-}
-.error,
-.capacity .condition,
-.time .condition {
-  color: red;
-  margin-top: 4px;
-}
-.capacityValue {
-  position: relative;
-  position: 100%;
-  display: flex;
-}
-.capacityValue span {
-  position: absolute;
-  left: 17px;
-  top: 17px;
-}
-.testing {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 24px;
-}
-.requires-registration {
+.back-nav {
   display: flex;
   align-items: center;
-}
-.requires-registration p {
-  margin: 7px 0;
-}
-.capacity input {
-  width: 100%;
-  outline: none;
-  color: #8c8c8b;
-  border: 1px solid #dfdfdf;
-  height: 54px;
-  padding: 0 35px;
-  font-size: 16px;
-  font-size: 16px;
-}
-.capacity > p {
-  margin-top: 0;
-}
-.imageDisplay {
-  width: 250px;
-}
-img {
-  width: 100%;
-}
-.label {
-  display: flex;
-  align-items: center;
-}
-.create-event-container {
-  width: 90%;
-  margin: auto;
-}
-.create-event {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  width: 100%;
-  margin-top: 30px;
-}
-.no-of-categories {
-  display: flex;
-  gap: 10px;
-}
-.basic-info,
-.time-and-place {
-  gap: 15px;
-  display: flex;
-  flex-direction: column;
-  /* padding: 20px; */
-}
-textarea {
-  outline: none;
-  resize: none;
-}
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.create-event-container a {
-  color: #000;
+  gap: 12px;
   text-decoration: none;
+  color: #1e293b;
+  margin-bottom: 20px;
 }
-.title,
-.time,
-.location,
-.description,
-.category,
-.event-image,
-.org-email,
-.description {
-  position: relative;
-  display: flex;
-}
-.title input,
-.time input,
-.location input,
-.category input,
-.org-email input,
-.category input,
-.org-email input {
-  width: 100%;
-  outline: none;
-  color: #8c8c8b;
-  border: 1px solid #dfdfdf;
-  height: 54px;
-  padding: 0 17px;
-  font-size: 16px;
-  font-size: 16px;
-}
-.categories p {
-  margin: 10px 0;
-}
-.description textarea {
-  width: 100%;
-  outline: none;
-  color: #8c8c8b;
-  border: 1px solid #dfdfdf;
-  padding: 18px 17px 0;
-  font-size: 16px;
-}
-.title p,
-.location p,
-.description p,
-.time p,
-.category p,
-.org-email p {
+.back-nav h1 {
+  font-size: 24px;
+  font-weight: 600;
   margin: 0;
-  position: absolute;
-  top: 17px;
-  left: 17px;
+}
+.subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* Section Layout */
+.form-section {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 30px;
+}
+.section-info {
+  flex: 0 0 250px;
+}
+.section-info h3 {
   font-size: 16px;
-  transition: top 0.1s ease;
+  font-weight: 600;
+  margin: 0 0 8px 0;
 }
-.title input:focus + p,
-.title input:not(:placeholder-shown) + p,
-.location input:focus + p,
-.location input:not(:placeholder-shown) + p,
-.description textarea:focus + p,
-.description textarea:not(:placeholder-shown) + p,
-.time input:focus + p,
-.time input:not(:placeholder-shown) + p,
-.category input:focus + p,
-.category input:not(:placeholder-shown) + p,
-.org-email input:focus + p,
-.org-email input:not(:placeholder-shown) + p {
-  top: -9px;
-  background-color: #fff;
+.section-info p {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.5;
 }
-.event-format {
+.section-fields {
+  flex: 1;
+}
+
+/* Card & Inputs */
+.card {
+  background: white;
   display: flex;
   flex-direction: column;
-  margin-bottom: 20px;
+  gap: 20px;
+}
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+}
+input[type='text'],
+input[type='number'],
+input[type='date'],
+input[type='time'],
+textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Categories */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 10px;
 }
-.event-format h3,
-.event-format p {
-  margin: 0;
+.cat-pill {
+  position: relative;
 }
-.event-format-options {
+.cat-pill input {
+  display: none;
+}
+.cat-pill label {
+  display: block;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.cat-pill input:checked + label {
+  background: #6366f1;
+  color: white;
+}
+
+/* Utils */
+.row {
+  display: flex;
+  gap: 16px;
+}
+.row > div {
+  flex: 1;
+}
+.checkbox-row {
+  flex-direction: row !important;
+  align-items: center;
+}
+.radio-group {
   display: flex;
   gap: 20px;
-  margin-top: 10px;
 }
-.date-time {
+.radio-item {
   display: flex;
-  width: 100%;
-  gap: 1rem;
-}
-.date,
-.time,
-.end-date {
-  flex: 1;
-  width: 100%;
-}
-.time input {
-  width: auto;
-}
-.time {
-  flex-direction: column;
-  height: 100%;
-}
-.date input,
-.end-date input {
-  width: 100%;
-  height: 54px;
-  border: 1px solid #dfdfdf;
-  /* padding: 0 17px; */
-}
-.save-cancel-btn {
-  margin: 40px 0 40px auto;
-  display: flex;
-  width: 30%;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.save-cancel-btn button {
-  padding: 15px 10px;
-  border-radius: 5px;
-  flex: 1;
-  cursor: pointer;
-  border: none;
-}
-.save-cancel-btn .save {
-  background-color: #0a99fe;
-  color: #fff;
-}
-.event-image {
-  flex-direction: column;
-  background-color: #f0f0f0;
-  padding: 40px;
-  justify-content: center;
-  border-radius: 7px;
   align-items: center;
+  gap: 8px;
+  font-size: 14px;
 }
-@media screen and (max-width: 500px) {
-  .nav h2 {
-    margin: 0;
-  }
-  .date {
-    display: flex;
-  }
-  .time {
-    display: flex;
-  }
-  .time input {
-    display: flex;
-    width: auto;
-  }
-  .date-time {
+.divider {
+  border: 0;
+  border-top: 1px solid #f1f5f9;
+  margin: 30px 0;
+}
+
+/* Upload Area */
+.upload-zone {
+  border: 2px dashed #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  background: #f8fafc;
+}
+.upload-label {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+}
+.image-preview img {
+  max-width: 200px;
+  margin-top: 15px;
+  border-radius: 8px;
+}
+
+/* Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 40px;
+}
+.btn-cancel {
+  padding: 12px 24px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 8px;
+  color: #475569;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-save {
+  padding: 12px 32px;
+  /* background: #6366f1; */
+  background: #055dfa;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3);
+}
+
+@media (max-width: 768px) {
+  .form-section {
     flex-direction: column;
-    width: 100%;
+    gap: 16px;
   }
-  .categoryContainer {
-    overflow: auto;
+  .section-info {
+    flex: 0 0 auto;
   }
-  .save-cancel-btn {
+  .row {
+    flex-direction: column;
+  }
+  .form-actions {
     margin-bottom: 120px;
-    width: 100%;
   }
 }
 </style>
