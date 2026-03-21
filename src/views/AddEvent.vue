@@ -424,6 +424,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 .field-group label {
   font-size: 13px;
@@ -435,13 +436,14 @@ input[type='number'],
 input[type='date'],
 input[type='time'],
 textarea {
-  /* width: 100%; */
+  width: 100%;
   padding: 12px 16px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   background-color: #f8fafc;
   font-size: 14px;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 input:focus,
 textarea:focus {
@@ -455,7 +457,7 @@ textarea:focus {
 /* Categories */
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 10px;
 }
 .cat-pill {
@@ -571,6 +573,16 @@ textarea:focus {
   }
   .form-actions {
     margin-bottom: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+  .cat-pill label {
+    font-size: 11px;
+    padding: 12px 8px;
   }
 }
 </style>
