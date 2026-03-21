@@ -356,6 +356,9 @@ function resetForm() {
 </template>
 
 <style scoped>
+textarea {
+  resize: none;
+}
 .create-event-page {
   max-width: 900px;
   margin: 40px auto;
@@ -432,7 +435,7 @@ input[type='number'],
 input[type='date'],
 input[type='time'],
 textarea {
-  width: 100%;
+  /* width: 100%; */
   padding: 12px 16px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
@@ -443,7 +446,8 @@ textarea {
 input:focus,
 textarea:focus {
   outline: none;
-  border-color: #6366f1;
+  /* border-color: #6366f1; */
+  border-color: #055dfa;
   background-color: #fff;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
@@ -471,7 +475,8 @@ textarea:focus {
   border: 1px solid transparent;
 }
 .cat-pill input:checked + label {
-  background: #6366f1;
+  /* background: #6366f1; */
+  background: #055dfa;
   color: white;
 }
 
