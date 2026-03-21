@@ -15,7 +15,7 @@ export const useEvents = () => {
       const fileName = `${Date.now()}_${file.name}`
       const { error: uploadError } = await supabase.storage
         .from('event-fliers')
-        .upload(fileName, file, { upsert: true })
+        .upload(fileName, file, { upsert: false, cacheControl: '31536000' })
       if (uploadError) throw uploadError
 
       const { data: publicUrlData, error: urlError } = supabase.storage
