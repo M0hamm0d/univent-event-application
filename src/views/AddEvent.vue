@@ -92,14 +92,16 @@ async function handleSaveEvent() {
   console.log(eventData.value.date)
   if (eventData.value.time) {
     const [hour, min] = eventData.value.time.split(':')
-    if (hour > 12) {
-      eventData.value.time = `${hour - 12}:${min}PM`
-    } else if (hour == 12) {
-      eventData.value.time = `${hour}:${min}PM`
-    } else if (hour == 0) {
-      eventData.value.time = `${12}:${min}AM`
+    const hourNum = Number(hour)
+
+    if (hourNum > 12) {
+      eventData.value.time = `${hourNum - 12}:${min} PM`
+    } else if (hourNum === 12) {
+      eventData.value.time = `${hourNum}:${min} PM`
+    } else if (hourNum === 0) {
+      eventData.value.time = `12:${min} AM`
     } else {
-      eventData.value.time = `${hour}:${min}AM`
+      eventData.value.time = `${hourNum}:${min} AM`
     }
   }
 
