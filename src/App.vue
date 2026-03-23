@@ -335,7 +335,6 @@ onUnmounted(() => {
   /* overflow: auto; */
   height: 90%;
 }
-/* ... */
 .new-home-page {
   position: relative;
   display: flex;
@@ -457,7 +456,6 @@ onUnmounted(() => {
   height: 100vh;
   overflow: hidden;
 }
-/* Modal Start */
 .modal-backdrop {
   position: fixed;
   font-family: Satoshi;
@@ -465,7 +463,7 @@ onUnmounted(() => {
   left: 0;
   height: 100vh;
   width: 100vw;
-  background-color: rgba(0, 0, 0, 0.7); /* transparent black */
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -482,8 +480,6 @@ onUnmounted(() => {
   width: 100%;
   color: #000;
 }
-/* Modal component */
-/* Modal ends */
 .sidebar {
   width: 200px;
   flex-shrink: 0;
@@ -515,11 +511,8 @@ a:hover {
 }
 .router-link-active,
 .active {
-  /* background-color: #e8e8e8; */
   color: #1969fe;
-  /* color: black; */
   font-weight: bold;
-  /* border-radius: 5px; */
 }
 .router-link-active > li,
 .home-nav .activeRoute {
