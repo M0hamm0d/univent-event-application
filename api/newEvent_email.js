@@ -14,7 +14,10 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export default async function notifyUsersOfNewEvents() {
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' })
+  }
   try {
     // Get all users with their preferred categories
     const users = await supabaseAdmin.from('profile').select('id, email, interested_events');
