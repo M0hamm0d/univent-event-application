@@ -11,12 +11,16 @@ async function sendEmail({ to, message }) {
   await transporter.sendMail({
     from: `"UniVent" <${process.env.EMAIL_USER}>`,
     to,
-    subject: 'Duplicate Event Notification',
+    subject: 'Your Event Was Not Approved',
     text: `Hello,
 
       Thank you for submitting your event to our platform.
 
+      Unfortunately, your event was not approved.
+
       ${message}
+
+      You can review the issue and submit your event again
 
       We appreciate your understanding and your effort in sharing events with the community.
 
