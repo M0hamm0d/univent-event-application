@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, toRaw } from 'vue'
 import { useRequestedEvents } from '@/composables/useRequestedEvents'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
@@ -86,11 +86,55 @@ async function handlePushToEvent(id) {
   }
 }
 
+const rejectionReasons = ref('')
+const showRejectInput = ref(null)
+
+async function handleReject(req) {
+  try {
+    if (!rejectionReasons.value.trim()) {
+      toast.error('Please enter a reason')
+      return
+    }
+
+    const res = await fetch('/api/send-rejection-reason', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: req.user_email,
+        rejectionReason: rejectionReasons.value,
+      }),
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to send rejection email')
+    }
+
+    toast.success('Rejection email sent successfully')
+
+    request.value = request.value.filter((r) => r.id !== req.id)
+
+    const { error } = await supabase.from('requested-event').delete().eq('id', req.id)
+
+    if (error) {
+      console.error('Delete error:', error)
+    }
+
+    showRejectInput.value = null
+    rejectionReasons.value = ''
+  } catch (err) {
+    console.error(err)
+    toast.error('Failed to send rejection email')
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   const result = await fetchRequestedAndEvents()
   if (result.success) {
     request.value = result.requested_event
+    console.log('request value from event request', toRaw(request.value))
   } else {
     console.error(result.error)
   }
@@ -106,7 +150,11 @@ onMounted(async () => {
         <div class="">{{ req }}</div>
         <div class="button">
           <button @click="handlePushToEvent(req.id)">Accept</button>
-          <button>Reject</button>
+          <button @click="showRejectInput = req.id">Reject</button>
+        </div>
+        <div class="" v-if="showRejectInput === req.id">
+          <input v-model="rejectionReasons" placeholder="Enter reason for rejection" />
+          <button @click="handleReject(req)">Send</button>
         </div>
       </div>
       <div class="">{{ requestData.value }}</div>
