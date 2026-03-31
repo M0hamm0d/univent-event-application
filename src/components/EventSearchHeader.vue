@@ -106,6 +106,7 @@ function showFilterDropdown(param) {
 watch(
   filterObject,
   (newVal) => {
+    console.log('page reloaded from search header', univentStore.currentPage)
     emit('filter-changed', newVal)
     router.replace({
       query: {
