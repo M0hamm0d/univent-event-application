@@ -30,7 +30,6 @@ async function sendEmail({ to, message }) {
 }
 
 export default async function handler(req, res) {
-  console.log('This is req', req, 'and this is res', res)
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
