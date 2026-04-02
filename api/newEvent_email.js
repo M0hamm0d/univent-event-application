@@ -45,7 +45,7 @@ export default async function handler(req, res) {
               <div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;margin-bottom:16px;background: #fafbfc;box-shadow:0 2px 8px #0001;">
                 <h3 style="margin:0 0 8px 0;">${e.event_title}</h3>
                 <p style="margin:0 0 8px 0;color:#555;font-size:14px;">
-                  ${desc}${truncated ? ` <a style="color:#007bff;" href="https://univent.website/discover?page=1&modal=open&id=${e.id}" target="_blank">(See more)</a>`: ''}
+                  ${desc}${truncated ? ` <a style="color:#007bff;" href="https://univent.website/discover?page=1&modal=open&id=${e.id}" target="_blank">(See more)</a>` : ''}
                 </p>
                 <div style="font-size:13px;color:#888;">
                   <span>📅 ${e.date}</span> &nbsp;|&nbsp; <span>📍 ${e.location}</span>
@@ -73,8 +73,10 @@ export default async function handler(req, res) {
         console.log(`Email sent to ${user.email}`);
       }
     }
+    return NextResponse.json({ message: 'Update check completed.' });
   } catch (error) {
-    console.error('Error notifying users:', error);
+    console.error(error);
+    return NextResponse.json({ error: 'Error sending event updates.' }, { status: 500 });
   }
 }
 
