@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   try {
     const { data: users, error: usersError } = await supabaseAdmin
       .from('profile')
-      .select('id, email, interested_events')
+      .select('id, user_email, interested_events')
 
     if (usersError) throw usersError
 
@@ -59,13 +59,13 @@ export default async function handler(req, res) {
           if (events && events.length > 0) {
             await transporter.sendMail({
               from: `"Event Updates" <${process.env.EMAIL_USER}>`,
-              to: user.email,
+              to: user.user_email,
               subject: `New Events You'll Love! 🎊`,
               html: `<p>We found ${events.length} new events based on your interests!</p>`,
             })
           }
         } catch (err) {
-          console.error(`Failed to process user ${user.email}:`, err.message)
+          console.error(`Failed to process user ${user.user_email}:`, err.message)
         }
       }),
     )
