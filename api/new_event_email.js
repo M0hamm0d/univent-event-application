@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   try {
     const { data: users, error: usersError } = await supabaseAdmin
       .from('profile')
-      .select('id, email, interested_events')
+      .select('id, user_email, interested_events')
 
     if (usersError) throw usersError
 
