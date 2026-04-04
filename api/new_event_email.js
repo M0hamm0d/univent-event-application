@@ -371,7 +371,7 @@ export default async function handler(req, res) {
       }),
     )
 
-    return res.status(200).json({ message: 'Update check completed.' })
+    return res.status(200).json({ message: 'Update check completed.', usersCount: users.length })
   } catch (err) {
     console.error('Global Error:', err)
     return res.status(500).json({ error: err.message || 'Error sending event updates.' })
