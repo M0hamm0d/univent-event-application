@@ -16,7 +16,7 @@ export function useStoreUserDetails() {
 
     if (!user) {
       toast.error('You must be logged in')
-      return
+      return { success: false }
     }
 
     const { data: userName, error: eventError } = await supabase
@@ -36,7 +36,7 @@ export function useStoreUserDetails() {
 
     if (checkError && checkError.code !== 'PGRST116') {
       toast.error(checkError.message)
-      return
+      return { success: false }
     }
 
     // const eventIndex = localEvents.value.findIndex((e) => e.id === event.id)
@@ -44,10 +44,10 @@ export function useStoreUserDetails() {
 
     if (existing) {
       toast.success('You have already registered.')
-      return
+      return { success: true, status: 'registered' }
     } else {
       if (
-        event.interested_students >= event.capacity &&
+        (event.interested_students || 0) >= event.capacity &&
         event.capacity !== 0 &&
         event.capacity !== null
       ) {
@@ -63,12 +63,12 @@ export function useStoreUserDetails() {
 
         if (waitingError && waitingError.code !== 'PGRST116') {
           toast.error(waitingError.message)
-          return
+          return { success: false }
         }
 
         if (existingWaiting) {
           toast.info('You are already on the waiting list for this event')
-          return
+          return { success: true, status: 'waitlist' }
         }
 
         const { error: insertWaitingError } = await supabase
@@ -94,7 +94,7 @@ export function useStoreUserDetails() {
         } catch (err) {
           console.error('Error sending waitlist email:', err)
         }
-        return { success: true }
+        return { success: true, status: 'waitlist' }
       } else {
         // return { success: false }
 
@@ -134,7 +134,7 @@ export function useStoreUserDetails() {
           console.log('error sending registration email', error)
         }
 
-        return { success: true }
+        return { success: true, status: 'registered' }
       }
       // localEvents.value[eventIndex].is_interest = true
     }
@@ -148,7 +148,7 @@ export function useStoreUserDetails() {
 
     if (!user) {
       toast.error('You must be logged in')
-      return
+      return { success: false }
     }
     // Check if already registered
     const { data: existing, error: checkError } = await supabase
@@ -160,7 +160,7 @@ export function useStoreUserDetails() {
 
     if (checkError && checkError.code !== 'PGRST116') {
       toast.error(checkError.message)
-      return
+      return { success: false }
     }
 
     // const eventIndex = localEvents.value.findIndex((e) => e.id === event.id)
@@ -179,26 +179,42 @@ export function useStoreUserDetails() {
 
       if (deleteError) {
         toast.error(deleteError.message)
-        return
+        return { success: false }
       }
 
       if (updateError) {
         toast.error(updateError.message)
-        return
+        return { success: false }
       }
 
       toast.success('Removed from registered')
-      await fetch('/api/move_waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: event,
-        }),
-      })
+      try {
+        const response = await fetch('/api/move_waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event }),
+        })
+        const result = await response.json()
+        if (result.success) {
+          toast.success('Next student from waitlist registered and emailed')
+        } else {
+          toast.info(result.message)
+        }
+      } catch (err) {
+        console.error('Error promoting student from waitlist:', err)
+        toast.error('Failed to promote next student from waitlist')
+      }
+      // await fetch('/api/move_waitlist', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     event: event,
+      //   }),
+      // })
       // localEvents.value[eventIndex].is_interest = false
     } else {
       toast.info('You are not registered for this event')
-      return
+      return { success: false }
     }
   }
 
