@@ -56,60 +56,84 @@ export default async function handler(req, res) {
 
           if (!categories.length) {
             console.log(`User ${user.user_email}: no categories, skipping`)
+            result.push({ email: user.user_email, matchedEvents: 0, reason: 'no categories' })
             return
           }
 
           const { data: events, error: eventsError } = await supabaseAdmin
             .from('events')
             .select('event_title, description, date, location, id, image_url, category, price')
-            .overlaps('category', categories)
             .gt('created_at', sevenDaysAgo)
 
           if (eventsError) {
             console.error(`Error fetching events for ${user.user_email}:`, eventsError)
-            throw eventsError
+            result.push({ email: user.user_email, matchedEvents: 0, reason: 'fetch error' })
+            return
           }
 
-          console.log(`User ${user.user_email}: found ${events?.length || 0} matching events`)
+          const matchedEvents = events.filter((event) =>
+            event.category.some((cat) =>
+              categories.some(
+                (userCat) =>
+                  userCat.toLowerCase().includes(cat.toLowerCase()) ||
+                  cat.toLowerCase().includes(userCat.toLowerCase()),
+              ),
+            ),
+          )
 
-          if (events && events.length > 0) {
-            // ... existing email sending code ...
+          console.log(
+            `User ${user.user_email}: found ${matchedEvents.length} matching events out of ${events.length} total`,
+          )
+
+          if (matchedEvents && matchedEvents.length > 0) {
+            // Build HTML content safely
             const htmlContent = `<h1>New Events Just for You! 🎉</h1>
               <p>Hi there! Based on your interests, we found some new events you might love:</p>
-              ${events
+              ${matchedEvents
                 .map(
                   (event) => `
                     <div>
                       <h2>${event.event_title}</h2>
-                      <p>${event.description}</p>
+                      <p>${event.description || 'No description available'}</p>
                       <p><strong>Date:</strong> ${event.date}</p>
                       <p><strong>Location:</strong> ${event.location}</p>
-                      <p><strong>Price:</strong> $${event.price.toFixed(2)}</p>
+                      <p><strong>Price:</strong> ${typeof event.price === 'number' ? '$' + event.price.toFixed(2) : event.price || 'Free'}</p>
                     </div>
                   `,
                 )
                 .join('')}
             `
-            await transporter.sendMail({
-              from: process.env.EMAIL_USER,
-              to: user.user_email,
-              subject: `New Events You'll Love! 🎊`,
-              html: htmlContent,
-            })
-            totalEmailsSent++
-            console.log(`Email sent to ${user.user_email}`)
+            try {
+              await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: user.user_email,
+                subject: `New Events You'll Love! 🎊`,
+                html: htmlContent,
+              })
+              totalEmailsSent++
+              console.log(`Email sent to ${user.user_email}`)
+              result.push({
+                email: user.user_email,
+                matchedEvents: matchedEvents.length,
+                emailSent: true,
+              })
+            } catch (emailError) {
+              console.error(`Failed to send email to ${user.user_email}:`, emailError)
+              result.push({
+                email: user.user_email,
+                matchedEvents: matchedEvents.length,
+                emailSent: false,
+                reason: 'email send failed',
+              })
+            }
           } else {
-            console.log(`No events for ${user.user_email}`)
+            console.log(`No matching events for ${user.user_email}`)
+            result.push({ email: user.user_email, matchedEvents: 0, reason: 'no matches' })
           }
         } catch (err) {
           console.error(`Failed to process user ${user.user_email}:`, err.message)
+          result.push({ email: user.user_email, matchedEvents: 0, reason: err.message })
         }
-        return res.status(200).json({
-          message: 'Update check completed.',
-          emailsSent: totalEmailsSent,
-          userCount: users.length,
-          data: result,
-        })
       }),
     )
 
@@ -117,9 +141,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       message: 'Update check completed.',
       emailsSent: totalEmailsSent,
-      user: users.user_email,
-      useCategories: users.interested_events,
-      eventCategories: events.categories,
+      userCount: users.length,
+      data: result,
     })
   } catch (error) {
     console.error('Global Error:', error)
