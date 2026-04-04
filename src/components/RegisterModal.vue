@@ -30,9 +30,10 @@ async function agree() {
   const result = await addUserToEvent(props.event, props.local_Events)
   loading.value = false
   if (result.success) {
-    emit('close')
-    emit('registered')
-  } else {
+    emit('registered', {
+      event: props.event,
+      status: result.status,
+    })
     emit('close')
   }
 }

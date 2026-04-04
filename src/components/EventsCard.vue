@@ -2,7 +2,7 @@
 import { ref, watch, watchEffect, computed } from 'vue'
 import dayjs from 'dayjs'
 import { useInterestedEvents } from '@/composables/useInterestedEvents'
-import { useRegistrable } from '@/composables/useRegistrable'
+// import { useRegistrable } from '@/composables/useRegistrable'
 import { useRoute, useRouter } from 'vue-router'
 import DeleteIcon from './icons/DeleteIcon.vue'
 import ShareIcon from './icons/ShareIcon.vue'
@@ -20,7 +20,7 @@ const univentStore = useUniventStore()
 const route = useRoute()
 const router = useRouter()
 const { toggleInterest } = useInterestedEvents()
-const { isEventRegistrable } = useRegistrable()
+// const { isEventRegistrable } = useRegistrable()
 const { removeUserFromEvent } = useStoreUserDetails()
 
 const props = defineProps({
@@ -38,9 +38,12 @@ const selectedRegisterEvent = ref(null)
 const loadingMap = ref({})
 
 const getInterestButtonText = computed(() => (event) => {
-  if (loadingMap.value[event.id]) return 'Loading...'
+  const id = event.id
+  if (loadingMap.value[id]) return 'Loading...'
   if (event.requires_registration) {
-    return registeredMap.value[event.id] ? 'Registered ✓' : 'Register Now'
+    if (waitingListMap.value[id]) return 'Waitlisted ⏳'
+    if (registeredMap.value[id]) return 'Registered ✓'
+    return 'Register Now'
   } else {
     return event.is_interest ? 'Interested ✓' : 'I am Interested'
   }
@@ -72,9 +75,12 @@ async function loadWaitingListStatus(event) {
   }
 }
 
-function onRegisterClick(event) {
-  registeredMap.value[event.id] = true
-  // showModal.value = false
+function onRegisterClick({ event, status }) {
+  if (status === 'registered') {
+    registeredMap.value[event.id] = true
+  } else if (status === 'waitlist') {
+    waitingListMap.value[event.id] = true
+  }
 }
 
 // function onUnregisterClick(event) {
@@ -98,37 +104,65 @@ async function handleRegister(event) {
   showModal.value = true
 }
 
+// async function onInterestClick(event) {
+//   console.log('this is event', toRaw(event))
+//   const id = event.id
+//   if (loadingMap.value[id]) return
+//   loadingMap.value[id] = true
+//   try {
+//     let registrable = false
+//     if (event.requires_registration != null) {
+//       registrable = !!event.requires_registration
+//       console.log('Event requires_registration:', registrable)
+//     }
+
+//     if (registrable) {
+//       if (registeredMap.value[event.id]) {
+//         registeredMap.value[event.id] = false
+//         await removeUserFromEvent(event)
+//       } else {
+//         await handleRegister(event)
+//       }
+//     } else {
+//       await handleInterest(event)
+//     }
+//   } catch (err) {
+//     console.error('onInterestClick error:', err)
+//     await handleInterest(event)
+//   } finally {
+//     loadingMap.value[id] = false
+//   }
+// }
 async function onInterestClick(event) {
   const id = event.id
+
   if (loadingMap.value[id]) return
   loadingMap.value[id] = true
-  try {
-    let registrable = false
-    if (event.requires_registration != null) {
-      registrable = !!event.requires_registration
-      console.log('Event requires_registration:', registrable)
-    } else {
-      registrable = await isEventRegistrable(event.id)
-    }
 
-    if (registrable) {
-      if (registeredMap.value[event.id]) {
-        registeredMap.value[event.id] = false
+  try {
+    const requiresRegistration = !!event.requires_registration
+
+    // CASE 1: Event requires registration
+    if (requiresRegistration) {
+      if (registeredMap.value[id]) {
+        // Unregister
         await removeUserFromEvent(event)
+        registeredMap.value[id] = false
       } else {
+        // Open modal to register
         await handleRegister(event)
       }
-    } else {
-      await handleInterest(event)
+      return
     }
+
+    // CASE 2: Normal interest event
+    await handleInterest(event)
   } catch (err) {
     console.error('onInterestClick error:', err)
-    await handleInterest(event)
   } finally {
     loadingMap.value[id] = false
   }
 }
-
 async function toggleSelectedEvent(event) {
   selectedEvent.value = event
   await supabase
@@ -238,7 +272,7 @@ watch(
                 :local_Events="localEvents"
                 :show-modal="showModal"
                 @close="showModal = false"
-                @registered="onRegisterClick(selectedRegisterEvent)"
+                @registered="onRegisterClick"
               />
             </Transition>
           </teleport>
