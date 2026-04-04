@@ -40,7 +40,7 @@ export default async function handler(req, res) {
             try {
               categories = JSON.parse(user.interested_events)
             } catch {
-              categories = [user.interested_events] // Fallback if it's a single string, not JSON
+              categories = [user.interested_events]
             }
           } else {
             categories = user.interested_events || []

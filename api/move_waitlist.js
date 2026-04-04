@@ -133,9 +133,20 @@ async function moveNextStudentToRegistered(event) {
   if (insertError) throw new Error(insertError.message)
 
   // Increment event count
+
+  const { data: freshEvent, error: fetchError } = await supabaseAdmin
+    .from('events')
+    .select('*')
+    .eq('id', event.id)
+    .single()
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch event: ${fetchError.message}`)
+  }
+
   const { error: updateError } = await supabaseAdmin
     .from('events')
-    .update({ interested_students: event.interested_students + 1 })
+    .update({ interested_students: freshEvent.interested_students + 1 })
     .eq('id', event.id)
 
   if (updateError) throw new Error(updateError.message)
