@@ -24,32 +24,30 @@ const { formData, loading, handleFileChange, submitEditProfile } = useProfile(to
 const { fetchProfile } = useUserProfile()
 
 const interestList = [
-  { icon: AcademicIcon, name: 'Academic Workshops', value: 'Academic Workshops', id: 'academic' },
-  { icon: SocialIcon, name: 'Social Gatherings', value: 'Social Gatherings', id: 'social' },
-  { icon: SportIcon, name: 'Sports Events', value: 'Sports Events', id: 'sport' },
-  { icon: CulturalIcon, name: 'Cultural Activities', value: 'Cultural Activities', id: 'culture' },
-  { icon: ClubIcon, name: 'Clubs & Organizations', value: 'Clubs & Organizations', id: 'club' },
-  { icon: CareerIcon, name: 'Career Fairs', value: 'Career Fairs', id: 'career' },
-  { icon: TechIcon, name: 'Tech & innovations', value: 'Tech & innovations', id: 'tech' },
+  { icon: AcademicIcon, name: 'Academic Workshops', value: 'Academic Workshops', id: 'Academic' },
+  { icon: SocialIcon, name: 'Social Gatherings', value: 'Social Gatherings', id: 'Social' },
+  { icon: SportIcon, name: 'Sports Events', value: 'Sports Events', id: 'Sport' },
+  { icon: CulturalIcon, name: 'Cultural Activities', value: 'Cultural Activities', id: 'Culture' },
+  { icon: ClubIcon, name: 'Clubs & Organizations', value: 'Clubs & Organizations', id: 'Club' },
+  { icon: CareerIcon, name: 'Career Fairs', value: 'Career Fairs', id: 'Career' },
+  { icon: TechIcon, name: 'Tech & innovations', value: 'Tech & innovations', id: 'Tech' },
 ]
+
+function getInterestName(id) {
+  const found = interestList.find((item) => item.id === id)
+  return found ? found.name : id
+}
+
+function interestIcon(id) {
+  const found = interestList.find((item) => item.id === id)
+  return found ? found.icon : null
+}
 
 function unCheckList(index) {
   formData.value.interest.splice(index, 1)
   accordionContent.value = true
 }
 
-function interestIcon(interest) {
-  const map = {
-    'Academic Workshops': AcademicIcon,
-    'Social Gatherings': SocialIcon,
-    'Sports Events': SportIcon,
-    'Cultural Activities': CulturalIcon,
-    'Clubs & Organizations': ClubIcon,
-    'Career Fairs': CareerIcon,
-    'Tech & innovations': TechIcon,
-  }
-  return map[interest] || null
-}
 const fetchSession = async () => {
   const { data, error } = await supabase.auth.getSession()
   if (error) {
@@ -126,7 +124,7 @@ onMounted(async () => {
                 <div class="interest-checked" v-for="(interest, i) in formData.interest" :key="i">
                   <div class="">
                     <component :is="interestIcon(interest)" />
-                    <p>{{ interest }}</p>
+                    <p>{{ getInterestName(interest) }}</p>
                   </div>
                   <button type="button" @click="unCheckList(i)">X</button>
                 </div>
@@ -141,7 +139,7 @@ onMounted(async () => {
                 :key="i"
                 :class="{
                   disabled:
-                    formData.interest.length >= 3 && !formData.interest.includes(interest.value),
+                    formData.interest.length >= 3 && !formData.interest.includes(interest.id),
                 }"
               >
                 <div class="">
@@ -152,10 +150,10 @@ onMounted(async () => {
                   :id="interest.id"
                   type="checkbox"
                   :name="interest.name"
-                  :value="interest.value"
+                  :value="interest.id"
                   v-model="formData.interest"
                   :disabled="
-                    formData.interest.length >= 3 && !formData.interest.includes(interest.value)
+                    formData.interest.length >= 3 && !formData.interest.includes(interest.id)
                   "
                 />
               </label>
