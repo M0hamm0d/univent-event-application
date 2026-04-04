@@ -32,6 +32,7 @@ async function loadEvents() {
   univentStore.locationDropdown = false
   univentStore.organizerDropdown = false
   univentStore.priceDropdown = false
+  console.log('this is current page', route.query.page)
   const pageFromUrl =
     route.query.page && !isNaN(Number(route.query.page)) ? Number(route.query.page) : 1
   univentStore.currentPage = pageFromUrl
@@ -110,14 +111,29 @@ watch(
   () => route.query.page,
   (newVal, oldVal) => {
     if (newVal && oldVal !== newVal) {
+      console.log(
+        'old value is',
+        oldVal,
+        'and new value is',
+        newVal,
+        'route query is',
+        route.query.page,
+      )
       loadEvents()
     }
+  },
+)
+watch(
+  () => univentStore.currentPage,
+  (newVal, oldVal) => {
+    console.log('old val is', oldVal, 'and new val is', newVal)
   },
 )
 onMounted(async () => {
   await loadEvents()
 })
 </script>
+
 <template>
   <div class="">
     <EventSearchHeader

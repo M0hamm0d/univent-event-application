@@ -1,8 +1,8 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, watchEffect, computed } from 'vue'
 import dayjs from 'dayjs'
 import { useInterestedEvents } from '@/composables/useInterestedEvents'
-import { useRegistrable } from '@/composables/useRegistrable'
+// import { useRegistrable } from '@/composables/useRegistrable'
 import { useRoute, useRouter } from 'vue-router'
 import DeleteIcon from './icons/DeleteIcon.vue'
 import ShareIcon from './icons/ShareIcon.vue'
@@ -15,13 +15,12 @@ import { isEventRegistered } from '@/composables/useRegisteredEvents'
 import { isInWaitingList } from '@/composables/UseWaitingList'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
 import { supabase } from '@/supabase'
-// import BellIcon from './icons/BellIcon.vue'
 
 const univentStore = useUniventStore()
 const route = useRoute()
 const router = useRouter()
 const { toggleInterest } = useInterestedEvents()
-const { isEventRegistrable } = useRegistrable()
+// const { isEventRegistrable } = useRegistrable()
 const { removeUserFromEvent } = useStoreUserDetails()
 
 const props = defineProps({
@@ -38,21 +37,50 @@ const waitingListMap = ref({})
 const selectedRegisterEvent = ref(null)
 const loadingMap = ref({})
 
+const getInterestButtonText = computed(() => (event) => {
+  const id = event.id
+  if (loadingMap.value[id]) return 'Loading...'
+  if (event.requires_registration) {
+    if (waitingListMap.value[id]) return 'Waitlisted ⏳'
+    if (registeredMap.value[id]) return 'Registered ✓'
+    return 'Register Now'
+  } else {
+    return event.is_interest ? 'Interested ✓' : 'I am Interested'
+  }
+})
+
+const isInterestedOrRegistered = computed(() => (event) => {
+  return event.is_interest || registeredMap.value[event.id]
+})
+
 async function loadRegistrations(event) {
   const userId = univentStore.userProfile?.id
   if (!userId) return
-  registeredMap.value[event.id] = await isEventRegistered(event, userId)
+  try {
+    registeredMap.value[event.id] = await isEventRegistered(event, userId)
+  } catch (error) {
+    console.error('Error loading registration status:', error)
+    registeredMap.value[event.id] = false
+  }
 }
 
 async function loadWaitingListStatus(event) {
   const userId = univentStore.userProfile?.id
   if (!userId) return
-  waitingListMap.value[event.id] = await isInWaitingList(event, userId)
+  try {
+    waitingListMap.value[event.id] = await isInWaitingList(event, userId)
+  } catch (error) {
+    console.error('Error loading waiting list status:', error)
+    waitingListMap.value[event.id] = false
+  }
 }
 
-function onRegisterClick(event) {
-  registeredMap.value[event.id] = true
-  // showModal.value = false
+function onRegisterClick({ event, status }) {
+  if (status === 'registered') {
+    registeredMap.value[event.id] = true
+  } else if (status === 'waitlist') {
+    waitingListMap.value[event.id] = true
+  }
 }
 
 // function onUnregisterClick(event) {
@@ -76,37 +104,65 @@ async function handleRegister(event) {
   showModal.value = true
 }
 
+// async function onInterestClick(event) {
+//   console.log('this is event', toRaw(event))
+//   const id = event.id
+//   if (loadingMap.value[id]) return
+//   loadingMap.value[id] = true
+//   try {
+//     let registrable = false
+//     if (event.requires_registration != null) {
+//       registrable = !!event.requires_registration
+//       console.log('Event requires_registration:', registrable)
+//     }
+
+//     if (registrable) {
+//       if (registeredMap.value[event.id]) {
+//         registeredMap.value[event.id] = false
+//         await removeUserFromEvent(event)
+//       } else {
+//         await handleRegister(event)
+//       }
+//     } else {
+//       await handleInterest(event)
+//     }
+//   } catch (err) {
+//     console.error('onInterestClick error:', err)
+//     await handleInterest(event)
+//   } finally {
+//     loadingMap.value[id] = false
+//   }
+// }
 async function onInterestClick(event) {
   const id = event.id
+
   if (loadingMap.value[id]) return
   loadingMap.value[id] = true
-  try {
-    let registrable = false
-    if (event.requires_registration != null) {
-      registrable = !!event.requires_registration
-      console.log('Event requires_registration:', registrable)
-    } else {
-      registrable = await isEventRegistrable(event.id)
-    }
 
-    if (registrable) {
-      if (registeredMap.value[event.id]) {
-        registeredMap.value[event.id] = false
+  try {
+    const requiresRegistration = !!event.requires_registration
+
+    // CASE 1: Event requires registration
+    if (requiresRegistration) {
+      if (registeredMap.value[id]) {
+        // Unregister
         await removeUserFromEvent(event)
+        registeredMap.value[id] = false
       } else {
+        // Open modal to register
         await handleRegister(event)
       }
-    } else {
-      await handleInterest(event)
+      return
     }
+
+    // CASE 2: Normal interest event
+    await handleInterest(event)
   } catch (err) {
     console.error('onInterestClick error:', err)
-    await handleInterest(event)
   } finally {
     loadingMap.value[id] = false
   }
 }
-
 async function toggleSelectedEvent(event) {
   selectedEvent.value = event
   await supabase
@@ -119,19 +175,24 @@ async function toggleSelectedEvent(event) {
 async function updateInterested(e) {
   await toggleInterest(e.event, localEvents)
 }
-watch(
-  () => props.events,
-  async (newVal) => {
-    localEvents.value = [...(newVal || [])]
-    selectedEvent.value = localEvents.value.find((e) => e.id === route.query.id)
-    const userId = univentStore.userProfile?.id
-    if (!userId) return
-    for (const event of localEvents.value) {
-      await Promise.all([loadRegistrations(event), loadWaitingListStatus(event)])
-    }
-  },
-  { immediate: true },
-)
+async function loadAllStatuses(events) {
+  const userId = univentStore.userProfile?.id
+  if (!userId || !events.length) return
+
+  const promises = events.flatMap((event) => [
+    loadRegistrations(event),
+    loadWaitingListStatus(event),
+  ])
+
+  await Promise.all(promises)
+}
+
+// Replace the watch with watchEffect for better reactivity
+watchEffect(async () => {
+  localEvents.value = [...(props.events || [])]
+  selectedEvent.value = localEvents.value.find((e) => e.id === route.query.id)
+  await loadAllStatuses(localEvents.value)
+})
 watch(
   () => selectedEvent.value,
   (newVal) => {
@@ -154,7 +215,13 @@ watch(
   <div class="event-card" v-for="event in localEvents" :key="event.id">
     <div v-if="waitingListMap[event.id] === true" class="waitlist-badge">In Wait-list</div>
     <div class="event-flier">
-      <img loading="lazy" :src="event.image_url" width="400" height="225" alt="" />
+      <img
+        loading="lazy"
+        :src="event.image_url"
+        width="400"
+        height="225"
+        :alt="event.event_title + ' event flyer'"
+      />
     </div>
     <div class="event-content">
       <div class="categories">
@@ -185,7 +252,7 @@ watch(
           :class="[
             'interest',
             {
-              interested: event.is_interest || registeredMap[event.id],
+              interested: isInterestedOrRegistered(event),
               loading: loadingMap[event.id],
             },
           ]"
@@ -193,32 +260,20 @@ watch(
           :disabled="waitingListMap[event.id] === true || loadingMap[event.id]"
           @click="onInterestClick(event)"
         >
-          <span v-if="loadingMap[event.id]">Loading...</span>
-
-          <template v-else-if="event.requires_registration">
-            <span v-if="registeredMap[event.id]">Registered ✓</span>
-            <span v-else>Register Now</span>
-          </template>
-          <template v-else>
-            <span class="interested">{{
-              event.is_interest ? 'Interested ✓ ' : 'I am Interested'
-            }}</span>
-          </template>
+          {{ getInterestButtonText(event) }}
         </button>
 
         <div>
           <teleport to="body">
             <Transition name="modal-fade">
-              <div v-if="!registeredMap[event.id]">
-                <RegisterModal
-                  v-if="showModal"
-                  :event="selectedRegisterEvent"
-                  :local_Events="localEvents"
-                  :show-modal="showModal"
-                  @close="showModal = false"
-                  @registered="onRegisterClick(selectedRegisterEvent)"
-                />
-              </div>
+              <RegisterModal
+                v-if="showModal"
+                :event="selectedRegisterEvent"
+                :local_Events="localEvents"
+                :show-modal="showModal"
+                @close="showModal = false"
+                @registered="onRegisterClick"
+              />
             </Transition>
           </teleport>
         </div>

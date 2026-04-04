@@ -16,6 +16,7 @@ async function handlePushToEvent(id) {
   try {
     loading.value = true
     requestData.value = request.value.find((r) => r.id === id)
+    console.log('req', toRaw(requestData.value))
 
     if (!requestData.value) {
       alert('No request data found')
@@ -62,10 +63,11 @@ async function handlePushToEvent(id) {
         return
       }
     }
-    const { user_id, ...rest } = requestData.value
+    const { user_id, user_email, ...rest } = requestData.value
     const eventData = {
       ...rest,
       created_by: user_id,
+      email: user_email,
     }
     console.log(eventData)
 
