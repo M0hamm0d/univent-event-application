@@ -40,7 +40,7 @@ export default async function handler(req, res) {
             try {
               categories = JSON.parse(user.interested_events)
             } catch {
-              categories = [user.interested_events] // Fallback if it's a single string, not JSON
+              categories = [user.interested_events]
             }
           } else {
             categories = user.interested_events || []
@@ -50,22 +50,24 @@ export default async function handler(req, res) {
 
           const { data: events, error: eventsError } = await supabaseAdmin
             .from('events')
-            .select('event_title, description, date, location, id, image_url')
-            .in('category', categories)
+            .select('event_title, description, date, location, id, image_url, category, price')
+            .overlaps('category', categories)
             .gt('created_at', sevenDaysAgo) // ISO string used here
 
           if (eventsError) throw eventsError
 
           if (events && events.length > 0) {
-            const eventsList = events.slice(0, 5).map(e => {
-              return `
+            const eventsList = events
+              .slice(0, 5)
+              .map((e) => {
+                return `
   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
 
     <!-- Event Image -->
     <tr>
       <td>
         <img
-          src="${e.image || 'https://univent.website/default-event.jpg'}"
+          src="${e.image_url || 'https://univent.website/default-event.jpg'}"
           alt="${e.event_title}"
           width="100%"
           style="display:block;border-top-left-radius:12px;border-top-right-radius:12px;"
@@ -153,8 +155,9 @@ export default async function handler(req, res) {
     </tr>
 
   </table>
-  `;
-            }).join('');
+  `
+              })
+              .join('')
 
             // Create HTML content for the email and display the list of events with better formatting
             const htmlContent = `
@@ -183,14 +186,14 @@ export default async function handler(req, res) {
     </div>
 
   </div>
-`;
+`
 
             await transporter.sendMail({
               from: process.env.EMAIL_USER,
-              to: user.email,
+              to: user.user_email,
               subject: `New Events You'll Love! 🎊`,
               html: htmlContent,
-            });
+            })
           }
         } catch (err) {
           console.error(`Failed to process user ${user.user_email}:`, err.message)
