@@ -20,15 +20,27 @@ export default async function handler(req, res) {
   }
   try {
     // Get all users with their preferred categories
-    const users = await supabaseAdmin.from('profile').select('id, user_email, interested_events');
+    const { data: users, error } = await supabaseAdmin
+      .from('profile')
+      .select('id, email, interested_events');
 
-    for (const user of users) {
-      const categories = JSON.parse(user.interested_events);
+    if (error) throw error;
+
+    const emailPromises = users.map(async (user) => {
+       const categories = Array.isArray(user.interested_events)
+        ? user.interested_events
+        : JSON.parse(user.interested_events || "[]");
 
       // Get events from last 7 days in user's preferred categories
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-      const events = await supabaseAdmin.from('events').select('event_title, description, date, location').in('category', categories).gt('created_at', sevenDaysAgo);
+      const { data: events, error: eventsError } = await supabaseAdmin
+        .from('events')
+        .select('id, event_title, description, date, location')
+        .in('category', categories)
+        .gt('created_at', sevenDaysAgo.toISOString());
+
+      if (eventsError) throw eventsError;
 
 
       if (events.length > 0) {
@@ -72,11 +84,14 @@ export default async function handler(req, res) {
 
         console.log(`Email sent to ${user.email}`);
       }
-    }
-    return NextResponse.json({ message: 'Update check completed.' });
+    })
+
+    await Promise.all(emailPromises);
+
+    return res.status(200).json({ message: 'Update check completed.' });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Error sending event updates.' }, { status: 500 });
+    return res.status(500).json({ error: 'Error sending event updates.' });
   }
 }
 
