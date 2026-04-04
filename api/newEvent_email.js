@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   }
   try {
     // Get all users with their preferred categories
-    const users = await supabaseAdmin.from('profile').select('id, email, interested_events');
+    const users = await supabaseAdmin.from('profile').select('id, user_email, interested_events');
 
     for (const user of users) {
       const categories = JSON.parse(user.interested_events);
