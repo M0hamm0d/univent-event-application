@@ -107,7 +107,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           message: 'Update check completed.',
           emailsSent: totalEmailsSent,
-          usersCount: users.length,
+          userCount: users.length,
           data: result,
         })
       }),
