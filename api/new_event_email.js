@@ -171,7 +171,7 @@ export default async function handler(req, res) {
 
     ${eventsList}
 
-    <div style="text-align:center;margin-top:20px;">
+    <div style="text-align:center;margin-top:20px; margin-bottom:20px">
       <a href="https://univent.website/discover"
         style="
           background:#2f6fed;
