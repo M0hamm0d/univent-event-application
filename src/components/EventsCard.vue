@@ -28,7 +28,7 @@ const props = defineProps({
   id: String,
 })
 
-const emit = defineEmits(['deleteEvent'])
+const emit = defineEmits(['deleteEvent', 'deleteUserRegistration'])
 const localEvents = ref([...props.events])
 const selectedEvent = ref(null)
 const showModal = ref(false)
@@ -89,11 +89,13 @@ function onRegisterClick({ event, status }) {
 //   // showModal.value = false
 // }
 
-async function handleDelete(event) {
-  if (registeredMap.value[event.id]) {
-    await removeUserFromEvent(event)
+function handleDelete(event) {
+  const isRegistered = registeredMap.value?.[event.id]
+  if (isRegistered) {
+    emit('deleteUserRegistration', event)
+  } else {
+    emit('deleteEvent', event)
   }
-  emit('deleteEvent', event)
 }
 async function handleInterest(event) {
   await toggleInterest(event, localEvents)
