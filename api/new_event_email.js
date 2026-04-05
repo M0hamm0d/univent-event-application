@@ -2,7 +2,7 @@
 import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
-import EventsCard from '@/components/EventsCard.vue'
+import EventsCard from '../src/components/EventsCard.vue'
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
 const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
