@@ -1,3 +1,4 @@
+//new event email.js
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
@@ -27,8 +28,14 @@ export default async function handler(req, res) {
 
     if (usersError) throw usersError
 
+    console.log(`Found ${users.length} users`)
+
     // Calculate 7 days ago in ISO format
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    console.log(`Checking for events created after: ${sevenDaysAgo}`)
+
+    let totalEmailsSent = 0
+    const result = []
 
     await Promise.all(
       users.map(async (user) => {
@@ -46,162 +53,121 @@ export default async function handler(req, res) {
             categories = user.interested_events || []
           }
 
-          if (!categories.length) return
+          console.log(`User ${user.user_email}: categories = ${JSON.stringify(categories)}`)
+
+          if (!categories.length) {
+            console.log(`User ${user.user_email}: no categories, skipping`)
+            result.push({ email: user.user_email, matchedEvents: 0, reason: 'no categories' })
+            return
+          }
 
           const { data: events, error: eventsError } = await supabaseAdmin
             .from('events')
             .select('event_title, description, date, location, id, image_url, category, price')
-            .overlaps('category', categories)
-            .gt('created_at', sevenDaysAgo) // ISO string used here
+            .gt('created_at', sevenDaysAgo)
 
-          if (eventsError) throw eventsError
+          if (eventsError) {
+            console.error(`Error fetching events for ${user.user_email}:`, eventsError)
+            result.push({ email: user.user_email, matchedEvents: 0, reason: 'fetch error' })
+            return
+          }
 
-          if (events && events.length > 0) {
-            const eventsList = events
-              .slice(0, 5)
-              .map((e) => {
-                return `
-  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
+          const matchedEvents = events.filter((event) =>
+            event.category.some((cat) =>
+              categories.some(
+                (userCat) =>
+                  userCat.toLowerCase().includes(cat.toLowerCase()) ||
+                  cat.toLowerCase().includes(userCat.toLowerCase()),
+              ),
+            ),
+          )
 
-    <!-- Event Image -->
-    <tr>
-      <td>
-        <img
-          src="${e.image_url || 'https://univent.website/default-event.jpg'}"
-          alt="${e.event_title}"
-          width="100%"
-          style="display:block;border-top-left-radius:12px;border-top-right-radius:12px;"
-        />
-      </td>
-    </tr>
+          console.log(
+            `User ${user.user_email}: found ${matchedEvents.length} matching events out of ${events.length} total`,
+          )
 
-    <!-- Content -->
-    <tr>
-      <td style="padding:16px;font-family:Arial, sans-serif;">
-
-        <!-- Category + Price -->
-        <table width="100%">
-          <tr>
-            <td style="font-size:12px;color:#ff4fa3;font-weight:bold;">
-              ${e.category || 'Event'}
-            </td>
-            <td align="right" style="font-size:12px;font-weight:bold;">
-              ${e.price || 'Free'}
-            </td>
-          </tr>
-        </table>
-
-        <!-- Title -->
-        <h3 style="margin:10px 0 8px 0;font-size:18px;color:#111;">
-          ${e.event_title}
-        </h3>
-
-        <!-- Date -->
-        <p style="margin:4px 0;color:#666;font-size:14px;">
-          ${e.date}
-        </p>
-
-        <!-- Location -->
-        <p style="margin:4px 0 16px 0;color:#666;font-size:14px;">
-          ${e.location}
-        </p>
-
-        <!-- Buttons -->
-        <table width="100%">
-          <tr>
-
-            <!-- Interested Button -->
-            <td>
-              <a
-                href="https://univent.website/discover?page=1&modal=open&id=${e.id}"
-                style="
-                  display:inline-block;
-                  padding:10px 18px;
-                  border:2px solid #2f6fed;
-                  border-radius:20px;
-                  color:#2f6fed;
-                  text-decoration:none;
-                  font-size:14px;
-                  font-weight:bold;
-                "
-              >
-                I am Interested
-              </a>
-            </td>
-
-            <!-- View Details -->
-            <td align="right">
-              <a
-                href="https://univent.website/discover?page=1&modal=open&id=${e.id}"
-                style="
-                  display:inline-block;
-                  padding:10px 18px;
-                  border:1px solid #ddd;
-                  border-radius:20px;
-                  color:#111;
-                  text-decoration:none;
-                  font-size:14px;
-                  font-weight:bold;
-                "
-              >
-                View Details
-              </a>
-            </td>
-
-          </tr>
-        </table>
-
-      </td>
-    </tr>
-
-  </table>
-  `
+          if (matchedEvents && matchedEvents.length > 0) {
+            // Build HTML content safely
+            const htmlContent = `<h1>New Events Just for You! 🎉</h1>
+          <p>Hi there! Based on your interests, we found some new events you might love:</p>
+          ${matchedEvents
+            .map(
+              (event) => `
+                <div>
+                  <h2>${event.event_title}</h2>
+                  <p>${event.description || 'No description available'}</p>
+                  <p><strong>Date:</strong> ${event.date}</p>
+                  <p><strong>Location:</strong> ${event.location}</p>
+                  <p><strong>Price:</strong> ${typeof event.price === 'number' ? '$' + event.price.toFixed(2) : event.price || 'Free'}</p>
+                </div>
+              `,
+            )
+            .join('')}
+        `
+            try {
+              await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: user.user_email,
+                subject: `New Events You'll Love! 🎊`,
+                html: htmlContent,
               })
-              .join('')
-
-            // Create HTML content for the email and display the list of events with better formatting
-            const htmlContent = `
-  <div style="max-width:600px;margin:auto;font-family:Arial,sans-serif;">
-
-    <h2 style="text-align:center;">🎉 New Events For You</h2>
-
-    <p style="text-align:center;color:#666;">
-      We found ${events.length} new events that match your interests.
-    </p>
-
-    ${eventsList}
-
-    <div style="text-align:center;margin-top:20px;">
-      <a href="https://univent.website/discover"
-        style="
-          background:#2f6fed;
-          color:white;
-          padding:12px 24px;
-          text-decoration:none;
-          border-radius:6px;
-          font-weight:bold;
-        ">
-        Discover More Events
-      </a>
-    </div>
-
-  </div>
-`
-
-            await transporter.sendMail({
-              from: process.env.EMAIL_USER,
-              to: user.user_email,
-              subject: `New Events You'll Love! 🎊`,
-              html: htmlContent,
+              totalEmailsSent++
+              console.log(`Email sent to ${user.user_email}`)
+              result.push({
+                email: user.user_email,
+                matchedEvents: matchedEvents.length,
+                emailSent: true,
+                userInterests: categories,
+                matchedEventDetails: matchedEvents.map((e) => ({
+                  event_title: e.event_title,
+                  category: e.category,
+                })),
+              })
+            } catch (emailError) {
+              console.error(`Failed to send email to ${user.user_email}:`, emailError)
+              const errorDetails = {
+                message: emailError?.message,
+                response: emailError?.response,
+                responseCode: emailError?.responseCode,
+                command: emailError?.command,
+              }
+              result.push({
+                email: user.user_email,
+                matchedEvents: matchedEvents.length,
+                emailSent: false,
+                reason: 'email send failed',
+                userInterests: categories,
+                errorDetails,
+                matchedEventDetails: matchedEvents.map((e) => ({
+                  event_title: e.event_title,
+                  category: e.category,
+                })),
+              })
+            }
+          } else {
+            console.log(`No matching events for ${user.user_email}`)
+            result.push({
+              email: user.user_email,
+              matchedEvents: 0,
+              reason: 'no matches',
+              userInterests: categories,
+              totalEventsAvailable: events.length,
             })
           }
         } catch (err) {
           console.error(`Failed to process user ${user.user_email}:`, err.message)
+          result.push({ email: user.user_email, matchedEvents: 0, reason: err.message })
         }
       }),
     )
 
-    return res.status(200).json({ message: 'Update check completed.' })
+    console.log(`Total emails sent: ${totalEmailsSent}`)
+    return res.status(200).json({
+      message: 'Update check completed.',
+      emailsSent: totalEmailsSent,
+      userCount: users.length,
+      data: result,
+    })
   } catch (error) {
     console.error('Global Error:', error)
     return res.status(500).json({ error: error.message || 'Error sending event updates.' })
