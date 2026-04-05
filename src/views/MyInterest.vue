@@ -5,7 +5,7 @@ import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useToast } from 'vue-toastification'
 import { useInterestedEvents } from '@/composables/useInterestEvents'
 import { useUniventStore } from '@/stores/counter'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, toRaw, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
 
@@ -55,8 +55,9 @@ async function deleteConfirmed() {
   if (activeModal.value === 'deleteInterest') {
     await deleteInterest(eventToDelete.value)
   } else if (activeModal.value === 'cancelRegistration') {
-    await deleteInterest(eventToDelete.value)
+    console.log(toRaw(eventToDelete.value), 'event to delete')
     await removeUserFromEvent(eventToDelete.value)
+    await deleteInterest(eventToDelete.value)
   }
   cancel()
 }
