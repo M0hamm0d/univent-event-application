@@ -204,14 +204,6 @@ export function useStoreUserDetails() {
         console.error('Error promoting student from waitlist:', err)
         toast.error('Failed to promote next student from waitlist')
       }
-      // await fetch('/api/move_waitlist', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     event: event,
-      //   }),
-      // })
-      // localEvents.value[eventIndex].is_interest = false
     } else {
       toast.info('You are not registered for this event')
       return { success: false }

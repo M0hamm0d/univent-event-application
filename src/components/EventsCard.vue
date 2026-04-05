@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, watchEffect, computed } from 'vue'
+import { ref, watch, watchEffect, computed, toRaw } from 'vue'
 import dayjs from 'dayjs'
 import { useInterestedEvents } from '@/composables/useInterestedEvents'
 // import { useRegistrable } from '@/composables/useRegistrable'
@@ -150,6 +150,7 @@ async function onInterestClick(event) {
         // Unregister
         await removeUserFromEvent(event)
         registeredMap.value[id] = false
+        // console.log(toRaw(event), 'unregistering from event card')
       } else {
         // Open modal to register
         await handleRegister(event)
