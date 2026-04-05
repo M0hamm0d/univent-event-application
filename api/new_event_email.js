@@ -2,7 +2,7 @@
 import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
-import EventsCard from '../src/components/EventsCard'
+
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
 const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
           const { data: events, error: eventsError } = await supabaseAdmin
             .from('events')
-            .select('*')
+            .select('event_title, description, date, location, id, image_url, category, price')
             .overlaps('category', categories)
             .gt('created_at', sevenDaysAgo) // ISO string used here
 
@@ -169,22 +169,7 @@ export default async function handler(req, res) {
       We found ${events.length} new event(s) that match your interests.
     </p>
 
-    <div style="display: flex;
-  margin: 16px auto;
-  gap: 16px;
-  flex-wrap: wrap;
-  justify-content: center;">
-    <EventsCard
-          :events="
-            ${events.slice(0, 5).map((e) => ({
-              ...e.events,
-              is_interested: e.is_interested || false,
-              is_registered: e.is_registered || false,
-            }))}"
-    />
-    />
-
-
+    ${eventsList}
 
     <div style="text-align:center;margin-top:20px; margin-bottom:20px">
       <a href="https://univent.website/discover"
