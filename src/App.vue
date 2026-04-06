@@ -158,7 +158,10 @@ onUnmounted(() => {
             </li>
             <RouterLink
               to="/event-request"
-              v-if="univentStore.userProfile?.user_email === 'masalami042@gmail.com'"
+              v-if="
+                univentStore.userProfile?.user_email === 'masalami042@gmail.com' ||
+                univentStore.userProfile?.user_email === 'fatimaholadipo4@gmail.com'
+              "
             >
               <li @click="activeNav = ''">Event Requests</li>
             </RouterLink>

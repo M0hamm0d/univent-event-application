@@ -6,8 +6,14 @@ import ProfileIcon from '@/components/icons/ProfileIcon.vue'
 import FaqIcon from '@/components/icons/FaqIcon.vue'
 import FaqComponent from '@/components/FaqComponent.vue'
 import SupportComponent from '@/components/SupportComponent.vue'
+import { PhChartBar } from '@phosphor-icons/vue'
 // const tabs = { account: AccountComponent, faq: FaqComponent }
-const tabs = { account: AccountComponent, faq: FaqComponent, support: SupportComponent, dashboard: dashboardComponent }
+const tabs = {
+  account: AccountComponent,
+  faq: FaqComponent,
+  support: SupportComponent,
+  dashboard: dashboardComponent,
+}
 import { ref } from 'vue'
 import SupportSetting from '@/components/icons/SupportSetting.vue'
 // import PasswordIcon from '@/components/icons/PasswordIcon.vue'
@@ -27,7 +33,9 @@ const active = ref('account')
         </div>
         <div class="nav-container" @click="active = 'dashboard'">
           <div :class="['nav', { activeNav: active == 'dashboard' }]">
-            <span><ProfileIcon :fill="active === 'dashboard' ? '#000' : '#aaa'" /> </span>
+            <span>
+              <PhChartBar :size="24" color="active === 'dashboard' ? '#000' : '#aaa'" />
+            </span>
             <span>Dashboard</span>
           </div>
           <div :class="['side-border', { active: active == 'dashboard' }]"></div>
