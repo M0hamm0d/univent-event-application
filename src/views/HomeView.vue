@@ -14,6 +14,7 @@ import SignUpLogo from '@/components/icons/SignUpLogo.vue'
 import router from '@/router'
 import { supabase } from '@/supabase'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
+import HomeFaq from '@/components/HomeFaq.vue'
 const vAnimateOnScroll = {
   mounted(el, binding) {
     const animationClass = binding.value || 'fade-up'
@@ -236,6 +237,8 @@ const categories = [
         </div>
       </div>
     </div>
+
+    <HomeFaq />
     <!-- <div class="submit-event-section"></div> -->
     <div v-animate-on-scroll="'carousel'">
       <div
@@ -692,6 +695,9 @@ const categories = [
 }
 
 @media screen and (max-width: 500px) {
+  .container {
+    margin-bottom: 0px;
+  }
   .hero-section {
     flex-direction: column;
   }

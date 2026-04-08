@@ -44,15 +44,13 @@ const router = createRouter({
       component: () => import('../views/EventRequest.vue'),
     },
   ],
-  // scrollBehavior(to, from, savedPosition) {
-  //   if (savedPosition) {
-  //     return savedPosition
-  //   } else {
-  //     return { top: 0 }
-  //   }
-  // },
-  scrollBehavior() {
-    return { top: 0 }
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      // This tells Vue Router to reset the window scroll
+      return { top: 0 }
+    }
   },
 })
 

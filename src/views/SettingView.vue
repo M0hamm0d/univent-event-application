@@ -115,6 +115,9 @@ const active = ref('account')
 .activeNav {
   color: #000;
 }
+.tab-contents {
+  width: 100%;
+}
 @media screen and (max-width: 500px) {
   .content {
     flex-direction: column;

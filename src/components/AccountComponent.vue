@@ -294,7 +294,8 @@ form div input:focus {
 }
 .interested {
   display: flex;
-  gap: 4px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .interest-checked,
 .interest-checked div {

@@ -42,7 +42,7 @@ export const useEvents = () => {
         {
           event_title: eventData.title,
           description: eventData.description,
-          category: eventData.categories,
+          category: eventData.category,
           date: eventData.date,
           end_date: eventData.end_date,
           location: eventData.location,

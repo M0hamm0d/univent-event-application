@@ -317,11 +317,11 @@ onMounted(async () => {
   .events-section {
     grid-template-columns: 1fr;
     margin-top: 0;
-    transform: translateY(-370px);
+    transform: translateY(-300px);
   }
   .pagination {
     margin-top: 0px;
-    transform: translateY(-370px);
+    transform: translateY(-250px);
   }
   .skeleton {
     grid-template-columns: 1fr;
