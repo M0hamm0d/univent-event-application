@@ -8,6 +8,7 @@ import { useUniventStore } from '@/stores/counter'
 import { onMounted, ref, toRaw, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
+import EmptyState from '@/components/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -149,7 +150,6 @@ watch(
         </button>
       </div>
       <div class="upcoming-events-container">
-        <div class="" v-if="!res.length >= 1 && !loading">No Interested Events</div>
         <EventsCard
           :events="
             interest.map((e) => ({
@@ -162,6 +162,9 @@ watch(
           @deleteEvent="handleDelete"
           @deleteUserRegistration="handleDeleteUserRegistration"
         />
+      </div>
+      <div class="" v-if="!res.length >= 1 && !loading">
+        <EmptyState />
       </div>
       <div class="skeleton" v-if="loading">
         <SkeletonLoader v-for="i in 3" :key="i" />

@@ -10,12 +10,13 @@ import LoginModal from './components/LoginModal.vue'
 import DropdownIcon from './components/icons/DropdownIcon.vue'
 import { useToast } from 'vue-toastification'
 import { useAuth } from '@/composables/useAuth'
-import router from './router'
+// import router from './router'
 import HomeBtn from './components/icons/HomeBtn.vue'
 import SearchIcon from './components/icons/SearchIcon.vue'
 import BookmarkIcon from './components/icons/BookmarkIcon.vue'
 import RequestEvent from './components/icons/RequestEvent.vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import FooterComponent from './components/FooterComponent.vue'
 // import UniventAssistance from './components/UniventAssistance.vue'
 const route = useRoute()
 const { ensureProfile } = useUserProfile()
@@ -24,6 +25,8 @@ const showDropdown = ref(false)
 const toast = useToast()
 const { logout } = useAuth(toast)
 const loading = ref(false)
+
+const router = useRouter()
 
 async function handleLogout() {
   loading.value = true
@@ -80,6 +83,22 @@ watch(
 )
 
 let subscription
+
+// Add a template ref for your scrollable container
+const scrollContainer = ref(null)
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (scrollContainer.value) {
+      scrollContainer.value.scrollTo({
+        top: 0,
+        // behavior: 'smooth',
+      })
+    }
+  },
+)
+
 onMounted(async () => {
   const session = await fetchSession()
   univentStore.isAuthenticated = !!session?.user
@@ -110,7 +129,7 @@ onUnmounted(() => {
 
 <template>
   <div class="app">
-    <div class="new-home-page">
+    <div class="new-home-page" ref="scrollContainer">
       <div
         class="viewDetailsModal"
         v-if="univentStore.viewDetailsModal"
@@ -215,6 +234,7 @@ onUnmounted(() => {
       <main>
         <RouterView />
       </main>
+      <FooterComponent />
       <div class="mobileNav">
         <RouterLink to="/">
           <div class="">
@@ -249,7 +269,7 @@ onUnmounted(() => {
   display: none;
 }
 .header {
-  z-index: 100;
+  /* z-index: 100; */
 }
 .authenticated {
   display: inline-block;
@@ -271,7 +291,7 @@ onUnmounted(() => {
   right: 0;
   top: 50px;
   border-radius: 10px;
-  z-index: 5;
+  z-index: 70;
   flex-direction: column;
 }
 .profile-dropdown div,
@@ -385,6 +405,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* z-index: 1; */
 }
 .home-nav ul {
   display: flex;

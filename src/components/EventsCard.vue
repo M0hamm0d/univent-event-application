@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, watchEffect, computed, toRaw } from 'vue'
+import { ref, watch, watchEffect, computed } from 'vue'
 import dayjs from 'dayjs'
 import { useInterestedEvents } from '@/composables/useInterestedEvents'
 // import { useRegistrable } from '@/composables/useRegistrable'
@@ -190,6 +190,20 @@ async function loadAllStatuses(events) {
   await Promise.all(promises)
 }
 
+const formatTime = (timeStr) => {
+  if (!timeStr) return ''
+
+  if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr
+
+  let [hour, min] = timeStr.split(':')
+  let hourNum = parseInt(hour)
+  let suffix = hourNum >= 12 ? 'PM' : 'AM'
+
+  hourNum = hourNum % 12 || 12
+
+  return `${hourNum}:${min} ${suffix}`
+}
+
 // Replace the watch with watchEffect for better reactivity
 watchEffect(async () => {
   localEvents.value = [...(props.events || [])]
@@ -233,7 +247,7 @@ watch(
             {{ cat }}
           </div>
         </div>
-        <div class="price">{{ event.price === '' ? 'Free' : 'Paid' }}</div>
+        <!-- <div class="price">{{ event.price === '' ? 'Free' : 'Paid' }}</div> -->
       </div>
 
       <div class="event-block">
@@ -241,7 +255,7 @@ watch(
         <div :class="['event-date-and-location', { notHomePage: route.path !== '/' }]">
           <div class="">
             <CalendarIcon /> {{ dayjs(event.date).format('dddd, MMMM D') }} •
-            {{ event.time }}
+            {{ formatTime(event.time) }}
           </div>
           <div :class="route.path !== '/' ? 'event-location' : ''">
             <span v-if="route.path == '/'"> • </span>
@@ -377,6 +391,19 @@ h3 {
   border-radius: 15px;
   object-fit: cover;
 }
+/* .event-flier {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+}
+
+.event-flier img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 15px;
+} */
 
 .categories {
   display: flex;

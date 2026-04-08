@@ -1,11 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
-import CalendarIcon from './icons/CalendarIcon.vue'
-import CardIcon from './icons/CardIcon.vue'
-import LocationIcon from './icons/LocationIcon.vue'
-import OrganizersIcon from './icons/OrganizersIcon.vue'
+import { PhUsersThree, PhMapPin, PhCalendarBlank, PhShareNetwork } from '@phosphor-icons/vue'
 import RegisterIcon from './icons/RegisterIcon.vue'
-import ShareIcon from './icons/ShareIcon.vue'
 import dayjs from 'dayjs'
 import CancelBtn from './icons/CancelBtn.vue'
 import { useRoute } from 'vue-router'
@@ -23,6 +19,21 @@ const route = useRoute()
 function updateInterested(e) {
   emit('update-interested', { checked: e.target.checked, event: prop.event })
 }
+
+const formatTime = (timeStr) => {
+  if (!timeStr) return ''
+
+  if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr
+
+  let [hour, min] = timeStr.split(':')
+  let hourNum = parseInt(hour)
+  let suffix = hourNum >= 12 ? 'PM' : 'AM'
+
+  hourNum = hourNum % 12 || 12
+
+  return `${hourNum}:${min} ${suffix}`
+}
+
 let is_interested = ref(prop.event.is_interested)
 watch(is_interested, (newVal) => {
   is_interested.value = newVal
@@ -51,34 +62,30 @@ watch(is_interested, (newVal) => {
         <div class="event-overview">
           <div class="about-event">
             <h4>About the Event</h4>
-            <p>{{ event.description }}</p>
+            <p class="event-description">{{ event.description }}</p>
           </div>
           <div class="divider-line"></div>
           <div class="event-details">
             <h4>Event Details</h4>
             <div class="details">
               <div class="event-meta">
-                <span><CalendarIcon /></span>
+                <span><PhCalendarBlank :size="20" color="#777" /></span>
                 <span
                   >{{ dayjs(event.date).format('dddd, MMMM D') }}
                   {{ event.date.split('').slice(0, 4).join('') }}</span
                 >
                 <span>•</span>
-                <span>{{ event.time }}</span>
+                <span> {{ formatTime(event.time) }}</span>
               </div>
               <div class="event-meta">
-                <span><LocationIcon /></span>
+                <span><PhMapPin :size="20" color="#777" /></span>
                 <span>{{ event.location }}</span>
               </div>
               <div class="event-meta">
-                <span><OrganizersIcon /></span>
+                <span><PhUsersThree :size="20" color="#777" /></span>
                 <span>Computer Science Club</span>
                 <span>•</span>
                 <span>csclub@university.edu</span>
-              </div>
-              <div class="event-meta" v-if="event.price">
-                <span><CardIcon /></span>
-                <span>N{{ event.price }}</span>
               </div>
               <div class="event-meta" v-if="event.link_to_register">
                 <span><RegisterIcon /></span>
@@ -99,7 +106,7 @@ watch(is_interested, (newVal) => {
               <p>I'm Interested</p>
             </div>
             <button @click="emit('share-clicked')" class="share-icon">
-              <ShareIcon />
+              <PhShareNetwork :size="21" color="#777" />
             </button>
           </div>
         </div>
@@ -196,11 +203,12 @@ h4 {
 }
 .event-flier {
   width: 100%;
+  margin-bottom: 15px;
 }
 .event-flier img {
   width: 100%;
-  /* height: 260px; */
-  height: auto;
+  height: 260px;
+  /* height: auto; */
 }
 .event-overview {
   display: flex;
@@ -219,10 +227,14 @@ h4 {
   line-height: 120%;
 }
 .about-event p {
-  font-weight: 500;
+  /* font-weight: 500; */
   font-size: 15px;
   line-height: 22.5px;
   color: #5a5a5a;
+}
+.event-description {
+  white-space: pre-line;
+  margin-top: 10px;
 }
 .event-meta {
   display: flex;

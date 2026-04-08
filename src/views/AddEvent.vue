@@ -5,10 +5,14 @@ import { useEvents } from '@/composables/useEvent'
 import DownloadIcon from '@/components/icons/DownloadIcon.vue'
 import { supabase } from '@/supabase'
 import BackArrow from '@/components/icons/BackArrow.vue'
+import { useRoute } from 'vue-router'
+import { onMounted } from 'vue'
 
 const toast = useToast()
 const { uploadFile, saveEvent } = useEvents()
 const currentUser = ref('')
+const route = useRoute()
+const eventId = route.query.id
 
 const eventData = ref({
   title: '',
@@ -16,7 +20,7 @@ const eventData = ref({
   date: '',
   time: '',
   location: '',
-  categories: [],
+  category: [],
   imageUrl: '',
   linkToRegister: '',
   requires_registration: false,
@@ -89,22 +93,7 @@ async function handleFileUpload(e) {
 }
 
 async function handleSaveEvent() {
-  console.log(eventData.value.date)
-  if (eventData.value.time) {
-    const [hour, min] = eventData.value.time.split(':')
-    const hourNum = Number(hour)
-
-    if (hourNum > 12) {
-      eventData.value.time = `${hourNum - 12}:${min} PM`
-    } else if (hourNum === 12) {
-      eventData.value.time = `${hourNum}:${min} PM`
-    } else if (hourNum === 0) {
-      eventData.value.time = `12:${min} AM`
-    } else {
-      eventData.value.time = `${hourNum}:${min} AM`
-    }
-  }
-
+  // VALIDATIONS
   if (is_multi_day.value && !eventData.value.end_date) {
     toast.error('Please provide an end date for multi-day events')
     return
@@ -135,7 +124,8 @@ async function handleSaveEvent() {
     toast.error('Please provide a location for physical events')
     return
   }
-  if (eventData.value.date === '') {
+
+  if (!eventData.value.date) {
     toast.error('Please provide a date for the event')
     return
   }
@@ -153,7 +143,7 @@ async function handleSaveEvent() {
     return
   }
 
-  if (eventData.value.imageUrl === '') {
+  if (!eventData.value.imageUrl) {
     toast.error('Please upload an event image')
     return
   }
@@ -162,18 +152,59 @@ async function handleSaveEvent() {
     eventData.value.location = ''
   }
 
-  const result = await saveEvent({
+  // PREPARE PAYLOAD
+  const payload = {
     ...eventData.value,
-    categories: selectedCategories.value,
+    category: selectedCategories.value,
     end_date: eventData.value.end_date || null,
     date: eventData.value.date || null,
-  })
+    time: eventData.value.time, // keep 24-hour format
+  }
 
-  if (result.success) {
-    toast.success('Event submitted successfully')
+  const { imageUrl, linkToRegister, title, ...rest } = eventData.value
+
+  const updatePayload = {
+    ...rest,
+    category: selectedCategories.value,
+    end_date: eventData.value.end_date || null,
+    date: eventData.value.date || null,
+    time: eventData.value.time,
+    image_url: imageUrl,
+    link_to_register: linkToRegister,
+    event_title: title,
+  }
+
+  let result
+
+  if (eventId) {
+    // UPDATE EXISTING EVENT
+    console.log(updatePayload, 'bbb')
+    const { data, error } = await supabase
+      .from('events')
+      .update(updatePayload)
+      .eq('id', eventId)
+      .select()
+      .maybeSingle()
+
+    if (error) {
+      toast.error('Failed to update event: ' + error.message)
+      return
+    }
+
+    toast.success('Event updated successfully')
+    result = data
     resetForm()
   } else {
-    toast.error(result.error)
+    // CREATE NEW EVENT
+    result = await saveEvent(payload)
+
+    if (!result.success) {
+      toast.error(result.error)
+      return
+    }
+
+    toast.success('Event submitted successfully')
+    resetForm()
   }
 }
 
@@ -185,7 +216,7 @@ function resetForm() {
     end_date: '',
     time: '',
     location: '',
-    categories: [],
+    category: [],
     imageUrl: '',
     linkToRegister: '',
     requires_registration: false,
@@ -199,6 +230,60 @@ function resetForm() {
   currentFileName.value = ''
   is_multi_day.value = false
 }
+
+function convertTo24Hour(time12h) {
+  if (!time12h) return ''
+
+  const [time, modifier] = time12h.split(/(AM|PM)/)
+  let [hours, minutes] = time.split(':')
+
+  hours = parseInt(hours)
+
+  if (modifier === 'PM' && hours !== 12) {
+    hours += 12
+  }
+  if (modifier === 'AM' && hours === 12) {
+    hours = 0
+  }
+
+  return `${String(hours).padStart(2, '0')}:${minutes}`
+}
+
+onMounted(async () => {
+  if (!eventId) return
+
+  const { data, error } = await supabase.from('events').select('*').eq('id', eventId).maybeSingle()
+
+  if (error) {
+    console.error(error)
+    toast.error('Error loading event data')
+    return
+  }
+
+  if (data) {
+    eventData.value = {
+      title: data.event_title,
+      imageUrl: data.image_url,
+      time: convertTo24Hour(data.time), // ✅ FIX
+      date: data.date,
+      location: data.location,
+      description: data.description,
+      event_format: data.event_format,
+      linkToRegister: data.link_to_register,
+      requires_registration: data.requires_registration,
+      capacity: data.capacity,
+      end_date: data.end_date,
+    }
+
+    // ✅ FIX category
+    selectedCategories.value = (data.category || []).map(
+      (c) => c.charAt(0).toUpperCase() + c.slice(1),
+    )
+
+    // ✅ FIX filename
+    currentFileName.value = data.image_url ? data.image_url.split('/').pop() : ''
+  }
+})
 </script>
 <template>
   <div class="create-event-page">
@@ -349,9 +434,14 @@ function resetForm() {
 
       <div class="form-actions">
         <button class="btn-cancel">Cancel</button>
-        <button class="btn-save" @click="handleSaveEvent" :disabled="loading">
-          {{ loading ? 'Saving...' : 'Continue' }}
-        </button>
+        <div class="">
+          <button v-if="eventId" class="btn-save" @click="handleSaveEvent" :disabled="loading">
+            {{ loading ? 'updating event...' : 'Update Event' }}
+          </button>
+          <button v-else class="btn-save" @click="handleSaveEvent" :disabled="loading">
+            {{ loading ? 'Saving...' : 'Save Event' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>

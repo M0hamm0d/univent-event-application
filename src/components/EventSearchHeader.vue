@@ -14,7 +14,7 @@ import { onMounted, watch } from 'vue'
 import DateRange from './icons/DateRange.vue'
 import LocationIcon from './icons/LocationIcon.vue'
 import OrganizersIcon from './icons/OrganizersIcon.vue'
-import PriceIcon from './icons/PriceIcon.vue'
+// import PriceIcon from './icons/PriceIcon.vue'
 import { computed, ref } from 'vue'
 const univentStore = useUniventStore()
 const isFilterActive = ref(false)
@@ -328,7 +328,7 @@ onMounted(() => {
             <li>Cultural</li>
           </ul> -->
         </div>
-        <div class="category" @click="showFilterDropdown('price')">
+        <!-- <div class="category" @click="showFilterDropdown('price')">
           <div class="">
             <span><PriceIcon /></span>
             <p>Price</p>
@@ -346,7 +346,7 @@ onMounted(() => {
               Above N5000 <span v-if="filterObject.price === 'above 5000'">✓</span>
             </li>
           </ul>
-        </div>
+        </div> -->
         <div class="reset-filter">
           <div class="" @click="resetFilter">
             <span><ResetFilter /></span>
