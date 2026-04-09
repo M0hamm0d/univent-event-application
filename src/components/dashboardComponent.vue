@@ -265,13 +265,11 @@ watch(
               <div class="card-main">
                 <h4 class="event-name">{{ event.event_title }}</h4>
 
-                <!-- Status Badge -->
                 <span :class="['badge', event.requires_registration ? 'badge-blue' : 'badge-gray']">
                   {{ event.requires_registration ? 'Registrable' : 'Open Entry' }}
                 </span>
               </div>
 
-              <!-- Metrics Row -->
               <div class="stats-container">
                 <div class="stat-item" v-if="event.requires_registration">
                   <span class="stat-label">Registrations</span>
@@ -288,7 +286,6 @@ watch(
               </div>
             </div>
 
-            <!-- Action Footer -->
             <div class="card-actions">
               <button class="btn btn-outline" @click="editEvent(event)">Edit</button>
               <button class="btn btn-danger" @click="openModal(event)">Delete</button>
@@ -591,7 +588,6 @@ button {
   line-height: 1.4;
 }
 
-/* Badges */
 .badge {
   display: inline-block;
   font-size: 0.7rem;
@@ -610,7 +606,6 @@ button {
   color: #616161;
 }
 
-/* Stats Visualization */
 .stats-container {
   display: flex;
   gap: 16px;
@@ -636,12 +631,11 @@ button {
   font-size: 1rem;
 }
 
-/* Buttons */
 .card-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1px;
-  background: #eef0f2; /* Creates a thin border between buttons */
+  background: #eef0f2;
   border-top: 1px solid #eef0f2;
 }
 
@@ -663,6 +657,7 @@ button {
   background: #fff5f5;
   color: #dc2626;
 }
+/* vvvvvv */
 
 /* Mobile Adjustments */
 @media (max-width: 480px) {

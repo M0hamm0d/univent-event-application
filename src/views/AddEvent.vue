@@ -29,6 +29,7 @@ const eventData = ref({
   user_name: '',
   user_email: '',
   user_id: '',
+  external_registration_link: '',
 })
 const is_multi_day = ref(false)
 const loading = ref(false)
@@ -94,6 +95,11 @@ async function handleFileUpload(e) {
 
 async function handleSaveEvent() {
   // VALIDATIONS
+  if (eventData.value.external_registration_link && eventData.value.requires_registration) {
+    toast.error('You cannot provide an external link AND register on UniVent. Please choose one.')
+    return
+  }
+
   if (is_multi_day.value && !eventData.value.end_date) {
     toast.error('Please provide an end date for multi-day events')
     return
@@ -113,7 +119,7 @@ async function handleSaveEvent() {
   }
 
   if (
-    eventData.value.event_format === 'virtual' ||
+    (eventData.value.event_format === 'virtual' && !eventData.value.linkToRegister) ||
     (eventData.value.event_format === 'hybrid' && !eventData.value.linkToRegister)
   ) {
     toast.error('Please provide a meeting or streaming link')
@@ -195,16 +201,21 @@ async function handleSaveEvent() {
     result = data
     resetForm()
   } else {
-    // CREATE NEW EVENT
-    result = await saveEvent(payload)
-
-    if (!result.success) {
-      toast.error(result.error)
+    loading.value = true
+    try {
+      result = await saveEvent(payload)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      resetForm()
+      toast.success('Event submitted successfully')
+    } catch (err) {
+      console.error('Error saving event:', err)
+      toast.error('Failed to save event: ' + err.message)
       return
+    } finally {
+      loading.value = false
     }
-
-    toast.success('Event submitted successfully')
-    resetForm()
   }
 }
 
@@ -225,6 +236,7 @@ function resetForm() {
     user_name: '',
     user_email: '',
     user_id: '',
+    external_registration_link: '',
   }
   selectedCategories.value = []
   currentFileName.value = ''
@@ -273,6 +285,7 @@ onMounted(async () => {
       requires_registration: data.requires_registration,
       capacity: data.capacity,
       end_date: data.end_date,
+      external_registration_link: data.external_registration_link,
     }
 
     // ✅ FIX category
@@ -365,7 +378,7 @@ onMounted(async () => {
           </div>
 
           <div class="field-group">
-            <label>Event Format</label>
+            <label>Event Format (select one)</label>
             <div class="radio-group">
               <label class="radio-item"
                 ><input type="radio" value="physical" v-model="eventData.event_format" />
@@ -382,12 +395,18 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="field-group" v-if="eventData.event_format !== 'virtual'">
+          <div
+            class="field-group"
+            v-if="eventData.event_format !== 'virtual' && eventData.event_format !== ''"
+          >
             <label>Physical Location</label>
             <input v-model="eventData.location" type="text" placeholder="Venue or Address" />
           </div>
 
-          <div class="field-group" v-if="eventData.event_format !== 'physical'">
+          <div
+            class="field-group"
+            v-if="eventData.event_format !== 'physical' && eventData.event_format !== ''"
+          >
             <label>Meeting Link</label>
             <input v-model="eventData.linkToRegister" type="text" placeholder="Zoom, Meet, etc." />
           </div>
@@ -402,9 +421,26 @@ onMounted(async () => {
           <p>Manage registration and upload flyers.</p>
         </div>
         <div class="section-fields card">
+          <div class="field-group">
+            <label>
+              External Registration Link
+              <span class="optional">(Optional)</span>
+            </label>
+
+            <input
+              v-model="eventData.external_registration_link"
+              type="text"
+              placeholder="Paste a registration link (e.g. Google Forms, Eventbrite) if applicable"
+            />
+
+            <small class="helper-text">
+              Provide a link only if your event requires external registration. Otherwise, you can
+              leave this empty.
+            </small>
+          </div>
           <div class="field-group checkbox-row">
             <input v-model="eventData.requires_registration" type="checkbox" id="reg-req" />
-            <label for="reg-req">Requires Registration</label>
+            <label for="reg-req">Register on UniVent</label>
           </div>
 
           <div class="field-group" v-if="eventData.requires_registration">
@@ -600,6 +636,50 @@ textarea:focus {
   border: 0;
   border-top: 1px solid #f1f5f9;
   margin: 30px 0;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.optional {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.text-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: #055dfa;
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(5, 93, 250, 0.1);
+}
+
+/* Helper text */
+.helper-text {
+  font-size: 12px;
+  color: #94a3b8;
+  color: red;
+  line-height: 1.4;
+  margin-top: -4px;
 }
 
 /* Upload Area */

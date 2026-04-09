@@ -196,13 +196,13 @@ export function useStoreUserDetails() {
         })
         const result = await response.json()
         if (result.success) {
-          toast.success('Next student from waitlist registered and emailed')
+          // toast.success('Next student from waitlist registered and emailed')
+          console.log('Next student from waitlist registered and emailed')
         } else {
           toast.info(result.message)
         }
       } catch (err) {
         console.error('Error promoting student from waitlist:', err)
-        toast.error('Failed to promote next student from waitlist')
       }
     } else {
       toast.info('You are not registered for this event')

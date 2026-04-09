@@ -326,6 +326,7 @@ onMounted(async () => {
   .skeleton {
     grid-template-columns: 1fr;
     margin-top: 0;
+    transform: translateY(-310px);
   }
   .pagination.open {
     margin-bottom: 100px;

@@ -424,7 +424,8 @@ button:disabled {
   gap: 16px;
   display: grid;
   margin: 0 auto;
-  grid-template-columns: 1fr 1fr 1fr;
+  /* grid-template-columns: 1fr 1fr 1fr; */
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 .upcoming-past {
   display: flex;
@@ -449,7 +450,7 @@ button:disabled {
 }
 @media screen and (max-width: 500px) {
   .interest-container {
-    margin-top: -330px;
+    margin-top: -260px;
   }
   .upcoming-events-container {
     grid-template-columns: 1fr;
