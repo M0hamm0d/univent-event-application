@@ -40,7 +40,7 @@ const loadingMap = ref({})
 const getInterestButtonText = computed(() => (event) => {
   const id = event.id
   if (loadingMap.value[id]) return 'Loading...'
-  if (event.requires_registration) {
+  if (event.external_registration_link || event.requires_registration) {
     if (waitingListMap.value[id]) return 'Waitlisted ⏳'
     if (registeredMap.value[id]) return 'Registered ✓'
     return 'Register Now'
@@ -143,18 +143,18 @@ async function onInterestClick(event) {
 
   try {
     const requiresRegistration = !!event.requires_registration
-
-    // CASE 1: Event requires registration
     if (requiresRegistration) {
       if (registeredMap.value[id]) {
-        // Unregister
         await removeUserFromEvent(event)
         registeredMap.value[id] = false
-        // console.log(toRaw(event), 'unregistering from event card')
       } else {
-        // Open modal to register
         await handleRegister(event)
       }
+      return
+    }
+
+    if (event.external_registration_link) {
+      window.open(event.external_registration_link, '_blank')
       return
     }
 
@@ -260,6 +260,7 @@ watch(
           <div :class="route.path !== '/' ? 'event-location' : ''">
             <span v-if="route.path == '/'"> • </span>
             <LocationIcon v-if="route.path !== '/'" />{{ event.location }}
+            <span v-if="event.event_format === 'virtual'">(Virtual)</span>
           </div>
         </div>
       </div>

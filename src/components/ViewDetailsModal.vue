@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { PhUsersThree, PhMapPin, PhCalendarBlank, PhShareNetwork } from '@phosphor-icons/vue'
+import { PhMapPin, PhCalendarBlank, PhShareNetwork } from '@phosphor-icons/vue'
 import RegisterIcon from './icons/RegisterIcon.vue'
 import dayjs from 'dayjs'
 import CancelBtn from './icons/CancelBtn.vue'
@@ -80,16 +80,17 @@ watch(is_interested, (newVal) => {
               <div class="event-meta">
                 <span><PhMapPin :size="20" color="#777" /></span>
                 <span>{{ event.location }}</span>
+                <span v-if="event.event_format === 'virtual'">(Virtual)</span>
               </div>
-              <div class="event-meta">
+              <!-- <div class="event-meta">
                 <span><PhUsersThree :size="20" color="#777" /></span>
                 <span>Computer Science Club</span>
                 <span>•</span>
                 <span>csclub@university.edu</span>
-              </div>
+              </div> -->
               <div class="event-meta" v-if="event.link_to_register">
                 <span><RegisterIcon /></span>
-                <a :href="event.link_to_register">Click here to register</a>
+                <a :href="event.link_to_register">Join Virtual Event</a>
               </div>
             </div>
           </div>
@@ -154,8 +155,15 @@ h4 {
   scrollbar-width: none;
   z-index: 100;
 }
-.close {
+/* .close {
   display: none;
+} */
+.close {
+  display: flex;
+  position: absolute;
+  top: 5%;
+  right: 7%;
+  cursor: pointer;
 }
 .category {
   display: flex;

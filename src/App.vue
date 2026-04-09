@@ -173,7 +173,7 @@ onUnmounted(() => {
               My Interest
             </li>
             <li @click="guardRoute('add-event')" :class="{ activeRoute: activeNav == 'add-event' }">
-              Add Events
+              Submit Event
             </li>
             <RouterLink
               to="/event-request"
@@ -254,7 +254,7 @@ onUnmounted(() => {
         </div>
         <div @click="guardRoute('add-event')" :class="{ activeRoute: activeNav == 'add-event' }">
           <RequestEvent />
-          <p>Request Event</p>
+          <p>Submit Event</p>
         </div>
       </div>
     </div>
