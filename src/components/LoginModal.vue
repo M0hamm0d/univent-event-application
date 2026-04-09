@@ -16,6 +16,7 @@ const error = ref('')
 const login = useUniventStore()
 const email = ref('')
 const password = ref('')
+import { PhEye, PhEyeSlash } from '@phosphor-icons/vue'
 function openSignupModal() {
   login.loginModal = false
   login.signupModal = true
@@ -103,7 +104,14 @@ async function forgotPassword() {
           placeholder="Enter your password"
           v-model="password"
         />
-        <div class="open-close" @click="togglePassword"></div>
+        <div class="open-close" @click="togglePassword">
+          <span v-if="passwordType === 'password'">
+            <PhEye />
+          </span>
+          <span v-else>
+            <PhEyeSlash />
+          </span>
+        </div>
         <div class="forgot-password" @click="forgotPassword">Forgot Password?</div>
       </div>
       <p v-if="error" class="error">{{ error }}</p>
@@ -214,11 +222,8 @@ h4 {
   cursor: pointer;
 }
 .open-close {
-  width: 15px;
-  height: 15px;
-  background-color: #000;
   position: absolute;
-  bottom: 12px;
+  bottom: 8px;
   right: 15px;
   /* z-index: 100; */
 }

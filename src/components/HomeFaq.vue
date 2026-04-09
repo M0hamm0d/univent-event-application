@@ -72,11 +72,13 @@ function toggleData(id) {
         <div class="contact-card">
           <div class="contact-info">
             <label>Email</label>
-            <p>support@univent.edu</p>
+            <p>team.univent@gmail.com</p>
           </div>
-          <button class="cta-button">
-            <span class="icon"><PhEnvelope :size="22" color="#ffffff" /></span> Get in touch
-          </button>
+          <a href="mailto:team.univent@gmail.com">
+            <button class="cta-button">
+              <span class="icon"><PhEnvelope :size="22" color="#ffffff" /></span> Get in touch
+            </button>
+          </a>
         </div>
 
         <div class="accordion-list">
@@ -106,6 +108,9 @@ function toggleData(id) {
 
 <style scoped>
 /* Layout */
+a {
+  text-decoration: none;
+}
 .faq-section {
   max-width: 90%;
   margin: 0 auto 100px;

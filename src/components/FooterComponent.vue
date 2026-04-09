@@ -46,7 +46,7 @@ async function copyEmail() {
           <div class="email-copy-wrapper">
             <span class="label">OR EMAIL US AT</span>
             <div class="email-badge">
-              <span>{{ copied ? 'Copied!' : 'hello@univent.com' }}</span>
+              <span>{{ copied ? 'Copied!' : 'team.univent@gmail.com' }}</span>
               <button class="copy-icon" @click="copyEmail" aria-label="Copy email to clipboard">
                 <PhClipboard :size="20" color="#ffffff" />
               </button>

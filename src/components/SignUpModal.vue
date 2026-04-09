@@ -22,6 +22,24 @@ function openLoginModal() {
 }
 // const error = ref('')
 
+import { PhEye, PhEyeSlash } from '@phosphor-icons/vue'
+let passwordType = ref('password')
+let confirmPasswordType = ref('password')
+function togglePassword() {
+  if (passwordType.value === 'password') {
+    passwordType.value = 'text'
+  } else {
+    passwordType.value = 'password'
+  }
+}
+function toggleConfirmPassword() {
+  if (confirmPasswordType.value === 'password') {
+    confirmPasswordType.value = 'text'
+  } else {
+    confirmPasswordType.value = 'password'
+  }
+}
+
 async function handleSignUp() {
   loading.value = true
   try {
@@ -77,28 +95,49 @@ async function signInWithGoogle() {
           v-model="signupEmail"
         />
       </div>
-      <div class="input">
+      <div class="input password-input-wrapper">
         <label for="firstName">Password</label>
-        <input
-          type="password"
-          name="password"
-          placeholder="Create a strong password"
-          v-model="signupPassword"
-        />
+        <div class="password-field">
+          <input
+            :type="passwordType"
+            name="password"
+            placeholder="Create a strong password"
+            v-model="signupPassword"
+          />
+          <div class="open-close" @click="togglePassword">
+            <span v-if="passwordType === 'password'">
+              <PhEye />
+            </span>
+            <span v-else>
+              <PhEyeSlash />
+            </span>
+          </div>
+        </div>
         <p>
           Password should be at least 6 characters including one uppercase letter, one lowercase
           letter, one character, and one number.
         </p>
       </div>
-      <div class="input">
+      <div class="input password-input-wrapper">
         <label for="confirmPassword">Confirm Password</label>
-        <input
-          type="password"
-          name="confirmPassword"
-          placeholder="Re-enter password"
-          v-model="signupConfirmPassword"
-        />
+        <div class="password-field">
+          <input
+            :type="confirmPasswordType"
+            name="confirmPassword"
+            placeholder="Re-enter password"
+            v-model="signupConfirmPassword"
+          />
+          <div class="open-close" @click="toggleConfirmPassword">
+            <span v-if="confirmPasswordType === 'password'">
+              <PhEye />
+            </span>
+            <span v-else>
+              <PhEyeSlash />
+            </span>
+          </div>
+        </div>
       </div>
+
       <p class="error">{{ errorMessage }}</p>
     </div>
     <div class="create-account-section">
@@ -193,14 +232,43 @@ h4 {
   color: #2d2d2d;
 }
 .personal-info .input input {
-  padding: 12px;
+  padding: 12px 40px 12px 12px;
   border: 1px solid #eaeaea;
   border-radius: 12px;
   outline: none;
+  width: 100%;
+  box-sizing: border-box;
 }
 .personal-info .input input:active,
 .personal-info .input input:focus {
   border: 1px solid #1969fe;
+}
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.password-field input {
+  flex: 1;
+  padding-right: 40px;
+}
+.open-close {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #888;
+  transition: color 0.3s;
+}
+.open-close:hover {
+  color: #1969fe;
+}
+.open-close span {
+  display: flex;
+  align-items: center;
+  line-height: 1;
 }
 .input p {
   color: #959595;
