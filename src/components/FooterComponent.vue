@@ -33,7 +33,7 @@ async function copyEmail() {
     <div class="footer-container">
       <div class="footer-main">
         <div class="footer-cta">
-          <span class="label">CONTACT US</span>
+          <img loading="lazy" src="/whiteLogo.png" alt="" width="" height="32" />
           <h2 class="cta-heading">
             Let’s Make Your <br />
             <span>Event Happen.</span>
