@@ -158,7 +158,7 @@ onUnmounted(() => {
       <div class="header">
         <RouterLink to="/">
           <div class="home-logo" @click="activeNav = ''">
-            <img loading="lazy" src="/univentLogo.png" alt="" width="147" height="32" />
+            <img loading="lazy" src="/blackLogo.png" alt="" width="" height="32" />
           </div>
         </RouterLink>
         <div class="home-nav">
