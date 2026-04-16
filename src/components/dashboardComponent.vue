@@ -108,9 +108,9 @@ async function fetchInterested() {
 async function fetchTrending() {
   const { data, error } = await supabase
     .from('events')
-    .select('*')
-    .order('interested_students', { ascending: false })
-    .limit(6)
+    .select('*, (interested_students + shared_count + viewed_count) as score')
+    .order('score', { ascending: false })
+    .limit(5)
   if (error) {
     console.error('fetchTrending', error.message)
     return
