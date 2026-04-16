@@ -209,6 +209,15 @@ async function handleSaveEvent() {
       }
       resetForm()
       toast.success('Event submitted successfully')
+      await fetch('/api/send-submission-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: eventData.value.user_email,
+          name: eventData.value.user_name,
+          event: eventData.value.title,
+        }),
+      })
     } catch (err) {
       console.error('Error saving event:', err)
       toast.error('Failed to save event: ' + err.message)
@@ -305,7 +314,7 @@ onMounted(async () => {
         <BackArrow />
         <h1>Create New Event</h1>
       </RouterLink>
-      <p class="subtitle">Kindly complete the form below to publish your event to the portal.</p>
+      <p class="subtitle">Kindly complete the form below to submit your event. After submission, it will be reviewed by our team.</p>
     </div>
 
     <div class="form-container">

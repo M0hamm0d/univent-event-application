@@ -78,6 +78,22 @@ async function handlePushToEvent(id) {
 
       request.value = request.value.filter((r) => r.id !== id)
       toast.success('Event approved successfully')
+      try {
+      await fetch('/api/send-review-success', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: requestData.value.user_email,
+          event: requestData.value.event_title,
+        }),
+      })
+
+      } catch (emailError) {
+        console.error('Error sending review success email:', emailError)
+        toast.error('Failed to send review success email')
+      }
     } else {
       console.error('Push error:', result.error)
     }

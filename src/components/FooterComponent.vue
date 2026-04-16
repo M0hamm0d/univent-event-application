@@ -95,7 +95,7 @@ async function copyEmail() {
 <style scoped>
 .univent-footer {
   background-color: #05070a; /* Deep black/navy */
-  background-color: #0a1226;
+  /* background-color: #0a1226; */
   color: #ffffff;
   padding: 80px 0 50px 0;
   font-family: Satoshi;
