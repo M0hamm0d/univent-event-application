@@ -15,6 +15,8 @@ import router from '@/router'
 import { supabase } from '@/supabase'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import HomeFaq from '@/components/HomeFaq.vue'
+const isLoading = ref(true)
+const noEvent = ref(false)
 const vAnimateOnScroll = {
   mounted(el, binding) {
     const animationClass = binding.value || 'fade-up'
@@ -107,16 +109,45 @@ const fetchSession = async () => {
 }
 const eventValue = ref([])
 
+// onMounted(async () => {
+//   isLoading.value = true
+
+//   const result = await fetchRequestedAndEvents()
+//   const session = await fetchSession()
+//   univentStore.isAuthenticated = !!session?.user
+//   isAuthenticated.value = !!session?.user
+//   if (result.success) {
+//     eventValue.value = result.events
+//   } else {
+//     console.error(result.error)
+//   }
+//   interval = setInterval(() => {
+//     currentIndex.value = (currentIndex.value + 1) % cards.length
+//   }, 4000)
+// })
 onMounted(async () => {
-  const result = await fetchRequestedAndEvents()
-  const session = await fetchSession()
-  univentStore.isAuthenticated = !!session?.user
-  isAuthenticated.value = !!session?.user
-  if (result.success) {
-    eventValue.value = result.events
-  } else {
-    console.error(result.error)
+  isLoading.value = true
+  try {
+    const result = await fetchRequestedAndEvents()
+    const session = await fetchSession()
+    univentStore.isAuthenticated = !!session?.user
+    isAuthenticated.value = !!session?.user
+
+    if (result.success) {
+      eventValue.value = result.events
+      // If success but array is empty, set noEvent to true
+      noEvent.value = result.events.length === 0
+    } else {
+      console.error(result.error)
+      noEvent.value = true
+    }
+  } catch (err) {
+    console.error('Fetch failed', err)
+    noEvent.value = true
+  } finally {
+    isLoading.value = false // Stop skeleton loader regardless of outcome
   }
+
   interval = setInterval(() => {
     currentIndex.value = (currentIndex.value + 1) % cards.length
   }, 4000)
@@ -180,8 +211,11 @@ const categories = [
             </button>
           </RouterLink>
         </div>
-        <div class="skeleton" v-if="!eventValue.length >= 1">
+        <div class="skeleton" v-if="isLoading">
           <SkeletonLoader v-for="i in 3" :key="i" />
+        </div>
+        <div class="no-result" v-else-if="noEvent || eventValue.length === 0">
+          <p>No events available at the moment. Check back later!</p>
         </div>
         <div v-animate-on-scroll="'event-cards'">
           <EventsCard v-if="eventValue.length >= 1" :events="eventValue.slice(0, 3)" />

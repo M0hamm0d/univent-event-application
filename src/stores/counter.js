@@ -16,6 +16,7 @@ export const useUniventStore = defineStore('appStore', () => {
   const locationDropdown = ref(false)
   const organizerDropdown = ref(false)
   const priceDropdown = ref(false)
+  const facultyDropdown = ref(false)
   const loginModal = ref(false)
   const signupModal = ref(false)
   const userProfile = ref({})
@@ -82,6 +83,7 @@ export const useUniventStore = defineStore('appStore', () => {
     categoryDropdown,
     locationDropdown,
     organizerDropdown,
+    facultyDropdown,
     priceDropdown,
     viewDetailsModal,
     interestedEvents,

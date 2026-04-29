@@ -15,7 +15,7 @@ export const useRequestedEvents = () => {
       const { data: requested_event, error: reqError } = await supabase
         .from('requested-event')
         .select(
-          'id,created_at, event_title, category, time, date,description,location,image_url, price,free_or_paid, link_to_register, end_date, capacity, event_format,requires_registration,user_id,user_email,external_registration_link',
+          'id,created_at, event_title, category, time, date,description,location,image_url, price,free_or_paid, link_to_register, end_date, capacity, event_format,requires_registration,user_id,user_email,external_registration_link,faculty',
         )
 
       let query = supabase.from('events').select('*', { count: 'exact' }).gte('date', today)
@@ -24,6 +24,10 @@ export const useRequestedEvents = () => {
       }
       if (filters.location && filters.location.length) {
         query = query.or(filters.location.map((l) => `location.ilike.%${l}%`).join(','))
+      }
+
+      if (filters.faculty && filters.faculty.length) {
+        query = query.or(filters.faculty.map((f) => `faculty.ilike.%${f}%`).join(','))
       }
 
       if (filters.price === 'below 2000') {
