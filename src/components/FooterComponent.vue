@@ -1,12 +1,6 @@
 <script setup>
 // import { ref } from 'vue'
-import {
-  PhClipboard,
-  PhFacebookLogo,
-  PhInstagramLogo,
-  PhLinkedinLogo,
-  PhXLogo,
-} from '@phosphor-icons/vue'
+import { PhClipboard, PhInstagramLogo, PhLinkedinLogo, PhXLogo } from '@phosphor-icons/vue'
 
 import { ref } from 'vue'
 
@@ -82,8 +76,7 @@ async function copyEmail() {
         <p class="copyright">© 2026 UNIVENT. ALL RIGHTS RESERVED.</p>
 
         <div class="social-links">
-          <a href="#" aria-label="Facebook"><PhFacebookLogo size="32" /></a>
-          <a href="#" aria-label="Twitter"><PhXLogo size="32" /></a>
+          <a href="https://x.com/_univent" aria-label="Twitter"><PhXLogo size="32" /></a>
           <a href="#" aria-label="Instagram"><PhInstagramLogo size="32" /></a>
           <a href="#" aria-label="LinkedIn"><PhLinkedinLogo size="32" /></a>
         </div>

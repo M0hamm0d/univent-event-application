@@ -9,6 +9,7 @@ import Search2Icon from './icons/Search2Icon.vue'
 import CategoryIcon from './icons/CategoryIcon.vue'
 import DropdownIcon from './icons/DropdownIcon.vue'
 import ResetFilter from './icons/ResetFilter.vue'
+import { PhBuilding } from '@phosphor-icons/vue'
 import { onMounted, watch } from 'vue'
 // import DateRange from './icons/Daterange.vue'
 import DateRange from './icons/DateRange.vue'
@@ -36,6 +37,26 @@ defineProps({
     type: String,
   },
 })
+
+const facultyOptions = [
+  'Faculty of Agriculture',
+  'Faculty of Arts',
+  'Faculty of Education',
+  'Faculty of Engineering and Technology',
+  'Faculty of Law',
+  'Faculty of Environmental Sciences',
+  'Faculty of Management Sciences',
+  'Faculty of Social Sciences',
+  'Faculty of Life Sciences',
+  'Faculty of Physical Sciences',
+  'Faculty of Pharmaceutical Sciences',
+  'Faculty of Veterinary Medicine',
+  'Faculty of Communication and Information Sciences',
+  'Faculty of Basic Medical Sciences',
+  'Faculty of Clinical Sciences',
+  'Faculty of Health Sciences',
+]
+
 let date = ref(null)
 function handleDateChange(e) {
   filterObject.value.date = e.target.value
@@ -46,6 +67,7 @@ const filterObject = ref({
   category: [],
   location: [],
   organizers: [],
+  faculty: [],
   date: '',
   price: '',
 })
@@ -55,6 +77,7 @@ function resetFilter() {
   filterObject.value.category = []
   filterObject.value.location = []
   filterObject.value.organizers = []
+  filterObject.value.faculty = []
   filterObject.value.date = ''
   filterObject.value.price = ''
   date.value = ''
@@ -66,41 +89,12 @@ function pickDateOrPrice(name = '', value = '') {
 }
 const emit = defineEmits(['filter-changed', 'search-performed', 'show-filter'])
 function showFilterDropdown(param) {
-  if (param == 'date') {
-    univentStore.dateDropdown = !univentStore.dateDropdown
-    univentStore.categoryDropdown = false
-    univentStore.locationDropdown = false
-    univentStore.organizerDropdown = false
-    univentStore.priceDropdown = false
-  }
-  if (param == 'category') {
-    univentStore.dateDropdown = false
-    univentStore.categoryDropdown = !univentStore.categoryDropdown
-    univentStore.locationDropdown = false
-    univentStore.organizerDropdown = false
-    univentStore.priceDropdown = false
-  }
-  if (param == 'location') {
-    univentStore.dateDropdown = false
-    univentStore.categoryDropdown = false
-    univentStore.locationDropdown = !univentStore.locationDropdown
-    univentStore.organizerDropdown = false
-    univentStore.priceDropdown = false
-  }
-  if (param == 'organizer') {
-    univentStore.dateDropdown = false
-    univentStore.categoryDropdown = false
-    univentStore.locationDropdown = false
-    univentStore.organizerDropdown = !univentStore.organizerDropdown
-    univentStore.priceDropdown = false
-  }
-  if (param == 'price') {
-    univentStore.dateDropdown = false
-    univentStore.categoryDropdown = false
-    univentStore.locationDropdown = false
-    univentStore.organizerDropdown = false
-    univentStore.priceDropdown = !univentStore.priceDropdown
-  }
+  univentStore.dateDropdown = param === 'date' ? !univentStore.dateDropdown : false
+  univentStore.categoryDropdown = param === 'category' ? !univentStore.categoryDropdown : false
+  univentStore.locationDropdown = param === 'location' ? !univentStore.locationDropdown : false
+  univentStore.organizerDropdown = param === 'organizer' ? !univentStore.organizerDropdown : false
+  univentStore.priceDropdown = param === 'price' ? !univentStore.priceDropdown : false
+  univentStore.facultyDropdown = param === 'faculty' ? !univentStore.facultyDropdown : false
 }
 
 watch(
@@ -114,6 +108,7 @@ watch(
         q: newVal?.searchInput || undefined,
         category: newVal?.category.join(',') || undefined,
         location: newVal?.location.join(',') || undefined,
+        faculty: newVal?.faculty.join(',') || undefined,
         date: newVal?.date || undefined,
         price: newVal?.price || undefined,
         page: univentStore.currentPage,
@@ -152,8 +147,10 @@ onMounted(() => {
     location: route.query?.location ? route.query.location.split(',') : [],
     date: route.query?.date ? route.query.date : '',
     price: route.query?.price ? route.query.price : '',
+    faculty: route.query?.faculty ? route.query.faculty.split(',') : [],
   }
   filterObject.value.category = univentStore.activeFilters.category
+  filterObject.value.faculty = univentStore.activeFilters.faculty
   filterObject.value.location = univentStore.activeFilters.location
 
   emit('filter-changed', filterObject.value)
@@ -287,31 +284,50 @@ onMounted(() => {
             <li>
               <label class="checkbox-item">
                 <span>Main Campus</span>
-                <input type="checkbox" value="main campus" v-model="filterObject.category" />
+                <input type="checkbox" value="main campus" v-model="filterObject.location" />
               </label>
             </li>
             <li>
               <label class="checkbox-item">
                 <span>Auditorium</span>
-                <input type="checkbox" value="auditorium" v-model="filterObject.category" />
+                <input type="checkbox" value="auditorium" v-model="filterObject.location" />
               </label>
             </li>
             <li>
               <label class="checkbox-item">
                 <span>Library</span>
-                <input type="checkbox" value="library" v-model="filterObject.category" />
+                <input type="checkbox" value="library" v-model="filterObject.location" />
               </label>
             </li>
             <li>
               <label class="checkbox-item">
                 <span>Stadium</span>
-                <input type="checkbox" value="stadium" v-model="filterObject.category" />
+                <input type="checkbox" value="stadium" v-model="filterObject.location" />
               </label>
             </li>
             <li>
               <label class="checkbox-item">
                 <span>Others</span>
-                <input type="checkbox" value="others" v-model="filterObject.category" />
+                <input type="checkbox" value="others" v-model="filterObject.location" />
+              </label>
+            </li>
+          </ul>
+        </div>
+        <div class="category" @click="showFilterDropdown('faculty')">
+          <div>
+            <span><PhBuilding :size="21" color="#797979" /></span>
+            <p>Faculty</p>
+            <span><DropdownIcon /></span>
+          </div>
+          <ul
+            class="categoryDropdown scrollable-dropdown"
+            v-if="univentStore.facultyDropdown"
+            @click.stop
+          >
+            <li v-for="faculty in facultyOptions" :key="faculty">
+              <label class="checkbox-item">
+                <span>{{ faculty }}</span>
+                <input type="checkbox" :value="faculty" v-model="filterObject.faculty" />
               </label>
             </li>
           </ul>
@@ -322,11 +338,11 @@ onMounted(() => {
             <p>Organizers</p>
             <span><DropdownIcon /></span>
           </div>
-          <!-- <ul v-if="univentStore.organizerDropdown">
-            <li>Tech</li>
-            <li>Academic</li>
-            <li>Cultural</li>
-          </ul> -->
+          <ul v-if="univentStore.organizerDropdown">
+            <button disabled>
+              <li>No Organizers Yet</li>
+            </button>
+          </ul>
         </div>
         <!-- <div class="category" @click="showFilterDropdown('price')">
           <div class="">
@@ -484,6 +500,18 @@ p {
   opacity: 1;
   visibility: visible;
   transform: translateY(0px);
+}
+.scrollable-dropdown {
+  max-height: 250px;
+  overflow-y: auto;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  scrollbar-width: none;
+}
+
+.category ul.scrollable-dropdown {
+  width: 280px;
 }
 select {
   /* padding: 8px 10px; */

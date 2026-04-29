@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, toRaw } from 'vue'
 import { supabase } from '@/supabase'
 import { useUniventStore } from '@/stores/counter'
 import { useToast } from 'vue-toastification'
 import EventsCard from './EventsCard.vue'
+import { PhUsers } from '@phosphor-icons/vue'
 
 const univentStore = useUniventStore()
 const toast = useToast()
@@ -52,6 +53,12 @@ function editEvent(event) {
   })
 }
 
+function goToAttendees(eventId) {
+  router.push({
+    path: `/manage-attendees/${eventId}`,
+  })
+}
+
 async function fetchRegistered() {
   if (!univentStore.userProfile?.id) return
   const { data, error } = await supabase
@@ -62,6 +69,7 @@ async function fetchRegistered() {
     console.error('fetchRegistered', error.message)
     return
   }
+  console.log('this is data', toRaw(data))
   registeredEvents.value = data.map((r) => r.events)
 }
 
@@ -230,29 +238,6 @@ watch(
 
     <!-- sections for event lists -->
     <div class="section-container">
-      <!-- <div class="section" v-if="createdEvents.length">
-        <h3>Your Created Events</h3>
-
-        <div class="event-row-container">
-          <div v-for="event in createdEvents" :key="event.id" class="event-row">
-            <h4>{{ event.event_title }}</h4>
-
-            <p v-if="event.requires_registration">
-              Registrations:
-              {{ event.registered_events?.[0]?.count || 0 }}
-            </p>
-
-            <p v-else>Not Registrable</p>
-
-            <p>Shared: {{ event.shared_count || 0 }}</p>
-            <p>Viewed: {{ event.viewed_count || 0 }}</p>
-            <div class="">
-              <button class="edit-btn" @click="() => editEvent(event)">Edit</button>
-              <button class="delete-btn">Delete</button>
-            </div>
-          </div>
-        </div>
-      </div> -->
       <div class="events-section" v-if="createdEvents.length">
         <header class="section-header">
           <h3 class="section-title">Your Created Events</h3>
@@ -289,6 +274,14 @@ watch(
             <div class="card-actions">
               <button class="btn btn-outline" @click="editEvent(event)">Edit</button>
               <button class="btn btn-danger" @click="openModal(event)">Delete</button>
+              <button
+                v-if="event.requires_registration"
+                @click="goToAttendees(event.id)"
+                class="btn-manage"
+              >
+                <PhUsers :size="20" />
+                Manage Attendees
+              </button>
             </div>
           </div>
         </div>

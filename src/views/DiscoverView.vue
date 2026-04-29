@@ -8,6 +8,7 @@ import { useRequestedEvents } from '@/composables/useRequestedEvents'
 import { useUniventStore } from '@/stores/counter'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
+import { computed } from 'vue'
 // import { supabase } from '@/supabase'
 
 const route = useRoute()
@@ -23,6 +24,11 @@ const unavailableEvent = ref(false)
 const count = ref(null)
 const searchFromId = ref([])
 const isFilterActive = ref(false)
+const isAnyFilterApplied = computed(() => {
+  return Object.values(univentStore.activeFilters).some((value) => {
+    return Array.isArray(value) ? value.length > 0 : !!value
+  })
+})
 
 async function loadEvents() {
   // if (loading.value) return
@@ -59,6 +65,7 @@ async function loadEvents() {
       count.value = result.count
       filter.value = await filterUpcomingEventOnlyAndInterested(result.events)
       emptyEvent.value = filter.value.length === 0
+      noEvent.value = filter.value.length === 0
     } catch (err) {
       console.error('onMounted error:', err)
       toast.error('Failed to load events')
@@ -76,6 +83,7 @@ async function pagination(param) {
   })
 }
 async function handleFilters(filters) {
+  console.log('hand run')
   loading.value = true
 
   try {
@@ -130,6 +138,7 @@ watch(
   },
 )
 onMounted(async () => {
+  console.log('reload')
   await loadEvents()
 })
 </script>
@@ -143,7 +152,7 @@ onMounted(async () => {
       @search-performed="handleFilters"
       @show-filter="showFilter"
     />
-    <div class="no-result" v-if="noEvent">
+    <div class="no-result" v-if="isAnyFilterApplied && noEvent">
       <img loading="lazy" src="/no-result.png" alt="" />
     </div>
     <div :class="isFilterActive ? 'skeleton open' : 'skeleton'" v-if="loading">
@@ -160,7 +169,12 @@ onMounted(async () => {
     <div :class="isFilterActive ? 'events-section open' : 'events-section'" v-if="!loading">
       <EventsCard :events="route.query.eventId ? searchFromId : filter" />
     </div>
-    <div class="" v-if="emptyEvent">Sorry no event</div>
+    <div class="filter-not-applied" v-if="!isAnyFilterApplied && emptyEvent">
+      <div class="empty-state">
+        <img src="/empty-event.png" alt="" />
+      </div>
+      <p>Sorry no event</p>
+    </div>
     <div
       :class="isFilterActive ? 'pagination open' : 'pagination'"
       v-if="univentStore.pageCount > 1 && !route.query.eventId"
@@ -194,6 +208,19 @@ onMounted(async () => {
   </div>
 </template>
 <style scoped>
+.filter-not-applied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 30px;
+}
+.filter-not-applied .empty-state {
+  width: 200px;
+}
+.filter-not-applied .empty-state img {
+  width: 100%;
+}
 .pagination {
   display: flex;
   align-items: center;

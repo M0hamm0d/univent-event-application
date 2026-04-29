@@ -16,7 +16,12 @@ async function handlePushToEvent(id) {
   try {
     loading.value = true
     requestData.value = request.value.find((r) => r.id === id)
-    console.log('req', toRaw(requestData.value))
+    const eventDate = new Date(requestData.value.date)
+    const today = new Date()
+    if (eventDate < today) {
+      toast.error('Cannot approve past events')
+      return
+    }
 
     if (!requestData.value) {
       alert('No request data found')

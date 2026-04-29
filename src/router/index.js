@@ -43,6 +43,11 @@ const router = createRouter({
       name: 'event request',
       component: () => import('../views/EventRequest.vue'),
     },
+    {
+      path: '/manage-attendees/:eventId',
+      name: 'manage attendees',
+      component: () => import('../views/ManageAttendees.vue'),
+    },
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
