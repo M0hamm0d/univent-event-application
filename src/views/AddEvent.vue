@@ -6,7 +6,7 @@ import DownloadIcon from '@/components/icons/DownloadIcon.vue'
 import { supabase } from '@/supabase'
 import BackArrow from '@/components/icons/BackArrow.vue'
 import { useRoute } from 'vue-router'
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 
 const toast = useToast()
 const { uploadFile, saveEvent } = useEvents()
@@ -30,12 +30,32 @@ const eventData = ref({
   user_email: '',
   user_id: '',
   external_registration_link: '',
+  faculty: '',
 })
 const is_multi_day = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
 const currentFileName = ref('')
 const selectedCategories = ref([])
+
+const facultyOptions = [
+  'Faculty of Agriculture',
+  'Faculty of Arts',
+  'Faculty of Education',
+  'Faculty of Engineering and Technology',
+  'Faculty of Law',
+  'Faculty of Environmental Sciences',
+  'Faculty of Management Sciences',
+  'Faculty of Social Sciences',
+  'Faculty of Life Sciences',
+  'Faculty of Physical Sciences',
+  'Faculty of Pharmaceutical Sciences',
+  'Faculty of Veterinary Medicine',
+  'Faculty of Communication and Information Sciences',
+  'Faculty of Basic Medical Sciences',
+  'Faculty of Clinical Sciences',
+  'Faculty of Health Sciences',
+]
 
 const categoryOptions = [
   'Academic',
@@ -164,10 +184,11 @@ async function handleSaveEvent() {
     category: selectedCategories.value,
     end_date: eventData.value.end_date || null,
     date: eventData.value.date || null,
-    time: eventData.value.time, // keep 24-hour format
+    time: eventData.value.time,
+    faculty: eventData.value.faculty || null,
   }
 
-  const { imageUrl, linkToRegister, title, ...rest } = eventData.value
+  const { imageUrl, linkToRegister, user_email, title, ...rest } = eventData.value
 
   const updatePayload = {
     ...rest,
@@ -178,7 +199,11 @@ async function handleSaveEvent() {
     image_url: imageUrl,
     link_to_register: linkToRegister,
     event_title: title,
+    faculty: eventData.value.faculty || null,
+    email: user_email,
   }
+
+  console.log(updatePayload, 'aaa')
 
   let result
 
@@ -246,6 +271,7 @@ function resetForm() {
     user_email: '',
     user_id: '',
     external_registration_link: '',
+    faculty: '',
   }
   selectedCategories.value = []
   currentFileName.value = ''
@@ -269,8 +295,12 @@ function convertTo24Hour(time12h) {
 
   return `${String(hours).padStart(2, '0')}:${minutes}`
 }
-
+const handleBeforeUnload = (e) => {
+  e.preventDefault()
+  e.returnValue = ''
+}
 onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
   if (!eventId) return
 
   const { data, error } = await supabase.from('events').select('*').eq('id', eventId).maybeSingle()
@@ -295,6 +325,7 @@ onMounted(async () => {
       capacity: data.capacity,
       end_date: data.end_date,
       external_registration_link: data.external_registration_link,
+      faculty: data.faculty || '',
     }
 
     // ✅ FIX category
@@ -305,6 +336,9 @@ onMounted(async () => {
     // ✅ FIX filename
     currentFileName.value = data.image_url ? data.image_url.split('/').pop() : ''
   }
+})
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 <template>
@@ -352,6 +386,21 @@ onMounted(async () => {
                 <label :for="cat">{{ cat }}</label>
               </div>
             </div>
+          </div>
+          <div class="field-group">
+            <label>
+              Faculty
+              <span class="optional">(Optional)</span>
+            </label>
+            <select v-model="eventData.faculty" class="faculty-select">
+              <option value="">Select a Faculty (None)</option>
+              <option v-for="faculty in facultyOptions" :key="faculty" :value="faculty">
+                {{ faculty }}
+              </option>
+            </select>
+            <small class="helper-text-neutral"
+              >Only select if this event is faculty-specific.</small
+            >
           </div>
         </div>
       </section>
@@ -617,6 +666,34 @@ textarea:focus {
   /* background: #6366f1; */
   background: #055dfa;
   color: white;
+}
+
+.faculty-select {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  font-size: 14px;
+  cursor: pointer;
+  appearance: none; /* Removes default browser arrow */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+}
+
+.faculty-select:focus {
+  outline: none;
+  border-color: #055dfa;
+  background-color: #fff;
+}
+
+/* Neutral helper text for optional fields */
+.helper-text-neutral {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: -4px;
 }
 
 /* Utils */

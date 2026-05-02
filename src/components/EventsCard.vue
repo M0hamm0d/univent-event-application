@@ -157,8 +157,6 @@ async function onInterestClick(event) {
       window.open(event.external_registration_link, '_blank')
       return
     }
-
-    // CASE 2: Normal interest event
     await handleInterest(event)
   } catch (err) {
     console.error('onInterestClick error:', err)
