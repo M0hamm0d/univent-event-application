@@ -128,11 +128,54 @@ async function setReminder() {
     }
     for (let event of events.oneHrBeforeEvent) {
       if (!event.an_hr_email) {
+        // await transporter.sendMail({
+        //   from: process.env.EMAIL_USER,
+        //   to: event.user_id.user_email,
+        //   subject: `Reminder: ${event.event_id.event_title} is happening in an hour!`,
+        //   html: `Hi ${event.user_id.user_name}, \n\nThis is a reminder that the event "${event.event_id.event_title}" you are interested in is happening in an hour (${event.event_id.date} at ${event.event_id.time}). Don't miss it!. \n\nEvent Details:\n- Date: ${event.event_id.date}\n- Time: ${event.event_id.time}\n- Location: ${event.event_id.location}\n\nBest regards,\nUniVent Team`,
+        // })
         await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+          from: `"UniVent Team" <${process.env.EMAIL_USER}>`,
           to: event.user_id.user_email,
-          subject: `Reminder: ${event.event_id.event_title} is happening in an hour!`,
-          html: `Hi ${event.user_id.user_name}, \n\nThis is a reminder that the event "${event.event_id.event_title}" you are interested in is happening in an hour (${event.event_id.date} at ${event.event_id.time}). Don't miss it!. \n\nEvent Details:\n- Date: ${event.event_id.date}\n- Time: ${event.event_id.time}\n- Location: ${event.event_id.location}\n\nBest regards,\nUniVent Team`,
+          subject: `⏰ Reminder: ${event.event_id.event_title} starts in 1 hour!`,
+          html: `
+    <div style="font-family: sans-serif; background-color: #f9fafb; padding: 40px 10px;">
+      <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+
+        <!-- Header Banner -->
+        <div style="background-color: #4f46e5; padding: 20px; text-align: center;">
+          <span style="color: #ffffff; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Event Reminder</span>
+        </div>
+
+        <div style="padding: 30px;">
+          <h2 style="color: #111827; margin-top: 0; font-size: 20px;">Hey ${event.user_id.user_name}!</h2>
+          <p style="color: #4b5563; line-height: 1.6;">Don't forget! The event you're interested in is happening in just <strong>one hour</strong>. Here are the details you need:</p>
+
+          <!-- Event Detail Card -->
+          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 25px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #4f46e5; font-size: 18px;">${event.event_id.event_title}</h3>
+            <p style="margin: 5px 0; color: #374151; font-size: 14px;">📅 <strong>Date:</strong> ${event.event_id.date}</p>
+            <p style="margin: 5px 0; color: #374151; font-size: 14px;">⏰ <strong>Time:</strong> ${event.event_id.time}</p>
+            <p style="margin: 5px 0; color: #374151; font-size: 14px;">📍 <strong>Location:</strong> ${event.event_id.location}</p>
+          </div>
+
+          <!-- CTA Button -->
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="https://univent-app.com/events/${event.event_id._id}"
+               style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+               View Event Details
+            </a>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+          <p style="margin: 0; color: #9ca3af; font-size: 12px;">Sent by the UniVent Team</p>
+          <p style="margin: 5px 0 0 0; color: #9ca3af; font-size: 12px;">University of Ilorin</p>
+        </div>
+      </div>
+    </div>
+  `,
         })
         await supabaseAdmin
           .from('interested_events')

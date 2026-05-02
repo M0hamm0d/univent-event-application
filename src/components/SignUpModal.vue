@@ -1,6 +1,5 @@
 <script setup>
 // import GoogleLogo from './icons/GoogleLogo.vue'
-import UniventAuthLogo from './icons/UniventAuthLogo.vue'
 import { useUniventStore } from '../stores/counter'
 import { supabase } from '@/supabase'
 import { ref } from 'vue'
@@ -75,7 +74,7 @@ async function signInWithGoogle() {
   <div class="view-details-wrapper" @click.stop>
     <div class="close-btn" @click="emit('closeBtn')"><CancelBtn /></div>
     <div class="univentLogo">
-      <UniventAuthLogo />
+      <img loading="lazy" src="/blackLogo.png" alt="" width="" height="32" />
     </div>
     <div class="title">
       <h1>Welcome to UniVent</h1>

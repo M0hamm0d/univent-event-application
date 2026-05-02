@@ -1,6 +1,5 @@
 <script setup>
 import GoogleLogo from './icons/GoogleLogo.vue'
-import UniventAuthLogo from './icons/UniventAuthLogo.vue'
 import { useUniventStore } from '../stores/counter'
 import { useToast } from 'vue-toastification'
 import { supabase } from '@/supabase'
@@ -85,7 +84,7 @@ async function forgotPassword() {
   <div class="closeBtn" @click="emit('closeBtn')"><CancelBtn /></div>
   <div class="view-details-wrapper scroll-hint" @click.stop>
     <div class="univentLogo">
-      <UniventAuthLogo />
+      <img loading="lazy" src="/blackLogo.png" alt="" width="" height="32" />
     </div>
     <div class="title">
       <h1>Welcome Back to UniVent</h1>
