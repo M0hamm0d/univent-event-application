@@ -162,7 +162,3 @@ export default async function handler(req, res) {
     })
   }
 }
-// cron.schedule('0 * * * *', async () => {
-//   console.log('Cron Job Triggered: Checking for events...')
-//   await setReminder()
-// })

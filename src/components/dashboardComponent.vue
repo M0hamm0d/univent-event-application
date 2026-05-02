@@ -245,6 +245,7 @@ watch(
         </header>
 
         <div class="event-grid">
+          <!-- <p>{{ createdEvents }}</p> -->
           <div v-for="event in createdEvents" :key="event.id" class="event-card">
             <div class="card-content">
               <div class="card-main">
@@ -259,6 +260,11 @@ watch(
                 <div class="stat-item" v-if="event.requires_registration">
                   <span class="stat-label">Registrations</span>
                   <span class="stat-value">{{ event.registered_events?.[0]?.count || 0 }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Attending</span>
+                  <!-- <p>{{ event }}</p> -->
+                  <span class="stat-value">{{ event.interested_students }}</span>
                 </div>
                 <div class="stat-item">
                   <span class="stat-label">Shares</span>
