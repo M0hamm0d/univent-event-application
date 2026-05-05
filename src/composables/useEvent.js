@@ -38,7 +38,7 @@ export const useEvents = () => {
 
   const saveEvent = async (eventData) => {
     try {
-      const { error } = await supabase.from('requested-event').insert([
+      const { error } = await supabase.from('events').insert([
         {
           event_title: eventData.title,
           description: eventData.description,

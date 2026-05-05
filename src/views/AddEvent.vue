@@ -348,7 +348,10 @@ onUnmounted(() => {
         <BackArrow />
         <h1>Create New Event</h1>
       </RouterLink>
-      <p class="subtitle">Kindly complete the form below to submit your event. After submission, it will be reviewed by our team.</p>
+      <p class="subtitle">
+        Kindly complete the form below to submit your event. After submission, it will be reviewed
+        by our team.
+      </p>
     </div>
 
     <div class="form-container">
@@ -496,10 +499,10 @@ onUnmounted(() => {
               leave this empty.
             </small>
           </div>
-          <div class="field-group checkbox-row">
+          <!-- <div class="field-group checkbox-row">
             <input v-model="eventData.requires_registration" type="checkbox" id="reg-req" />
             <label for="reg-req">Register on UniVent</label>
-          </div>
+          </div> -->
 
           <div class="field-group" v-if="eventData.requires_registration">
             <label>Capacity</label>

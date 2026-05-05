@@ -152,6 +152,13 @@ async function deleteConfirmed() {
   }
 }
 
+function getStatusClass(state) {
+  const status = state?.toLowerCase()
+  if (status === 'accepted') return 'badge-success'
+  if (status === 'rejected') return 'badge-danger'
+  return 'badge-warning' // default for 'pending'
+}
+
 onMounted(async () => {
   if (univentStore.isAuthenticated) {
     loadingUserData.value = true
@@ -251,9 +258,16 @@ watch(
               <div class="card-main">
                 <h4 class="event-name">{{ event.event_title }}</h4>
 
-                <span :class="['badge', event.requires_registration ? 'badge-blue' : 'badge-gray']">
-                  {{ event.requires_registration ? 'Registrable' : 'Open Entry' }}
-                </span>
+                <div class="badge-wrapper">
+                  <span
+                    :class="['badge', event.requires_registration ? 'badge-blue' : 'badge-gray']"
+                  >
+                    {{ event.requires_registration ? 'Registrable' : 'Open Entry' }}
+                  </span>
+                  <span :class="['badge', getStatusClass(event.event_state)]">
+                    {{ event.event_state }}
+                  </span>
+                </div>
               </div>
 
               <div class="stats-container">
@@ -309,6 +323,38 @@ watch(
 </template>
 
 <style scoped>
+.badge-wrapper {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* Pending - Soft Orange/Yellow */
+.badge-warning {
+  background: #fff4e5;
+  color: #b76e00;
+  border: 1px solid #ffe5c4;
+}
+
+/* Accepted - Soft Green */
+.badge-success {
+  background: #e7f9ed;
+  color: #1a7f37;
+  border: 1px solid #cfefdb;
+}
+
+/* Rejected - Soft Red */
+.badge-danger {
+  background: #fff0f0;
+  color: #d12424;
+  border: 1px solid #ffdada;
+}
+
+/* Small adjustment to card-main to ensure title and badges don't touch */
+.card-main {
+  margin-bottom: 12px;
+}
 /* modal begins here */
 .modal-overlay {
   position: fixed;
