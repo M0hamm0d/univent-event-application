@@ -4,12 +4,11 @@ import { useRequestedEvents } from '@/composables/useRequestedEvents'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
 
-const { fetchRequestedAndEvents, pushToEvents } = useRequestedEvents()
+const { fetchRequestedAndEvents } = useRequestedEvents()
 const toast = useToast()
 
 const request = ref([])
 const requestData = ref([])
-const eventValue = ref([])
 const loading = ref(false)
 
 async function handlePushToEvent(id) {
@@ -33,6 +32,7 @@ async function handlePushToEvent(id) {
       .select('id')
       .eq('event_title', requestData.value.event_title)
       .eq('location', requestData.value.location)
+      .eq('event_state', 'accepted')
 
     if (fetchError) {
       console.error('Error checking events:', fetchError)
@@ -55,11 +55,17 @@ async function handlePushToEvent(id) {
         }
         toast.success('Duplicate email sent successfully')
         request.value = request.value.filter((r) => r.id !== id)
-        const { error: deleteError } = await supabase.from('requested-event').delete().eq('id', id)
-        if (deleteError) {
-          console.error('Error deleting request:', deleteError)
+
+        const { error: updateError } = await supabase
+          .from('events')
+          .update({ event_state: 'rejected' })
+          .eq('id', id)
+
+        // const { error: deleteError } = await supabase.from('requested-event').delete().eq('id', id)
+        if (updateError) {
+          console.error('Error updating event:', updateError)
         } else {
-          console.log('Request deleted successfully')
+          console.log('Event updated successfully')
         }
         return
       } catch (emailError) {
@@ -68,22 +74,18 @@ async function handlePushToEvent(id) {
         return
       }
     }
-    const { user_id, user_email, ...rest } = requestData.value
-    const eventData = {
-      ...rest,
-      created_by: user_id,
-      email: user_email,
+    const { error: updateError } = await supabase
+      .from('events')
+      .update({ event_state: 'accepted' })
+      .eq('id', id)
+
+    if (updateError) {
+      console.error('Error updating event:', updateError)
+      return
     }
-    console.log(eventData)
-
-    const result = await pushToEvents(eventData)
-
-    if (result.success) {
-      eventValue.value.push(...result.data)
-
-      request.value = request.value.filter((r) => r.id !== id)
-      toast.success('Event approved successfully')
-      try {
+    request.value = request.value.filter((r) => r.id !== id)
+    toast.success('Event approved successfully')
+    try {
       await fetch('/api/send-review-success', {
         method: 'POST',
         headers: {
@@ -94,13 +96,9 @@ async function handlePushToEvent(id) {
           event: requestData.value.event_title,
         }),
       })
-
-      } catch (emailError) {
-        console.error('Error sending review success email:', emailError)
-        toast.error('Failed to send review success email')
-      }
-    } else {
-      console.error('Push error:', result.error)
+    } catch (emailError) {
+      console.error('Error sending review success email:', emailError)
+      toast.error('Failed to send review success email')
     }
   } catch (err) {
     console.error('Unexpected error:', err)
@@ -138,10 +136,15 @@ async function handleReject(req) {
 
     request.value = request.value.filter((r) => r.id !== req.id)
 
-    const { error } = await supabase.from('requested-event').delete().eq('id', req.id)
+    const { error: updateError } = await supabase
+      .from('events')
+      .update({ event_state: 'rejected' })
+      .eq('id', req.id)
 
-    if (error) {
-      console.error('Delete error:', error)
+    // const { error } = await supabase.from('requested-event').delete().eq('id', req.id)
+
+    if (updateError) {
+      console.error('Update error:', updateError)
     }
 
     showRejectInput.value = null

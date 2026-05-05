@@ -13,12 +13,17 @@ export const useRequestedEvents = () => {
 
     try {
       const { data: requested_event, error: reqError } = await supabase
-        .from('requested-event')
+        .from('events')
         .select(
           'id,created_at, event_title, category, time, date,description,location,image_url, price,free_or_paid, link_to_register, end_date, capacity, event_format,requires_registration,user_id,user_email,external_registration_link,faculty',
         )
+        .eq('event_state', 'pending')
 
-      let query = supabase.from('events').select('*', { count: 'exact' }).gte('date', today)
+      let query = supabase
+        .from('events')
+        .select('*', { count: 'exact' })
+        .gte('date', today)
+        .eq('event_state', 'accepted')
       if (filters.category && filters.category.length) {
         query.overlaps('category', filters.category)
       }
