@@ -77,6 +77,13 @@ watch(is_interested, (newVal) => {
                 <span>•</span>
                 <span> {{ formatTime(event.time) }}</span>
               </div>
+              <div class="event-meta" v-if="event.end_date">
+                <span><PhCalendarBlank :size="20" color="#777" /></span>
+                <span
+                  >Ends {{ dayjs(event.end_date).format('dddd, MMMM D') }}
+                  {{ event.end_date.split('').slice(0, 4).join('') }}</span
+                >
+              </div>
               <div class="event-meta">
                 <span><PhMapPin :size="20" color="#777" /></span>
                 <span>{{ event.location }}</span>
@@ -91,6 +98,16 @@ watch(is_interested, (newVal) => {
               <div class="event-meta" v-if="event.link_to_register">
                 <span><RegisterIcon /></span>
                 <a :href="event.link_to_register">Join Virtual Event</a>
+              </div>
+              <div class="event-meta" v-if="event.external_registration_link">
+                <span><RegisterIcon /></span>
+                <a
+                  :href="event.external_registration_link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Register for Event
+                </a>
               </div>
             </div>
           </div>
