@@ -344,7 +344,7 @@ onMounted(async () => {
   .events-section {
     grid-template-columns: 1fr;
     margin-top: 0;
-    transform: translateY(-300px);
+    transform: translateY(-350px);
   }
   .pagination {
     margin-top: 0px;

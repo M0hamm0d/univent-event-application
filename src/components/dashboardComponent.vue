@@ -89,7 +89,7 @@ async function fetchCreatedEvents() {
       registered_events(count)
     `,
     )
-    .eq('created_by', univentStore.userProfile.id)
+    .eq('user_id', univentStore.userProfile.id)
 
   if (error) {
     console.error('fetchCreatedEvents', error.message)
@@ -98,6 +98,7 @@ async function fetchCreatedEvents() {
 
   createdEvents.value = data
 }
+//  .eq('created_by', univentStore.userProfile.id)
 
 async function fetchInterested() {
   if (!univentStore.userProfile?.id) return
@@ -252,7 +253,7 @@ watch(
         </header>
 
         <div class="event-grid">
-          <!-- <p>{{ createdEvents }}</p> -->
+          <!-- <p>{{ createdEvents.length }}</p> -->
           <div v-for="event in createdEvents" :key="event.id" class="event-card">
             <div class="card-content">
               <div class="card-main">
