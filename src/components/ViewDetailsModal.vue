@@ -70,7 +70,10 @@ watch(is_interested, (newVal) => {
             <div class="details">
               <div class="event-meta">
                 <span><PhCalendarBlank :size="20" color="#777" /></span>
-                <span
+                <div v-if="event.event_title?.toLowerCase().includes('learn as you build')">
+                  Date to be announced
+                </div>
+                <span v-else
                   >{{ dayjs(event.date).format('dddd, MMMM D') }}
                   {{ event.date.split('').slice(0, 4).join('') }}</span
                 >

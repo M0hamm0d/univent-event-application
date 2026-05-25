@@ -250,8 +250,17 @@ watch(
 
       <div class="event-block">
         <h3>{{ event.event_title }}</h3>
+        <div
+          v-if="event.event_title?.toLowerCase().includes('learn as you build')"
+          class="coming-soon-badge"
+        >
+          Coming Soon
+        </div>
         <div :class="['event-date-and-location', { notHomePage: route.path !== '/' }]">
-          <div class="">
+          <div v-if="event.event_title?.toLowerCase().includes('learn as you build')">
+            Date to be announced
+          </div>
+          <div class="" v-else>
             <CalendarIcon /> {{ dayjs(event.date).format('dddd, MMMM D') }} •
             {{ formatTime(event.time) }}
           </div>
@@ -332,6 +341,57 @@ watch(
 p,
 h3 {
   margin: 0;
+}
+
+/* .coming-soon-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1969fe;
+  background: #e8f0ff;
+  border: 1px solid #bad2ff;
+} */
+
+.coming-soon-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+  border-radius: 999px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  color: #fff;
+  background: rgba(20, 20, 20, 0.82);
+
+  backdrop-filter: blur(8px);
+
+  animation: floatBadge 2.5s ease-in-out infinite;
+}
+
+@keyframes floatBadge {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
 }
 
 .loading {
