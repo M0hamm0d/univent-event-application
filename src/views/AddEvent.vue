@@ -33,6 +33,7 @@ const eventData = ref({
   faculty: '',
 })
 const is_multi_day = ref(false)
+const date_not_fixed = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
 const currentFileName = ref('')
@@ -125,6 +126,16 @@ async function handleSaveEvent() {
     return
   }
 
+  if (!date_not_fixed.value && !eventData.value.date) {
+    toast.error('Please provide a date for the event or select "I\'m not sure about the date yet"')
+    return
+  }
+
+  if (date_not_fixed.value && eventData.value.date) {
+    toast.error('Please unselect the date or uncheck "I\'m not sure about the date yet"')
+    return
+  }
+
   if (is_multi_day.value && eventData.value.end_date < eventData.value.date) {
     toast.error('End date cannot be before start date')
     return
@@ -186,6 +197,7 @@ async function handleSaveEvent() {
     date: eventData.value.date || null,
     time: eventData.value.time,
     faculty: eventData.value.faculty || null,
+    date_not_fixed: date_not_fixed.value,
   }
 
   const { imageUrl, linkToRegister, user_email, title, ...rest } = eventData.value
@@ -194,6 +206,7 @@ async function handleSaveEvent() {
     ...rest,
     category: selectedCategories.value,
     end_date: eventData.value.end_date || null,
+    date_not_fixed: date_not_fixed.value || false,
     date: eventData.value.date || null,
     time: eventData.value.time,
     image_url: imageUrl,
@@ -415,7 +428,7 @@ onUnmounted(() => {
           <h3>Time & Location</h3>
           <p>Where and when is it happening?</p>
         </div>
-        <div class="section-fields card">
+        <!-- <div class="section-fields card">
           <div class="row">
             <div class="field-group checkbox-row">
               <input v-model="is_multi_day" type="checkbox" id="multi-day" />
@@ -453,6 +466,70 @@ onUnmounted(() => {
                 ><input type="radio" value="hybrid" v-model="eventData.event_format" />
                 Hybrid</label
               >
+            </div>
+          </div>
+
+          <div
+            class="field-group"
+            v-if="eventData.event_format !== 'virtual' && eventData.event_format !== ''"
+          >
+            <label>Physical Location</label>
+            <input v-model="eventData.location" type="text" placeholder="Venue or Address" />
+          </div>
+
+          <div
+            class="field-group"
+            v-if="eventData.event_format !== 'physical' && eventData.event_format !== ''"
+          >
+            <label>Meeting Link</label>
+            <input v-model="eventData.linkToRegister" type="text" placeholder="Zoom, Meet, etc." />
+          </div>
+        </div> -->
+        <div class="section-fields card">
+          <div class="row">
+            <div class="field-group checkbox-row">
+              <input v-model="is_multi_day" type="checkbox" id="multi-day" />
+              <label for="multi-day">This is a multi-day event</label>
+            </div>
+
+            <div class="field-group checkbox-row">
+              <input
+                v-model="date_not_fixed"
+                type="checkbox"
+                id="date-not-fixed"
+                @change="handleDateNotFixed"
+              />
+              <label for="date-not-fixed">I'm not sure about the date yet</label>
+            </div>
+          </div>
+
+          <div class="row" v-if="!date_not_fixed">
+            <div class="field-group">
+              <label>{{ is_multi_day ? 'Start Date' : 'Event Date' }}</label>
+              <input v-model="eventData.date" type="date" />
+            </div>
+            <div class="field-group" v-if="is_multi_day">
+              <label>End Date</label>
+              <input v-model="eventData.end_date" type="date" />
+            </div>
+            <div class="field-group">
+              <label>Start Time</label>
+              <input v-model="eventData.time" type="time" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Event Format (select one)</label>
+            <div class="radio-group">
+              <label class="radio-item">
+                <input type="radio" value="physical" v-model="eventData.event_format" /> Physical
+              </label>
+              <label class="radio-item">
+                <input type="radio" value="virtual" v-model="eventData.event_format" /> Virtual
+              </label>
+              <label class="radio-item">
+                <input type="radio" value="hybrid" v-model="eventData.event_format" /> Hybrid
+              </label>
             </div>
           </div>
 

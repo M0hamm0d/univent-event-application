@@ -250,16 +250,9 @@ watch(
 
       <div class="event-block">
         <h3>{{ event.event_title }}</h3>
-        <div
-          v-if="event.event_title?.toLowerCase().includes('learn as you build')"
-          class="coming-soon-badge"
-        >
-          Coming Soon
-        </div>
+        <div v-if="event.date_not_fixed" class="coming-soon-badge">Coming Soon</div>
         <div :class="['event-date-and-location', { notHomePage: route.path !== '/' }]">
-          <div v-if="event.event_title?.toLowerCase().includes('learn as you build')">
-            Date to be announced
-          </div>
+          <div v-if="event.date_not_fixed">Date to be announced</div>
           <div class="" v-else>
             <CalendarIcon /> {{ dayjs(event.date).format('dddd, MMMM D') }} •
             {{ formatTime(event.time) }}

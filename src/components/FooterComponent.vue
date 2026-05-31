@@ -77,8 +77,12 @@ async function copyEmail() {
 
         <div class="social-links">
           <a href="https://x.com/_univent" aria-label="Twitter"><PhXLogo size="32" /></a>
-          <a href="#" aria-label="Instagram"><PhInstagramLogo size="32" /></a>
-          <a href="#" aria-label="LinkedIn"><PhLinkedinLogo size="32" /></a>
+          <a href="https://www.instagram.com/__univent?igsh=eDc4NTE1ZDBjMTBn" aria-label="Instagram"
+            ><PhInstagramLogo size="32"
+          /></a>
+          <a href="https://www.linkedin.com/company/115976109/" aria-label="LinkedIn"
+            ><PhLinkedinLogo size="32"
+          /></a>
         </div>
       </div>
     </div>
