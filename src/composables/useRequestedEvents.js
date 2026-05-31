@@ -19,11 +19,17 @@ export const useRequestedEvents = () => {
         )
         .eq('event_state', 'pending')
 
+      // let query = supabase
+      //   .from('events')
+      //   .select('*', { count: 'exact' })
+      //   .gte('date', today)
+      //   .eq('event_state', 'accepted')
+
       let query = supabase
         .from('events')
         .select('*', { count: 'exact' })
-        .gte('date', today)
         .eq('event_state', 'accepted')
+        .or(`and(end_date.gte.${today}),and(end_date.is.null,date.gte.${today}),date.is.null`)
       if (filters.category && filters.category.length) {
         query.overlaps('category', filters.category)
       }

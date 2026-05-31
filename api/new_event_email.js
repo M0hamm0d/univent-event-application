@@ -85,9 +85,6 @@ export default async function handler(req, res) {
             <td style="font-size:12px;color:#ff4fa3;font-weight:bold;">
               ${e.category || 'Event'}
             </td>
-            <td align="right" style="font-size:12px;font-weight:bold;">
-              ${e.price || 'Free'}
-            </td>
           </tr>
         </table>
 
