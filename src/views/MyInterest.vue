@@ -18,7 +18,7 @@ const univentStore = useUniventStore()
 const { active, deleteInterest, loading, fetchInterest, filtersArray, interest } =
   useInterestedEvents(toast)
 const searchInput = ref(route.query.q || '')
-const { removeUserFromEvent } = useStoreUserDetails()
+const { cancelRegistration } = useStoreUserDetails()
 const result = ref([])
 const showDeleteModal = ref(false)
 const deleteType = ref('')
@@ -57,7 +57,7 @@ async function deleteConfirmed() {
     await deleteInterest(eventToDelete.value)
   } else if (activeModal.value === 'cancelRegistration') {
     console.log(toRaw(eventToDelete.value), 'event to delete')
-    await removeUserFromEvent(eventToDelete.value)
+    await cancelRegistration(eventToDelete.value)
     await deleteInterest(eventToDelete.value)
   }
   cancel()

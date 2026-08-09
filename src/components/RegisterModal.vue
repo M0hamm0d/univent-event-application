@@ -8,11 +8,11 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  local_Events: ref([]),
   showModal: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close', 'registered'])
 const loading = ref(false)
+const errorMsg = ref('')
 
 const univentStore = useUniventStore()
 const isLoggedIn = computed(() => univentStore.isAuthenticated)
@@ -26,15 +26,23 @@ function cancel() {
 }
 async function agree() {
   loading.value = true
-  const { addUserToEvent } = useStoreUserDetails()
-  const result = await addUserToEvent(props.event, props.local_Events)
-  loading.value = false
-  if (result.success) {
-    emit('registered', {
-      event: props.event,
-      status: result.status,
-    })
-    emit('close')
+  errorMsg.value = ''
+  try {
+    const { registerForEvent } = useStoreUserDetails()
+    const result = await registerForEvent(props.event)
+    if (result.success) {
+      emit('registered', {
+        event: props.event,
+        status: result.status,
+      })
+      emit('close')
+    } else {
+      errorMsg.value = result.message || 'Registration could not be completed.'
+    }
+  } catch (err) {
+    errorMsg.value = err?.message || 'An unexpected error occurred.'
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -60,12 +68,15 @@ async function agree() {
         <h2>Register?</h2>
         <p class="main-text">You're about to register for this event.</p>
         <p class="sub-text">
-          We’ll share your name, email, and phone number with the organizer so they can reserve your
-          spot.
+          We'll share your name and email with the organizer so they can reserve your spot.
         </p>
 
+        <div v-if="errorMsg" class="error-text">
+          {{ errorMsg }}
+        </div>
+
         <div class="modal-actions">
-          <button class="btn-outline" @click="cancel">Cancel</button>
+          <button class="btn-outline" @click="cancel" :disabled="loading">Cancel</button>
           <button class="btn-confirm" @click="agree" :disabled="loading">
             {{ loading ? 'Processing...' : 'Yes, I Agree' }}
           </button>
@@ -206,6 +217,13 @@ button {
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.error-text {
+  color: #dc2626;
+  font-size: 13px;
+  margin-bottom: 16px;
+  text-align: center;
 }
 
 @media (max-width: 480px) {

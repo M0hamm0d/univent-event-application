@@ -24,6 +24,7 @@ const eventData = ref({
   imageUrl: '',
   linkToRegister: '',
   requires_registration: false,
+  capacity: '',
   end_date: '',
   event_format: '',
   user_name: '',
@@ -213,6 +214,13 @@ async function handleSaveEvent() {
     link_to_register: linkToRegister,
     event_title: title,
     faculty: eventData.value.faculty || null,
+    capacity:
+      eventData.value.requires_registration &&
+      eventData.value.capacity !== '' &&
+      eventData.value.capacity !== undefined &&
+      eventData.value.capacity !== null
+        ? parseInt(eventData.value.capacity, 10)
+        : null,
     email: user_email,
   }
 
@@ -576,18 +584,26 @@ onUnmounted(() => {
               leave this empty.
             </small>
           </div>
-          <!-- <div class="field-group checkbox-row">
+          <div class="field-group checkbox-row">
             <input v-model="eventData.requires_registration" type="checkbox" id="reg-req" />
             <label for="reg-req">Register on UniVent</label>
-          </div> -->
+          </div>
 
           <div class="field-group" v-if="eventData.requires_registration">
-            <label>Capacity</label>
+            <label>
+              Capacity
+              <span class="optional">(Optional)</span>
+            </label>
             <input
               v-model="eventData.capacity"
               type="number"
+              min="0"
               placeholder="Leave empty for unlimited"
             />
+            <small class="helper-text-neutral"
+              >Number of spots. Leave empty for unlimited. Use 0 to close
+              registration.</small
+            >
           </div>
 
           <div class="field-group">

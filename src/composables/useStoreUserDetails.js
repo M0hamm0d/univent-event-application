@@ -4,214 +4,178 @@ import { useToast } from 'vue-toastification'
 
 export function useStoreUserDetails() {
   const toast = useToast()
-  // const userDetails = ref(null)
   const loading = ref(false)
 
-  // Adds the current user's details to event's registered_students,
-  async function addUserToEvent(event) {
+  // registerForEvent: atomic server-side registration + waitlist assignment.
+  // Calls the register_for_event RPC, which locks the event row, counts real
+  // registered_events rows, and inserts into registered_events or waiting_list.
+  // Returns { success, status } where status is one of:
+  //   'registered' | 'waitlisted' | 'already_registered' | 'already_waitlisted' | 'closed'
+  async function registerForEvent(event) {
     loading.value = true
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-    if (!user) {
-      toast.error('You must be logged in')
-      return { success: false }
-    }
+      if (!user) {
+        toast.error('You must be logged in')
+        return { success: false }
+      }
 
-    const { data: userName, error: eventError } = await supabase
-      .from('profile')
-      .select('user_name')
-      .eq('id', user.id)
-      .maybeSingle()
-    console.log('Fetched user name:', userName)
+      const { data: userName } = await supabase
+        .from('profile')
+        .select('user_name')
+        .eq('id', user.id)
+        .maybeSingle()
 
-    // Check if already registered
-    const { data: existing, error: checkError } = await supabase
-      .from('registered_events')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('event_id', event.id)
-      .maybeSingle()
+      const { data, error } = await supabase.rpc('register_for_event', {
+        p_event_id: event.id,
+        p_user_id: user.id,
+      })
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      toast.error(checkError.message)
-      return { success: false }
-    }
+      if (error) {
+        toast.error(error.message)
+        return { success: false }
+      }
 
-    // const eventIndex = localEvents.value.findIndex((e) => e.id === event.id)
-    // if (eventIndex === -1) return
+      const result = typeof data === 'string' ? JSON.parse(data) : data
+      const status = result?.status
 
-    if (existing) {
-      toast.success('You have already registered.')
-      return { success: true, status: 'registered' }
-    } else {
-      if (
-        (event.interested_students || 0) >= event.capacity &&
-        event.capacity !== 0 &&
-        event.capacity !== null
-      ) {
-        toast.error('Event is full, you will be added to the waiting list')
-        // Add to waiting list
-        // first check if already on waiting list
-        const { data: existingWaiting, error: waitingError } = await supabase
-          .from('waiting_list')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('event_id', event.id)
-          .maybeSingle()
-
-        if (waitingError && waitingError.code !== 'PGRST116') {
-          toast.error(waitingError.message)
-          return { success: false }
-        }
-
-        if (existingWaiting) {
-          toast.info('You are already on the waiting list for this event')
-          return { success: true, status: 'waitlist' }
-        }
-
-        const { error: insertWaitingError } = await supabase
-          .from('waiting_list')
-          .insert([{ user_id: user.id, event_id: event.id }])
-
-        if (insertWaitingError) {
-          toast.error(insertWaitingError.message)
-          return { success: false }
-        }
-
-        toast.success('Added to waiting list')
-        try {
-          await fetch('/api/confirm_waitlist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: user.email,
-              name: userName.user_name,
-              event: event,
-            }),
-          })
-        } catch (err) {
-          console.error('Error sending waitlist email:', err)
-        }
-        return { success: true, status: 'waitlist' }
-      } else {
-        // return { success: false }
-
-        const { error: insertError } = await supabase
-          .from('registered_events')
-          .insert([{ user_id: user.id, event_id: event.id }])
-
-        const { error: updateError } = await supabase
-          .from('events')
-          .update({ interested_students: event.interested_students + 1 })
-          .eq('id', event.id)
-
-        if (updateError) {
-          toast.error(updateError.message)
-          return { success: false }
-        }
-
-        if (insertError) {
-          toast.error(insertError.message)
-          return { success: false }
-        }
-
+      if (status === 'already_registered') {
+        toast.info('You are already registered for this event')
+        return { success: true, status: 'registered' }
+      }
+      if (status === 'already_waitlisted') {
+        toast.info('You are already on the waiting list for this event')
+        return { success: true, status: 'waitlisted' }
+      }
+      if (status === 'closed') {
+        toast.error('Registration for this event is closed')
+        return { success: false, status: 'closed' }
+      }
+      if (status === 'registered') {
         toast.success('Registration successful')
-        console.log('user', user, 'userName', userName, 'event', event)
         try {
           await fetch('/api/registration_email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: user.email,
-              name: userName.user_name,
-              event: event,
+              name: userName?.user_name,
+              event,
             }),
           })
-        } catch (error) {
-          // toast.error('An error occurred. Please try again.')
-          console.log('error sending registration email', error)
+        } catch (err) {
+          console.error('Error sending registration email:', err)
         }
-
         return { success: true, status: 'registered' }
       }
-      // localEvents.value[eventIndex].is_interest = true
+      if (status === 'waitlisted') {
+        toast.success(`Added to the waiting list (position ${result.position ?? '?'})`)
+        try {
+          await fetch('/api/confirm_waitlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              name: userName?.user_name,
+              event,
+            }),
+          })
+        } catch (err) {
+          console.error('Error sending waitlist email:', err)
+        }
+        return { success: true, status: 'waitlisted' }
+      }
+
+      toast.error('Unexpected registration response')
+      return { success: false }
+    } catch (err) {
+      console.error('registerForEvent error:', err)
+      toast.error(err?.message || 'Registration failed')
+      return { success: false }
+    } finally {
+      loading.value = false
     }
   }
 
-  async function removeUserFromEvent(event) {
+  // cancelRegistration: atomic server-side cancellation + waitlist promotion.
+  // Calls the cancel_registration RPC, which marks the registered_events row
+  // cancelled and promotes the oldest waitlisted student to registered in the
+  // same transaction, returning the promoted user's id (so we email them).
+  async function cancelRegistration(event) {
     loading.value = true
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-    if (!user) {
-      toast.error('You must be logged in')
-      return { success: false }
-    }
-    // Check if already registered
-    const { data: existing, error: checkError } = await supabase
-      .from('registered_events')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('event_id', event.id)
-      .maybeSingle()
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      toast.error(checkError.message)
-      return { success: false }
-    }
-
-    // const eventIndex = localEvents.value.findIndex((e) => e.id === event.id)
-    // if (eventIndex === -1) return
-
-    if (existing) {
-      const { error: deleteError } = await supabase
-        .from('registered_events')
-        .delete()
-        .eq('id', existing.id)
-
-      const { error: updateError } = await supabase
-        .from('events')
-        .update({ interested_students: event.interested_students - 1 })
-        .eq('id', event.id)
-
-      if (deleteError) {
-        toast.error(deleteError.message)
+      if (!user) {
+        toast.error('You must be logged in')
         return { success: false }
       }
 
-      if (updateError) {
-        toast.error(updateError.message)
+      const { data, error } = await supabase.rpc('cancel_registration', {
+        p_event_id: event.id,
+        p_user_id: user.id,
+      })
+
+      if (error) {
+        // "You are not registered" surfaces as a PostgREST exception message.
+        toast.info(error.message)
         return { success: false }
       }
 
-      toast.success('Removed from registered')
-      try {
-        const response = await fetch('/api/move_waitlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ event }),
-        })
-        const result = await response.json()
-        if (result.success) {
-          // toast.success('Next student from waitlist registered and emailed')
-          console.log('Next student from waitlist registered and emailed')
-        } else {
-          toast.info(result.message)
+      const result = typeof data === 'string' ? JSON.parse(data) : data
+      const status = result?.status
+
+      if (status === 'left_waitlist') {
+        toast.success('Removed from the waiting list')
+        return { success: true, status: 'left_waitlist' }
+      }
+      if (status === 'cancelled') {
+        toast.success('Your registration has been cancelled')
+        // Notify the promoted student (if any) via the existing email endpoint.
+        const promotedUserId = result?.promoted_user_id
+        if (promotedUserId) {
+          try {
+            const { data: promotedProfile } = await supabase
+              .from('profile')
+              .select('user_email, user_name')
+              .eq('id', promotedUserId)
+              .maybeSingle()
+            if (promotedProfile) {
+              await fetch('/api/registration_email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: promotedProfile.user_email,
+                  name: promotedProfile.user_name,
+                  event,
+                }),
+              })
+            }
+          } catch (err) {
+            console.error('Error notifying promoted student:', err)
+          }
         }
-      } catch (err) {
-        console.error('Error promoting student from waitlist:', err)
+        return { success: true, status: 'cancelled', promoted_user_id: promotedUserId }
       }
-    } else {
-      toast.info('You are not registered for this event')
+
+      toast.error('Unexpected cancellation response')
       return { success: false }
+    } catch (err) {
+      console.error('cancelRegistration error:', err)
+      toast.error(err?.message || 'Cancellation failed')
+      return { success: false }
+    } finally {
+      loading.value = false
     }
   }
 
   return {
-    addUserToEvent,
-    removeUserFromEvent,
+    registerForEvent,
+    cancelRegistration,
   }
 }

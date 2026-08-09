@@ -140,31 +140,5 @@ export const useRequestedEvents = () => {
     }
   }
 
-  const pushToEvents = async (requestData) => {
-    try {
-      const { data: selectedEvent, error } = await supabase
-        .from('events')
-        .insert([requestData])
-        .select()
-
-      if (error) throw error
-
-      if (selectedEvent.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('requested-event')
-          .delete()
-          .eq('id', requestData.id)
-
-        if (deleteError) throw deleteError
-
-        return { success: true, data: selectedEvent }
-      } else {
-        return { success: false, error: 'Insert failed, no event returned' }
-      }
-    } catch (err) {
-      return { success: false, error: err.message }
-    }
-  }
-
-  return { fetchRequestedAndEvents, pushToEvents }
+  return { fetchRequestedAndEvents }
 }
