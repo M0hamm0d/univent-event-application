@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { supabase } from '@/supabase'
 import HomeView from '@/views/HomeView.vue'
+
+const authRequired = ['add event', 'interested', 'settings', 'manage attendees', 'event request']
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -57,6 +60,21 @@ const router = createRouter({
       return { top: 0 }
     }
   },
+})
+
+// CLIENT-SIDE GAMES GUARD ONLY (RLS is the real source of truth).
+// The auth-required guard is a UX convenience that sends unauthenticated
+// users home instead of showing them an empty organizer page; the security
+// boundary is enforced by Supabase RLS + the SECURITY DEFINER RPCs.
+router.beforeEach(async (to) => {
+  if (!authRequired.includes(to.name)) return true
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) {
+    return { name: 'home' }
+  }
+  return true
 })
 
 export default router

@@ -86,7 +86,7 @@ async function fetchCreatedEvents() {
     .select(
       `
       *,
-      registered_events(count)
+      registered_events(status)
     `,
     )
     .eq('user_id', univentStore.userProfile.id)
@@ -158,6 +158,12 @@ function getStatusClass(state) {
   if (status === 'accepted') return 'badge-success'
   if (status === 'rejected') return 'badge-danger'
   return 'badge-warning' // default for 'pending'
+}
+
+function activeRegCount(event) {
+  const regs = event?.registered_events
+  if (!Array.isArray(regs)) return 0
+  return regs.filter((r) => r?.status === 'registered').length
 }
 
 onMounted(async () => {
@@ -274,12 +280,11 @@ watch(
               <div class="stats-container">
                 <div class="stat-item" v-if="event.requires_registration">
                   <span class="stat-label">Registrations</span>
-                  <span class="stat-value">{{ event.registered_events?.[0]?.count || 0 }}</span>
+                  <span class="stat-value">{{ activeRegCount(event) }}</span>
                 </div>
                 <div class="stat-item">
-                  <span class="stat-label">Attending</span>
-                  <!-- <p>{{ event }}</p> -->
-                  <span class="stat-value">{{ event.interested_students }}</span>
+                  <span class="stat-label">Interested</span>
+                  <span class="stat-value">{{ event.interested_students || 0 }}</span>
                 </div>
                 <div class="stat-item">
                   <span class="stat-label">Shares</span>

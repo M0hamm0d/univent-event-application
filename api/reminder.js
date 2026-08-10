@@ -73,6 +73,75 @@ async function fetchInterestedEvents() {
   }
 }
 
+// Mirror of fetchInterestedEvents but for registered attendees (status='registered').
+// Registered users get the same day-before / hour-before reminders so they don't
+// miss events they actually have a spot for.
+async function fetchRegisteredEvents() {
+  let now = new Date()
+  let tomorrowEvent = []
+  let oneHrBeforeEvent = []
+
+  let oneHrBefore = new Date(now)
+  oneHrBefore.setHours(now.getHours() + 1)
+
+  let hours = oneHrBefore.getHours()
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  hours = hours % 12
+  hours = hours ? hours : 12
+  const timeStr = `${hours.toString().padStart(2, '0')}:00${ampm}`
+
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
+  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+
+  const todayStr = now.toISOString().split('T')[0]
+
+  try {
+    let { data: registered_events, error } = await supabaseAdmin
+      .from('registered_events')
+      .select(
+        `
+      id,
+      a_day_email,
+      an_hr_email,
+      user_id (
+        id,
+        user_name,
+        user_email
+      ),
+      event_id!inner (
+        id,
+        event_title,
+        date,
+        time,
+        location,
+        category,
+        price,
+        description,
+        image_url
+      )
+     `,
+      )
+      .eq('status', 'registered')
+      .in('event_id.date', [todayStr, tomorrowStr])
+
+    if (error) {
+      console.error('Error fetching registered events:', error)
+      return { tomorrowEvent: [], oneHrBeforeEvent: [] }
+    }
+    tomorrowEvent = registered_events.filter((event) => {
+      return event.event_id.date == tomorrowStr && !event.a_day_email
+    })
+    oneHrBeforeEvent = registered_events.filter((event) => {
+      return event.event_id.date == todayStr && event.event_id.time == timeStr && !event.an_hr_email
+    })
+    return { tomorrowEvent, oneHrBeforeEvent }
+  } catch (err) {
+    console.error('Error fetching registered events:', err)
+    return { tomorrowEvent: [], oneHrBeforeEvent: [] }
+  }
+}
+
 let events = await fetchInterestedEvents()
 
 console.log('----- TOMORROW EVENTS ---------')
@@ -225,6 +294,80 @@ async function setReminder() {
           .eq('id', event.id)
         console.log(
           `Reminder sent to ${event.user_id.user_email} for event ${event.event_id.event_title} happening in an hour.`,
+        )
+      }
+    }
+
+    // --- RegisteredAttendees reminders (separate from interest) ---
+    const regEvents = await fetchRegisteredEvents()
+    for (let event of regEvents.tomorrowEvent) {
+      if (!event.a_day_email) {
+        await transporter.sendMail({
+          from: `"UniVent Team" <${process.env.EMAIL_USER}>`,
+          to: event.user_id.user_email,
+          subject: `📅 Reminder: ${event.event_id.event_title} is tomorrow!`,
+          html: `
+        <div style="font-family: sans-serif; background-color: #f3f4f6; padding: 40px 10px;">
+          <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+            <div style="background-color: #1969fe; padding: 20px; text-align: center;">
+              <span style="color: #ffffff; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">See You Tomorrow</span>
+            </div>
+            <div style="padding: 30px;">
+              <h2 style="color: #111827; margin-top: 0; font-size: 20px;">Hi ${event.user_id.user_name},</h2>
+              <p style="color: #4b5563; line-height: 1.6;">This is a friendly reminder that an event you're <strong>registered</strong> for is happening <strong>tomorrow</strong>. Your spot is reserved!</p>
+              <div style="border-left: 4px solid #1969fe; background-color: #f9fafb; padding: 20px; margin: 25px 0;">
+                <h3 style="margin: 0 0 10px 0; color: #111827; font-size: 18px;">${event.event_id.event_title}</h3>
+                <p style="margin: 5px 0; color: #4b5563; font-size: 14px;">📅 <strong>Date:</strong> ${event.event_id.date}</p>
+                <p style="margin: 5px 0; color: #4b5563; font-size: 14px;">⏰ <strong>Time:</strong> ${event.event_id.time}</p>
+                <p style="margin: 5px 0; color: #4b5563; font-size: 14px;">📍 <strong>Location:</strong> ${event.event_id.location}</p>
+              </div>
+            </div>
+            <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">Sent via UniVent</p>
+            </div>
+          </div>
+        </div>
+      `,
+        })
+        await supabaseAdmin.from('registered_events').update({ a_day_email: true }).eq('id', event.id)
+        console.log(
+          `Registered reminder sent to ${event.user_id.user_email} for ${event.event_id.event_title} tomorrow.`,
+        )
+      }
+    }
+    for (let event of regEvents.oneHrBeforeEvent) {
+      if (!event.an_hr_email) {
+        await transporter.sendMail({
+          from: `"UniVent Team" <${process.env.EMAIL_USER}>`,
+          to: event.user_id.user_email,
+          subject: `⏰ Reminder: ${event.event_id.event_title} starts in 1 hour!`,
+          html: `
+    <div style="font-family: sans-serif; background-color: #f9fafb; padding: 40px 10px;">
+      <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+        <div style="background-color: #4f46e5; padding: 20px; text-align: center;">
+          <span style="color: #ffffff; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Event Reminder</span>
+        </div>
+        <div style="padding: 30px;">
+          <h2 style="color: #111827; margin-top: 0; font-size: 20px;">Hey ${event.user_id.user_name}!</h2>
+          <p style="color: #4b5563; line-height: 1.6;">Don't forget! The event you're <strong>registered</strong> for is happening in just <strong>one hour</strong>. Your spot is reserved!</p>
+          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 25px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #4f46e5; font-size: 18px;">${event.event_id.event_title}</h3>
+            <p style="margin: 5px 0; color: #374151; font-size: 14px;">📅 <strong>Date:</strong> ${event.event_id.date}</p>
+            <p style="margin: 5px 0; color: #374151; font-size: 14px;">⏰ <strong>Time:</strong> ${event.event_id.time}</p>
+            <p style="margin: 5px 0; color: #374151; font-size: 14px;">📍 <strong>Location:</strong> ${event.event_id.location}</p>
+          </div>
+        </div>
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+          <p style="margin: 0; color: #9ca3af; font-size: 12px;">Sent by the UniVent Team</p>
+          <p style="margin: 5px 0 0 0; color: #9ca3af; font-size: 12px;">University of Ilorin</p>
+        </div>
+      </div>
+    </div>
+  `,
+        })
+        await supabaseAdmin.from('registered_events').update({ an_hr_email: true }).eq('id', event.id)
+        console.log(
+          `Registered reminder sent to ${event.user_id.user_email} for ${event.event_id.event_title} in an hour.`,
         )
       }
     }

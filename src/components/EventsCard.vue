@@ -21,7 +21,7 @@ const route = useRoute()
 const router = useRouter()
 const { toggleInterest } = useInterestedEvents()
 // const { isEventRegistrable } = useRegistrable()
-const { removeUserFromEvent } = useStoreUserDetails()
+const { cancelRegistration } = useStoreUserDetails()
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -78,7 +78,8 @@ async function loadWaitingListStatus(event) {
 function onRegisterClick({ event, status }) {
   if (status === 'registered') {
     registeredMap.value[event.id] = true
-  } else if (status === 'waitlist') {
+    waitingListMap.value[event.id] = false
+  } else if (status === 'waitlisted') {
     waitingListMap.value[event.id] = true
   }
 }
@@ -145,8 +146,18 @@ async function onInterestClick(event) {
     const requiresRegistration = !!event.requires_registration
     if (requiresRegistration) {
       if (registeredMap.value[id]) {
-        await removeUserFromEvent(event)
-        registeredMap.value[id] = false
+        // Already registered -> cancel via the atomic RPC (also promotes waitlist).
+        const result = await cancelRegistration(event)
+        if (result.success && (result.status === 'cancelled' || result.status === 'left_waitlist')) {
+          registeredMap.value[id] = false
+          waitingListMap.value[id] = false
+        }
+      } else if (waitingListMap.value[id]) {
+        // On the waitlist -> cancel removes them from it.
+        const result = await cancelRegistration(event)
+        if (result.success && result.status === 'left_waitlist') {
+          waitingListMap.value[id] = false
+        }
       } else {
         await handleRegister(event)
       }
@@ -220,7 +231,9 @@ watch(
         },
       })
     } else {
-      const { modal, id, ...rest } = route.query
+      const rest = { ...route.query }
+      delete rest.modal
+      delete rest.id
       router.replace({ query: rest })
     }
   },
@@ -287,7 +300,6 @@ watch(
               <RegisterModal
                 v-if="showModal"
                 :event="selectedRegisterEvent"
-                :local_Events="localEvents"
                 :show-modal="showModal"
                 @close="showModal = false"
                 @registered="onRegisterClick"
