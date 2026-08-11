@@ -134,7 +134,7 @@ function openModal(event) {
 
 async function deleteConfirmed() {
   loading.value = true
-  console.log(eventToDelete.value)
+  console.log(toRaw(eventToDelete.value))
   try {
     const { error } = await supabase.from('events').delete().eq('id', eventToDelete.value.id)
     if (error) {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useEvents } from '@/composables/useEvent'
 import DownloadIcon from '@/components/icons/DownloadIcon.vue'
@@ -7,12 +7,58 @@ import { supabase } from '@/supabase'
 import BackArrow from '@/components/icons/BackArrow.vue'
 import { useRoute } from 'vue-router'
 import { onMounted, onUnmounted } from 'vue'
+import FormBuilder from '@/components/forms/FormBuilder.vue'
+import { validateFields, useRegistrationForm } from '@/composables/useRegistrationForm'
 
 const toast = useToast()
 const { uploadFile, saveEvent } = useEvents()
+const { createFormDraft, saveDraft, publish } = useRegistrationForm()
 const currentUser = ref('')
 const route = useRoute()
 const eventId = route.query.id
+
+// ---------------------------------------------------------------------------
+// Custom registration form state.
+//
+// AddEvent owns the overall event-creation state, including the in-memory
+// custom-form DRAFT for new events. The draft lives ONLY in `pendingFormDraft`
+// (a plain object) until the event is successfully created. Then — and only
+// then — we persist it via useRegistrationForm (createFormDraft → saveDraft →
+// publish if requested). This means opening/closing the FormBuilder never
+// creates any registration_forms / registration_form_versions rows just
+// because the organizer explored the builder.
+//
+// For EXISTING events (edit mode) the form already has an id, so the builder
+// runs in 'live' mode and reads/writes Supabase directly against `eventId`.
+//
+// `formBuilderKey` is bumped whenever the builder is (re)opened so the
+// FormBuilder component remounts with fresh props (important for local mode,
+// so an updated pendingFormDraft seed re-hydrates the editor cleanly).
+// ---------------------------------------------------------------------------
+const pendingFormDraft = ref(null) // { title, description, fields, status } | null
+const formBuilderOpen = ref(false)
+const formBuilderMode = ref('live') // 'live' | 'local'
+const formBuilderKey = ref(0)
+// True for an existing event that already has a registration_forms row. We
+// probe for it on mount so the summary card can offer "Edit Registration Form".
+const existingFormDetected = ref(false)
+
+const hasCustomForm = computed(
+  () => !!pendingFormDraft.value || existingFormDetected.value,
+)
+
+// Colored dot for the summary card. 'draft' (or nothing yet) is neutral,
+// 'published' is the brand accent. Only meaningful for the in-memory draft.
+const pendingFormDraftStatusClass = computed(() => {
+  if (pendingFormDraft.value?.status === 'published') return 'custom-form-summary__tag--published'
+  return 'custom-form-summary__tag--draft'
+})
+
+// FormBuilder is only available for UniVent-registrable events without an
+// external registration link (the same gate as Stage 0's registration mode).
+const canCustomizeForm = computed(
+  () => eventData.value.requires_registration && !eventData.value.external_registration_link,
+)
 
 const eventData = ref({
   title: '',
@@ -245,23 +291,56 @@ async function handleSaveEvent() {
 
     toast.success('Event updated successfully')
     result = data
-    resetForm()
+    // Existing event: the form already attaches to the event id and the
+    // FormBuilder runs in live mode. Keep the builder open after the update.
+    resetForm({ keepBuilderOpen: true })
   } else {
     loading.value = true
     try {
+      // 1) Pre-validate the in-memory custom-form draft BEFORE creating the
+      //    event so a malformed draft doesn't leave us with a saved event and
+      //    no form. The authoritative validator is the DB RPC; this is the
+      //    same client-side check FormBuilder uses.
+      if (pendingFormDraft.value) {
+        const errs = validateFields(pendingFormDraft.value.fields || [])
+        if (errs.length) {
+          toast.error('Your custom form has errors: ' + errs.join(' '))
+          return
+        }
+      }
+
+      // 2) Create the event row and get its id.
       result = await saveEvent(payload)
       if (!result.success) {
         throw new Error(result.error)
       }
+      const newEventId = result.id
+
+      // 3) Persist the custom registration form (if any) using that event id.
+      //    Done best-effort: the event row already exists, so a form-persist
+      //    failure leaves the event intact and the organizer can retry from
+      //    /add-event?id=<newId>. We do NOT roll the event back.
+      if (pendingFormDraft.value && newEventId) {
+        await attachPendingForm(newEventId)
+      }
+
+      // 4) Capture the organizer's identity + event title BEFORE resetForm
+      //    clears eventData (the confirmation email needs them).
+      const organizerEmail = eventData.value.user_email
+      const organizerName = eventData.value.user_name
+      const eventTitle = eventData.value.title
+
+      // 5) Reset the on-screen event fields (and clear the now-persisted
+      //    draft) before telling the user everything succeeded.
       resetForm()
       toast.success('Event submitted successfully')
       await fetch('/api/send-submission-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: eventData.value.user_email,
-          name: eventData.value.user_name,
-          event: eventData.value.title,
+          email: organizerEmail,
+          name: organizerName,
+          event: eventTitle,
         }),
       })
     } catch (err) {
@@ -274,7 +353,60 @@ async function handleSaveEvent() {
   }
 }
 
-function resetForm() {
+/**
+ * attachPendingForm(eventId)
+ *   Replays the in-memory draft into Supabase now that the event exists. Steps:
+ *     i.   createFormDraft  → registration_forms row (status 'draft', empty)
+ *     ii.  saveDraft        → persist title/description/fields_draft
+ *     iii. publish (RPC)    → only when pendingFormDraft.status === 'published'
+ *   Each step is reported independently via toast; the event stays in place
+ *   regardless. Reuses useRegistrationForm so there's a single persistence path
+ *   shared with the live FormBuilder.
+ */
+async function attachPendingForm(newEventId) {
+  const d = pendingFormDraft.value
+  if (!d) return
+  try {
+    const created = await createFormDraft({
+      eventId: newEventId,
+      organizerId: eventData.value.user_id,
+      title: d.title || 'Registration Form',
+      description: d.description || '',
+    })
+    if (!created.success) {
+      toast.error('Could not attach your custom form: ' + created.error + ' Open the event to retry.')
+      return
+    }
+    const saved = await saveDraft(created.form.id, {
+      title: d.title || 'Registration Form',
+      description: d.description || '',
+      fields_draft: d.fields || [],
+    })
+    if (!saved.success) {
+      toast.error('Saved the event, but the form fields failed: ' + saved.error + ' Open the event to retry.')
+      return
+    }
+    if (d.status === 'published') {
+      const pub = await publish(created.form.id, d.fields || [])
+      if (!pub.success) {
+        toast.error('Form saved as a draft, but publishing failed: ' + pub.error + ' You can publish it later from the event editor.')
+      }
+    }
+  } catch (e) {
+    toast.error('Could not attach your custom form: ' + (e.message || e) + ' Open the event to retry.')
+  }
+}
+
+// `resetForm` clears the event-input fields on screen + the custom-form UI
+// state. Both the create and update paths call it after a successful write.
+//
+// `keepBuilderOpen=true` is passed on the EXISTING-event update path so the
+// FormBuilder section stays usable after the update (matches prior behavior,
+// where the builder remained visible on edit). On the NEW-event path we pass
+// false (default) so the draft clears — by that point the form has already
+// been persisted against the newly-created event id, so the in-memory draft
+// is obsolete.
+function resetForm({ keepBuilderOpen = false } = {}) {
   eventData.value = {
     title: '',
     description: '',
@@ -297,6 +429,10 @@ function resetForm() {
   selectedCategories.value = []
   currentFileName.value = ''
   is_multi_day.value = false
+  if (!keepBuilderOpen) {
+    pendingFormDraft.value = null
+    formBuilderOpen.value = false
+  }
 }
 
 function convertTo24Hour(time12h) {
@@ -319,6 +455,51 @@ function convertTo24Hour(time12h) {
 const handleBeforeUnload = (e) => {
   e.preventDefault()
   e.returnValue = ''
+}
+
+// --- Custom registration form handlers -------------------------------------
+//
+// openFormBuilder:  mount the FormBuilder. New events run in 'local' mode
+//                   (pure in-memory draft, no DB rows); existing events run
+//                   in 'live' mode (direct Supabase reads/writes via the
+//                   already-attached registration_forms row).
+// closeFormBuilder: unmount the builder WITHOUT touching the pending draft,
+//                   so an accidental open/close (or a Cancel emit) keeps any
+//                   already-saved draft intact (per the agreed contract).
+// onFormSaved:      replace the pending draft with whatever the organizer just
+//                   finished designing and close the builder. The draft here
+//                   is {title, description, fields, status}; fields are already
+//                   normalized by the FormBuilder before emitting.
+// onFormCancelled:  the organizer clicked "Cancel" inside the builder. Keep
+//                   any existing pending draft (only a never-saved, brand-new
+//                   draft is effectively dropped because there isn't one yet).
+// removeCustomForm: explicitly discard the in-memory draft so the event
+//                   falls back to the default registration flow. Only applies
+//                   to new events (existing events edit their form live).
+// ---------------------------------------------------------------------------
+function openFormBuilder() {
+  formBuilderMode.value = eventId ? 'live' : 'local'
+  formBuilderKey.value++
+  formBuilderOpen.value = true
+}
+function closeFormBuilder() {
+  // Keeping pendingFormDraft intact on purpose (see contract above).
+  formBuilderOpen.value = false
+}
+function onFormSaved(draft) {
+  pendingFormDraft.value = draft
+  formBuilderOpen.value = false
+}
+function onFormCancelled() {
+  // Per the agreed contract: a cancel preserves any draft that was already
+  // saved earlier. A brand-new draft that was never saved just never reaches
+  // pendingFormDraft, so there's nothing to clean up here.
+  formBuilderOpen.value = false
+}
+function removeCustomForm() {
+  pendingFormDraft.value = null
+  formBuilderOpen.value = false
+  toast.info('Custom form removed. The event will use the default registration flow.')
 }
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
@@ -356,6 +537,25 @@ onMounted(async () => {
 
     // ✅ FIX filename
     currentFileName.value = data.image_url ? data.image_url.split('/').pop() : ''
+
+    // ✅ Detect an existing custom registration form for this event so the
+    // builder section opens automatically on edit. RLS filters to the
+    // organizer's own events; a non-owner would get null here.
+    if (data.requires_registration && !data.external_registration_link) {
+      const { data: existingForm } = await supabase
+        .from('registration_forms')
+        .select('id, status')
+        .eq('event_id', eventId)
+        .maybeSingle()
+      if (existingForm) {
+        existingFormDetected.value = true
+        formBuilderMode.value = 'live'
+        // Preserve prior UX: auto-open the live builder on edit when a form
+        // already exists. A fresh key makes FormBuilder load the DB form once.
+        formBuilderKey.value++
+        formBuilderOpen.value = true
+      }
+    }
   }
 })
 onUnmounted(() => {
@@ -601,9 +801,98 @@ onUnmounted(() => {
               placeholder="Leave empty for unlimited"
             />
             <small class="helper-text-neutral"
-              >Number of spots. Leave empty for unlimited. Use 0 to close
-              registration.</small
+              >Number of spots. Leave empty for unlimited. Use 0 to close registration.</small
             >
+          </div>
+
+          <!-- ============================================================ -->
+          <!-- Custom Registration Form (Stage 6B)                          -->
+          <!-- Only relevant for UniVent-registrable events without an      -->
+          <!-- external link. Independent from the default MODE 1 flow: if  -->
+          <!-- the organizer skips this, the event keeps the existing simple -->
+          <!-- RegisterModal + register_for_event flow.                     -->
+          <!--                                                              -->
+          <!-- State key:                                                   -->
+          <!--   - Opt-in CTA      when !hasCustomForm && !formBuilderOpen   -->
+          <!--   - Summary card    when hasCustomForm && !formBuilderOpen   -->
+          <!--   - Inline builder  when formBuilderOpen                     -->
+          <!-- For NEW events the builder runs in 'local' mode (in-memory   -->
+          <!-- draft, persisted only at Create Event time). For EXISTING    -->
+          <!-- events it runs in 'live' mode against the real event id.     -->
+          <!-- ============================================================ -->
+          <div v-if="canCustomizeForm" class="field-group">
+            <label>
+              Custom Registration Form
+              <span class="optional">optional</span>
+            </label>
+
+            <!-- A) Opt-in: nothing configured, builder closed -->
+            <div v-if="!hasCustomForm && !formBuilderOpen" class="custom-form-opt-in">
+              <p>
+                Add a custom form students fill in when registering (questions, file uploads, etc.).
+                If you skip this, the event uses UniVent's default confirmation flow.
+              </p>
+              <button type="button" class="opt-in-btn" @click="openFormBuilder">
+                Add Registration Form
+              </button>
+            </div>
+
+            <!-- B) Summary: a custom form is configured, builder closed -->
+            <div
+              v-else-if="hasCustomForm && !formBuilderOpen"
+              class="custom-form-summary"
+            >
+              <div class="custom-form-summary__main">
+                <span class="custom-form-summary__tag" :class="pendingFormDraftStatusClass"></span>
+                <div>
+                  <p>
+                    <strong>Custom registration form configured</strong>
+                    <template v-if="pendingFormDraft">
+                      · {{ pendingFormDraft.fields?.length || 0 }} field(s) ·
+                      {{ pendingFormDraft.status === 'published' ? 'will be published' : 'saved as draft' }}
+                      <em class="custom-form-summary__hint">(attached when you create the event)</em>
+                    </template>
+                    <template v-else-if="existingFormDetected">
+                      · attached to this event
+                      <em class="custom-form-summary__hint">(edited live against the saved event)</em>
+                    </template>
+                  </p>
+                </div>
+              </div>
+              <div class="custom-form-summary__actions">
+                <button type="button" class="opt-in-btn" @click="openFormBuilder">
+                  Edit Registration Form
+                </button>
+                <button
+                  v-if="pendingFormDraft"
+                  type="button"
+                  class="opt-in-btn opt-in-btn--ghost"
+                  @click="removeCustomForm"
+                >
+                  Remove — use default registration
+                </button>
+              </div>
+            </div>
+
+            <!-- C) Builder open (local for new events, live for existing) -->
+            <div v-else class="custom-form-builder-wrap">
+              <button
+                type="button"
+                class="opt-in-btn opt-in-btn--ghost custom-form-builder-wrap__back"
+                @click="closeFormBuilder"
+              >
+                ← Back to event details
+              </button>
+              <FormBuilder
+                :key="formBuilderKey"
+                :mode="formBuilderMode"
+                :event-id="eventId || null"
+                :organizer-id="eventData.user_id"
+                :initial-draft="pendingFormDraft"
+                @saved="onFormSaved"
+                @cancelled="onFormCancelled"
+              />
+            </div>
           </div>
 
           <div class="field-group">
@@ -938,5 +1227,99 @@ textarea:focus {
     font-size: 11px;
     padding: 12px 8px;
   }
+}
+
+/* Custom Registration Form (Stage 6B) */
+.custom-form-opt-in,
+.custom-form-pending {
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+.custom-form-opt-in p,
+.custom-form-pending p {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.custom-form-summary {
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.custom-form-summary__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.custom-form-summary__tag {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-top: 6px;
+  flex: 0 0 auto;
+}
+.custom-form-summary__tag--draft {
+  background: #94a3b8;
+}
+.custom-form-summary__tag--published {
+  background: #055dfa;
+}
+.custom-form-summary__main p {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+.custom-form-summary__hint {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.custom-form-summary__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.custom-form-builder-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.custom-form-builder-wrap__back {
+  align-self: flex-start;
+}
+.opt-in-btn {
+  padding: 8px 16px;
+  background: #055dfa;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.opt-in-btn:hover {
+  background: #0447c4;
+}
+.opt-in-btn--ghost {
+  background: transparent;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.opt-in-btn--ghost:hover {
+  background: #f1f5f9;
 }
 </style>

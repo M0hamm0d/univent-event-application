@@ -1,0 +1,30 @@
+-- UniVent Registration System — Stage 6H: cleanup of the dead form_data column
+-- Run after 20260809000008_registration_form_rpcs.sql.
+-- Idempotent (guards with information_schema checks).
+--
+-- Background:
+--   Migration 20260809000001 added `registered_events.form_data jsonb NOT NULL
+--   DEFAULT '{}'::jsonb` as a future-looking seam for custom registration form
+--   answers. That seam was never used:
+--     - `register_for_event` (Stage 0) never accepted a form_data parameter.
+--     - The Stage 6A custom-form architecture deliberately stores answers in
+--       its own `registration_form_responses` table (keyed on event_id +
+--       user_id) so waitlisted student answers survive promotion. The seam
+--       column lives only on registered_events, which waitlisted students
+--       don't have a row in until they're promoted — it couldn't have worked.
+--   A project-wide grep during Stage 6A confirmed the column is never
+--   SELECTed, INSERTed, or UPDATEd anywhere in the repo, and the RPC
+--   docstrings explicitly left it marked "not returned here yet."
+--
+--   This migration drops the dead column now that the real
+--   registration_form_responses table (migration 005) supersedes it.
+--
+-- Safety:
+--   * Idempotent — uses the information_schema check before ALTER.
+--   * Preserves every other registered_events column (status, registered_at,
+--     a_day_email, an_hr_email, created_at). No data loss in any live row
+--     because the column only ever held the literal default `'{}'`.
+--   * SECURITY DEFINER RPCs don't reference form_data (verified by grep
+--     during 6A), so re-creating them in 6A + this drop don't conflict.
+ALTER TABLE registered_events
+  DROP COLUMN IF EXISTS form_data;
