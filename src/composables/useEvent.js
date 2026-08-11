@@ -38,35 +38,41 @@ export const useEvents = () => {
 
   const saveEvent = async (eventData) => {
     try {
-      const { error } = await supabase.from('events').insert([
-        {
-          event_title: eventData.title,
-          description: eventData.description,
-          category: eventData.category,
-          date: eventData.date,
-          end_date: eventData.end_date,
-          location: eventData.location,
-          time: eventData.time,
-          image_url: eventData.imageUrl,
-          link_to_register: eventData.linkToRegister,
-          event_format: eventData.event_format,
-          requires_registration: eventData.requires_registration,
-          capacity:
-            eventData.requires_registration && eventData.capacity !== '' && eventData.capacity !== undefined && eventData.capacity !== null
-              ? parseInt(eventData.capacity, 10)
+      const { data, error } = await supabase
+        .from('events')
+        .insert([
+          {
+            event_title: eventData.title,
+            description: eventData.description,
+            category: eventData.category,
+            date: eventData.date,
+            end_date: eventData.end_date,
+            location: eventData.location,
+            time: eventData.time,
+            image_url: eventData.imageUrl,
+            link_to_register: eventData.linkToRegister,
+            event_format: eventData.event_format,
+            requires_registration: eventData.requires_registration,
+            capacity:
+              eventData.requires_registration && eventData.capacity !== '' && eventData.capacity !== undefined && eventData.capacity !== null
+                ? parseInt(eventData.capacity, 10)
               : null,
-          date_not_fixed: eventData.date_not_fixed ?? false,
-          faculty: eventData.faculty || null,
-          user_email: eventData.user_email,
-          user_name: eventData.user_name,
-          user_id: eventData.user_id,
-          external_registration_link: eventData.external_registration_link,
-        },
-      ])
+            date_not_fixed: eventData.date_not_fixed ?? false,
+            faculty: eventData.faculty || null,
+            user_email: eventData.user_email,
+            user_name: eventData.user_name,
+            user_id: eventData.user_id,
+            external_registration_link: eventData.external_registration_link,
+          },
+        ])
+        .select('id')
+        .single()
 
       if (error) throw error
 
-      return { success: true }
+      // Return the new event id so callers (e.g. the custom-form builder flow
+      // in AddEvent.vue) can attach a registration form after the event exists.
+      return { success: true, id: data?.id || null }
     } catch (err) {
       return {
         success: false,
