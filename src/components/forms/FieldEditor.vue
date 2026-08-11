@@ -14,12 +14,7 @@ const props = defineProps({
   total: { type: Number, required: true },
 })
 
-const emit = defineEmits([
-  'update:field',
-  'remove',
-  'move-up',
-  'move-down',
-])
+const emit = defineEmits(['update:field', 'remove', 'move-up', 'move-down'])
 
 const typeMeta = computed(
   () => FIELD_TYPES.find((t) => t.type === props.field.type) || { label: props.field.type },
@@ -74,7 +69,12 @@ function removeOption(index) {
         >
           <PhArrowDown :size="16" />
         </button>
-        <button type="button" class="icon-btn icon-btn--danger" title="Remove field" @click="$emit('remove')">
+        <button
+          type="button"
+          class="icon-btn icon-btn--danger"
+          title="Remove field"
+          @click="$emit('remove')"
+        >
           <PhTrash :size="16" />
         </button>
       </div>
@@ -90,7 +90,7 @@ function removeOption(index) {
       />
     </div>
 
-    <div class="field-group">
+    <!-- <div class="field-group">
       <label>
         Field Key
         <span class="optional">answer identifier</span>
@@ -99,12 +99,13 @@ function removeOption(index) {
         :value="field.key"
         @input="patch({ key: $event.target.value })"
         type="text"
+        disabled
         placeholder="auto-generated from label"
       />
       <small class="helper-text-neutral">
         Internal identifier for this answer. Leave default unless you need a specific key.
       </small>
-    </div>
+    </div> -->
 
     <div class="field-row">
       <div class="field-group">
@@ -164,7 +165,12 @@ function removeOption(index) {
       <div class="options-list">
         <div v-for="(opt, i) in field.options || []" :key="i" class="option-row">
           <input :value="opt" @input="setOption(i, $event.target.value)" type="text" />
-          <button type="button" class="icon-btn icon-btn--danger" @click="removeOption(i)" title="Remove option">
+          <button
+            type="button"
+            class="icon-btn icon-btn--danger"
+            @click="removeOption(i)"
+            title="Remove option"
+          >
             <PhX :size="16" />
           </button>
         </div>
@@ -210,7 +216,14 @@ function removeOption(index) {
       </label>
       <input
         :value="(field.fileTypes || []).join(', ')"
-        @input="patch({ fileTypes: $event.target.value.split(',').map((s) => s.trim()).filter(Boolean) })"
+        @input="
+          patch({
+            fileTypes: $event.target.value
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean),
+          })
+        "
         type="text"
         :placeholder="field.type === 'image' ? 'image/*' : 'application/pdf, image/*'"
       />
