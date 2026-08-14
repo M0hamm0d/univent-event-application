@@ -2,7 +2,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 import { onMounted, ref, watch, onUnmounted } from 'vue'
 import { supabase } from '@/supabase'
-import { useUserProfile } from '@/composables/useUserProfile'
+import { useSessionInit } from '@/composables/useSessionInit'
 import ViewDetailsModal from './components/ViewDetailsModal.vue'
 import { useUniventStore } from './stores/counter'
 import SignUpModal from './components/SignUpModal.vue'
@@ -19,7 +19,7 @@ import { useRoute, useRouter } from 'vue-router'
 import FooterComponent from './components/FooterComponent.vue'
 // import UniventAssistance from './components/UniventAssistance.vue'
 const route = useRoute()
-const { ensureProfile } = useUserProfile()
+const { ensureSessionInit, resetSessionInit } = useSessionInit()
 let univentStore = useUniventStore()
 const showDropdown = ref(false)
 const toast = useToast()
@@ -37,15 +37,6 @@ async function handleLogout() {
   }
 }
 
-const fetchSession = async () => {
-  const { data, error } = await supabase.auth.getSession()
-  if (error) {
-    console.error('Error fetching session:', error.message)
-    return null
-  }
-  return data.session
-}
-const isAuthenticated = ref(null)
 const activeNav = ref(null)
 
 function guardRoute(param) {
@@ -100,23 +91,20 @@ watch(
 )
 
 onMounted(async () => {
-  const session = await fetchSession()
-  univentStore.isAuthenticated = !!session?.user
-  isAuthenticated.value = !!session?.user
-  if (session?.user) {
-    const profileResult = await ensureProfile(session.user)
-    univentStore.userProfile = profileResult
-  }
+  await ensureSessionInit()
   const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT') {
       univentStore.$reset()
+      resetSessionInit()
       toast.success('Logged out successfully')
-    }
-    if (univentStore.userProfile?.id === session?.user.id) {
       return
     }
-    const profileResult = await ensureProfile(session?.user)
-    univentStore.userProfile = profileResult
+    if (univentStore.userProfile?.id === session?.user?.id) {
+      return
+    }
+    // Re-hydrate on a fresh sign-in / token refresh.
+    resetSessionInit()
+    await ensureSessionInit()
   })
   subscription = data.subscription
 })

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { supabase } from '@/supabase'
+import { ensureSessionInit } from '@/composables/useSessionInit'
 import HomeView from '@/views/HomeView.vue'
 
 const authRequired = ['add event', 'interested', 'settings', 'manage attendees', 'event request']
@@ -67,6 +68,12 @@ const router = createRouter({
 // users home instead of showing them an empty organizer page; the security
 // boundary is enforced by Supabase RLS + the SECURITY DEFINER RPCs.
 router.beforeEach(async (to) => {
+  // Hydrate the app store (session + profile) once before any route renders.
+  // This guarantees auth-required routes boot with univentStore.userProfile
+  // populated, so child components can fetch user-scoped data immediately on
+  // mount instead of racing the bootstrap in App.vue.
+  await ensureSessionInit()
+
   if (!authRequired.includes(to.name)) return true
   const {
     data: { session },

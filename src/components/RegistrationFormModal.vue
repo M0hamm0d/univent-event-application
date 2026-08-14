@@ -1,20 +1,24 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import dayjs from 'dayjs'
-import { PhX, PhCheckCircle, PhClockClockwise, PhWarning, PhSpinner, PhUploadSimple, PhFileText, PhTrash } from '@phosphor-icons/vue'
+import {
+  PhX,
+  PhCheckCircle,
+  PhClockClockwise,
+  PhWarning,
+  PhSpinner,
+  PhUploadSimple,
+  PhFileText,
+  PhTrash,
+} from '@phosphor-icons/vue'
 import { useUniventStore } from '@/stores/counter'
 import { useFormSubmission } from '@/composables/useFormSubmission'
 import { useFormUploads } from '@/composables/useFormUploads'
-import {
-  isChoiceField,
-  isFileField,
-} from '@/composables/useRegistrationForm'
+import { isChoiceField, isFileField } from '@/composables/useRegistrationForm'
 
 const props = defineProps({
   event: { type: Object, required: true },
   showModal: { type: Boolean, default: false },
-  // Optional: render the modal in "edit" mode — prefill from the student's
-  // existing submission and update it instead of creating a new registration.
   editMode: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close', 'registered'])
@@ -22,13 +26,7 @@ const emit = defineEmits(['close', 'registered'])
 const univentStore = useUniventStore()
 const isLoggedIn = computed(() => univentStore.isAuthenticated)
 
-const {
-  loading,
-  submitForm,
-  loadOwnResponse,
-  updateForm,
-  hasCustomForm,
-} = useFormSubmission()
+const { loading, submitForm, loadOwnResponse, updateForm, hasCustomForm } = useFormSubmission()
 const { uploadFile, removeFiles, downloadFile } = useFormUploads()
 
 // Per-field upload progress map (keyed by field.key) so multiple file fields
@@ -45,14 +43,12 @@ const answers = ref({}) // student answers keyed by field.key
 const errors = ref({}) // per-field client-side validation errors
 const fetchError = ref('')
 const submitError = ref('')
-// Result screen state — when set, replace the form with a success/position view.
 const result = ref(null) // { status, position? }
 
 // Edit-mode state.
 const editExisting = ref(props.editMode)
-const existingResponseMeta = ref(null) // { submitted_at, updated_at, form_version_id }
+const existingResponseMeta = ref(null)
 
-// ---- lifecycle ----
 watch(
   () => props.showModal,
   async (open) => {
@@ -187,10 +183,7 @@ function validate() {
 
     // Required / empty checks.
     const isEmpty =
-      v === undefined ||
-      v === null ||
-      v === '' ||
-      (Array.isArray(v) && v.length === 0)
+      v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)
 
     if (required && isEmpty) {
       next[key] = 'This field is required.'
@@ -277,11 +270,7 @@ async function handleSubmit() {
   }
 
   // New submission path: register_with_form (atomic capacity + form response).
-  const r = await submitForm(
-    props.event,
-    formPayload.value?.form_version_id || null,
-    cleaned,
-  )
+  const r = await submitForm(props.event, formPayload.value?.form_version_id || null, cleaned)
 
   if (!r.success) {
     if (r.status === 'form_outdated') {
@@ -350,18 +339,26 @@ const eventDateLabel = computed(() => {
 
       <!-- Result screen after submission -->
       <div v-else-if="result" class="rfm-result">
-        <div class="rfm-result__icon" :class="result.status === 'registered' ? 'rfm-result__icon--ok' : 'rfm-result__icon--wait'">
+        <div
+          class="rfm-result__icon"
+          :class="
+            result.status === 'registered' ? 'rfm-result__icon--ok' : 'rfm-result__icon--wait'
+          "
+        >
           <PhCheckCircle v-if="result.status === 'registered'" :size="48" />
           <PhClockClockwise v-else :size="48" />
         </div>
         <h2 v-if="result.status === 'registered'">You're registered!</h2>
         <h2 v-else>You're on the waiting list.</h2>
         <p v-if="result.status === 'registered'">
-          We've saved your spot for <strong>{{ event.event_title }}</strong> and emailed you a confirmation.
+          We've saved your spot for <strong>{{ event.event_title }}</strong> and emailed you a
+          confirmation.
         </p>
         <p v-else>
-          The event is full. You're on the waiting list at <strong>position #{{ result.position }}</strong>.
-          If a spot opens up you'll be promoted automatically and emailed — no need to fill the form again.
+          The event is full. You're on the waiting list at
+          <strong>position #{{ result.position }}</strong
+          >. If a spot opens up you'll be promoted automatically and emailed — no need to fill the
+          form again.
         </p>
         <button class="rfm-btn rfm-btn--primary" @click="closeResult">Done</button>
       </div>
@@ -509,10 +506,16 @@ const eventDateLabel = computed(() => {
                   </button>
                 </div>
                 <div class="rfm-upload__file-actions">
-                  <label class="rfm-upload__replace" :class="{ 'is-uploading': uploadingField[f.key] }">
+                  <label
+                    class="rfm-upload__replace"
+                    :class="{ 'is-uploading': uploadingField[f.key] }"
+                  >
                     <input
                       type="file"
-                      :accept="(f.fileTypes || []).join(',') || (f.type === 'image' ? 'image/*' : undefined)"
+                      :accept="
+                        (f.fileTypes || []).join(',') ||
+                        (f.type === 'image' ? 'image/*' : undefined)
+                      "
                       :disabled="uploadingField[f.key] || loading"
                       @change="handleFileChange(f, $event)"
                       hidden
@@ -531,10 +534,16 @@ const eventDateLabel = computed(() => {
               </div>
 
               <!-- Empty state: upload prompt -->
-              <label v-else class="rfm-upload__zone" :class="{ 'is-uploading': uploadingField[f.key] }">
+              <label
+                v-else
+                class="rfm-upload__zone"
+                :class="{ 'is-uploading': uploadingField[f.key] }"
+              >
                 <input
                   type="file"
-                  :accept="(f.fileTypes || []).join(',') || (f.type === 'image' ? 'image/*' : undefined)"
+                  :accept="
+                    (f.fileTypes || []).join(',') || (f.type === 'image' ? 'image/*' : undefined)
+                  "
                   :disabled="uploadingField[f.key] || loading"
                   @change="handleFileChange(f, $event)"
                   hidden
@@ -554,13 +563,17 @@ const eventDateLabel = computed(() => {
           <p v-if="submitError" class="rfm-submit-err">{{ submitError }}</p>
 
           <button type="submit" class="rfm-btn rfm-btn--primary rfm-submit" :disabled="loading">
-            <span v-if="loading" class="rfm-spin-wrap"><PhSpinner :size="18" class="rfm-spin" /> Processing…</span>
+            <span v-if="loading" class="rfm-spin-wrap"
+              ><PhSpinner :size="18" class="rfm-spin" /> Processing…</span
+            >
             <span v-else>{{ editExisting ? 'Save Updates' : 'Submit Registration' }}</span>
           </button>
           <p class="rfm-submit-hint">
-            {{ editExisting
-              ? 'Saving updates your answers. Your registration or waitlist position is unchanged.'
-              : 'Submitting this form is your registration attempt — no separate confirmation needed.' }}
+            {{
+              editExisting
+                ? 'Saving updates your answers. Your registration or waitlist position is unchanged.'
+                : 'Submitting this form is your registration attempt — no separate confirmation needed.'
+            }}
           </p>
         </form>
       </div>
