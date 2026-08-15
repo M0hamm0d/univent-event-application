@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useToast } from 'vue-toastification'
 import {
   PhPlus,
@@ -193,6 +193,14 @@ function addField(type) {
     position,
   })
   fields.value = [...fields.value, f]
+  // Smoothly scroll the newly added field into view so the organizer can start
+  // editing it without manually scrolling down inside the modal.
+  nextTick(() => {
+    const list = document.querySelector('.fb-fields')
+    if (list && list.lastElementChild && typeof list.lastElementChild.scrollIntoView === 'function') {
+      list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
+  })
 }
 
 function updateField(index, next) {
@@ -471,7 +479,128 @@ async function saveDraft() {
   }
 }
 
-defineExpose({ saveDraft })
+// ---------------------------------------------------------------------------
+// saveAndPublish()  —  LOCAL mode only. Used by FormBuilderModal's primary
+// "Save & Publish" button when the organizer is designing a form for a brand-
+// new event (the event row doesn't exist yet, so we can't publish to Supabase
+// here). Returns the draft object with status 'published' on success so
+// AddEvent.attachPendingForm runs the real publish RPC after Create Event.
+// Mirrors handleLocalSavePublish's validation, but is callable from the
+// modal's footer. Returns `false` on failure.
+// ---------------------------------------------------------------------------
+async function saveAndPublish() {
+  try {
+    if (!isLocal.value) {
+      // Live events shouldn't reach this hook from the modal, but guard anyway.
+      toast.error('Use Publish in live mode.')
+      return false
+    }
+    if (!fields.value.length) {
+      toast.error('Add at least one field before saving.')
+      return false
+    }
+    if (!canPublish.value) {
+      toast.error(localErrors.value.join(' ') || 'Add at least one valid field to publish.')
+      return false
+    }
+    const draft = {
+      title: title.value || 'Registration Form',
+      description: description.value || '',
+      fields: normalizeFields(fields.value),
+      status: 'published',
+    }
+    // Record the publish intent so a subsequent Cancel (captureDraft) preserves
+    // it instead of reverting to 'draft'.
+    intendedStatus.value = 'published'
+    toast.success('Custom form saved. It will be published when you create the event.')
+    return draft
+  } catch (err) {
+    toast.error('Could not save form: ' + (err?.message || err))
+    return false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// captureDraft()  —  non-persisting snapshot of the builder's current state.
+// Used by FormBuilderModal's Cancel path (local mode only) so the organizer's
+// in-progress edits survive an open/close cycle without committing to publish.
+// Returns the normalized draft `{ title, description, fields, status }` using
+// `intendedStatus` to preserve an earlier Save & Publish intent, or `null`
+// when there are no fields (nothing worth preserving). No toasts, no side
+// effects beyond reading refs.
+// ---------------------------------------------------------------------------
+function captureDraft() {
+  if (!isLocal.value) return null
+  if (!fields.value.length) return null
+  return {
+    title: title.value || 'Registration Form',
+    description: description.value || '',
+    fields: normalizeFields(fields.value),
+    status: intendedStatus.value === 'published' ? 'published' : 'draft',
+  }
+}
+
+// ---------------------------------------------------------------------------
+// publishLive()  —  LIVE mode only. Used by FormBuilderModal's "Publish"
+// button for an existing event. Mirrors handlePublish (ensureFormCreated →
+// saveDraftRpc → publish → reloadPublished) but is callable from the modal
+// footer and returns a boolean so the modal knows whether to close. The
+// caller (FormBuilderModal) is responsible for any confirm() prompt — we
+// don't prompt here to keep this hook reusable. Returns `true` on success.
+// ---------------------------------------------------------------------------
+async function publishLive() {
+  try {
+    if (isLocal.value) {
+      toast.error('Use Save & Publish in local mode.')
+      return false
+    }
+    if (!canPublish.value) {
+      toast.error(localErrors.value.join(' '))
+      return false
+    }
+    const ok = await ensureFormCreated()
+    if (!ok) return false
+    // Persist the draft first so the editor's current state is recoverable,
+    // then snapshot-and-publish via the RPC.
+    saving.value = true
+    const sd = await saveDraftRpc(formId.value, {
+      title: title.value,
+      description: description.value,
+      fields_draft: fields.value,
+    })
+    saving.value = false
+    if (!sd.success) {
+      toast.error('Failed to save before publishing: ' + sd.error)
+      return false
+    }
+    publishing.value = true
+    try {
+      const r = await publish(formId.value, fields.value)
+      if (!r.success) {
+        toast.error('Failed to publish: ' + r.error)
+        return false
+      }
+      publishedVersionId.value = r.versionId
+      formStatus.value = 'published'
+      lastSavedFields.value = normalizeFields(fields.value)
+      // Reload the full published snapshot so the Preview tab renders exactly
+      // what students will see after this publish.
+      await reloadPublished()
+      toast.success(`Form published (version ${r.version}). Students can now register.`)
+      return true
+    } finally {
+      publishing.value = false
+    }
+  } catch (err) {
+    toast.error('Could not publish form: ' + (err?.message || err))
+    return false
+  } finally {
+    saving.value = false
+    publishing.value = false
+  }
+}
+
+defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
 </script>
 
 <template>

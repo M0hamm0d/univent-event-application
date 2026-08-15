@@ -928,9 +928,11 @@ onUnmounted(() => {
             </div>
 
             <!-- C) Builder open as a responsive modal (local for new events,
-                 live for existing). Save = Save as Draft (no publish).
-                 Cancel keeps the in-memory + localStorage draft intact so
-                 the organizer can reopen and continue. -->
+                 live for existing). Local: "Save & Publish" commits the draft
+                 with status 'published' (attached on Create Event). Cancel
+                 soft-preserves in-progress edits so reopen restores them until
+                 the event is created. Live: Save Draft persists to Supabase,
+                 Publish pushes a new version, Cancel discards unsaved edits. -->
             <FormBuilderModal
               v-else
               :key="formBuilderKey"
