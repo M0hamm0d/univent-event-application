@@ -39,10 +39,6 @@ const registeredMap = ref({})
 const waitingListMap = ref({})
 const selectedRegisterEvent = ref(null)
 const loadingMap = ref({})
-// Custom-form routing: per-event cache of whether a published custom form
-// exists. Drives the decision between RegisterModal (MODE 1) and
-// RegistrationFormModal (MODE 2). Probed in loadAllStatuses for UniVent-
-// registrable events only (not external-link / interest-only ones).
 const hasCustomFormMap = ref({})
 const showCustomFormModal = ref(false)
 const selectedCustomFormEvent = ref(null)
@@ -144,35 +140,6 @@ function handleEditResponse(event) {
   showCustomFormModal.value = true
 }
 
-// async function onInterestClick(event) {
-//   console.log('this is event', toRaw(event))
-//   const id = event.id
-//   if (loadingMap.value[id]) return
-//   loadingMap.value[id] = true
-//   try {
-//     let registrable = false
-//     if (event.requires_registration != null) {
-//       registrable = !!event.requires_registration
-//       console.log('Event requires_registration:', registrable)
-//     }
-
-//     if (registrable) {
-//       if (registeredMap.value[event.id]) {
-//         registeredMap.value[event.id] = false
-//         await removeUserFromEvent(event)
-//       } else {
-//         await handleRegister(event)
-//       }
-//     } else {
-//       await handleInterest(event)
-//     }
-//   } catch (err) {
-//     console.error('onInterestClick error:', err)
-//     await handleInterest(event)
-//   } finally {
-//     loadingMap.value[id] = false
-//   }
-// }
 async function onInterestClick(event) {
   const id = event.id
 
@@ -186,16 +153,18 @@ async function onInterestClick(event) {
         // Already registered -> cancel via the atomic RPC (also promotes waitlist).
         const result = await cancelRegistration(event)
 
-        const { error } = await supabase
-          .from('registered_events')
-          .delete()
-          .eq('event_id', event.id)
-          .eq('user_id', univentStore.userProfile?.id)
+        // if (result.success && result.status === 'cancelled') {
+        //   const { error } = await supabase
+        //     .from('registered_events')
+        //     .delete()
+        //     .eq('event_id', event.id)
+        //     .eq('user_id', univentStore.userProfile?.id)
 
-        if (error) {
-          console.error('Error deleting registered event:', error)
-          return
-        }
+        //   if (error) {
+        //     console.error('Error deleting registered event:', error)
+        //     return
+        //   }
+        // }
 
         if (
           result.success &&
@@ -207,6 +176,18 @@ async function onInterestClick(event) {
       } else if (waitingListMap.value[id]) {
         // On the waitlist -> cancel removes them from it.
         const result = await cancelRegistration(event)
+        // if (result.success && result.status === 'left_waitlist') {
+        //   const { error } = await supabase
+        //     .from('registered_events')
+        //     .delete()
+        //     .eq('event_id', event.id)
+        //     .eq('user_id', univentStore.userProfile?.id)
+
+        //   if (error) {
+        //     console.error('Error deleting registered event:', error)
+        //     return
+        //   }
+        // }
         if (result.success && result.status === 'left_waitlist') {
           waitingListMap.value[id] = false
         }

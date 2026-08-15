@@ -122,7 +122,13 @@ BEGIN
 
   IF v_reg_id IS NOT NULL THEN
     -- Cancel their spot.
-    UPDATE registered_events SET status = 'cancelled' WHERE id = v_reg_id;
+    -- UPDATE registered_events SET status = 'cancelled' WHERE id = v_reg_id;
+    -- DELETE FROM registered_events WHERE id = v_reg_id;
+    DELETE FROM registered_events WHERE event_id = p_event_id AND user_id = p_user_id;
+
+    DELETE FROM registration_form_responses
+    WHERE event_id = p_event_id
+      AND user_id = p_user_id;
 
     -- Lock event to read capacity.
     SELECT capacity INTO v_capacity FROM events WHERE id = p_event_id FOR UPDATE;

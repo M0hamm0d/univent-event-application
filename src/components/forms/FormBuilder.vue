@@ -33,6 +33,9 @@ const props = defineProps({
   // Local-mode seed: { title, description, fields, status }. Lets the organizer
   // re-open the builder and keep their in-progress work. Ignored in live mode.
   initialDraft: { type: Object, default: null },
+  // When true the builder hides its own action row — the parent (e.g.
+  // FormBuilderModal) owns Save/Cancel. Default false keeps existing behavior.
+  hideActions: { type: Boolean, default: false },
 })
 
 // Parent listens for these only in local mode (live mode persists itself).
@@ -42,7 +45,7 @@ const emit = defineEmits(['saved', 'cancelled'])
 const isLocal = computed(() => props.mode === 'local')
 
 const toast = useToast()
-const { loadForm, createFormDraft, saveDraft, publish, setStatus, listVersions } =
+const { loadForm, createFormDraft, saveDraft: saveDraftRpc, publish, setStatus, listVersions } =
   useRegistrationForm()
 
 const loading = ref(true)
@@ -250,7 +253,7 @@ async function handleSaveDraft() {
   if (!ok) return
   saving.value = true
   try {
-    const r = await saveDraft(formId.value, {
+    const r = await saveDraftRpc(formId.value, {
       title: title.value,
       description: description.value,
       fields_draft: fields.value,
@@ -276,11 +279,11 @@ async function handlePublish() {
   // Persist the draft first so the editor's current state is recoverable, then
   // snapshot-and-publish via the RPC.
   saving.value = true
-  const sd = await saveDraft(formId.value, {
-    title: title.value,
-    description: description.value,
-    fields_draft: fields.value,
-  })
+const sd = await saveDraftRpc(formId.value, {
+      title: title.value,
+      description: description.value,
+      fields_draft: fields.value,
+    })
   saving.value = false
   if (!sd.success) {
     toast.error('Failed to save before publishing: ' + sd.error)
@@ -406,6 +409,69 @@ function handleLocalCancel() {
   // If the organizer never saved (no draft), AddEvent has nothing to keep.
   emit('cancelled')
 }
+
+// ---------------------------------------------------------------------------
+// Public save hook (used by FormBuilderModal's footer "Save" button when
+// `hideActions` is true).
+//   - Local mode: returns the draft object `{ title, description, fields,
+//     status }` (truthy) on success so the modal can forward it to AddEvent
+//     via `emit('saved', draft)`. Status is 'draft' — matches the agreed
+//     "Save = Save as Draft" contract (no publish from the modal).
+//   - Live mode:  persists the draft to Supabase (creates the form row on
+//     first save via ensureFormCreated). Returns `true` on success. No
+//     publish/close/reopen here.
+// Returns `false` on failure (caller shows nothing extra; toasts fire inside).
+// ---------------------------------------------------------------------------
+async function saveDraft() {
+  try {
+    if (isLocal.value) {
+      if (!fields.value.length) {
+        toast.error('Add at least one field before saving.')
+        return false
+      }
+      const errs = validateFields(fields.value)
+      if (errs.length) {
+        toast.error(errs.join(' '))
+        return false
+      }
+      const draft = {
+        title: title.value || 'Registration Form',
+        description: description.value || '',
+        fields: normalizeFields(fields.value),
+        status: 'draft',
+      }
+      toast.success('Custom form saved. It will be attached when you create the event.')
+      return draft
+    } else {
+      if (!fields.value.length) {
+        toast.error('Add at least one field before saving.')
+        return false
+      }
+      const ok = await ensureFormCreated()
+      if (!ok) return false
+      saving.value = true
+      const r = await saveDraftRpc(formId.value, {
+        title: title.value,
+        description: description.value,
+        fields_draft: fields.value,
+      })
+      if (!r.success) {
+        toast.error('Failed to save draft: ' + r.error)
+        return false
+      }
+      lastSavedFields.value = normalizeFields(fields.value)
+      toast.success('Draft saved.')
+      return true
+    }
+  } catch (err) {
+    toast.error('Could not save form: ' + (err?.message || err))
+    return false
+  } finally {
+    saving.value = false
+  }
+}
+
+defineExpose({ saveDraft })
 </script>
 
 <template>
@@ -677,7 +743,10 @@ function handleLocalCancel() {
     </div>
 
     <!-- Actions -->
-    <div class="fb-actions" v-if="hasForm || fields.length > 0">
+    <div
+      class="fb-actions"
+      v-if="!hideActions && (hasForm || fields.length > 0)"
+    >
       <!-- Local mode: hand the draft back to AddEvent. No DB writes here. -->
       <template v-if="isLocal">
         <button

@@ -7,7 +7,7 @@ import { supabase } from '@/supabase'
 import BackArrow from '@/components/icons/BackArrow.vue'
 import { useRoute } from 'vue-router'
 import { onMounted, onUnmounted } from 'vue'
-import FormBuilder from '@/components/forms/FormBuilder.vue'
+import FormBuilderModal from '@/components/forms/FormBuilderModal.vue'
 import { validateFields, useRegistrationForm } from '@/composables/useRegistrationForm'
 
 const toast = useToast()
@@ -132,6 +132,10 @@ async function getUserId() {
     eventData.value.user_id = profile[0].id
     currentUser.value = user
     if (error || profile_error) throw error
+    // Restore any in-progress custom-form draft for NEW events after we know
+    // the organizer id (localStorage is keyed by user id). Live/edit mode
+    // loads its form from Supabase in onMounted instead.
+    loadDraftFromStorage()
   } catch (error) {
     console.log(error)
   }
@@ -432,6 +436,10 @@ function resetForm({ keepBuilderOpen = false } = {}) {
   if (!keepBuilderOpen) {
     pendingFormDraft.value = null
     formBuilderOpen.value = false
+    // The new-event draft has now been persisted against the created event id
+    // (or the update path doesn't use localStorage at all), so drop the
+    // in-progress localStorage mirror.
+    clearDraftStorage()
   }
 }
 
@@ -459,36 +467,80 @@ const handleBeforeUnload = (e) => {
 
 // --- Custom registration form handlers -------------------------------------
 //
-// openFormBuilder:  mount the FormBuilder. New events run in 'local' mode
-//                   (pure in-memory draft, no DB rows); existing events run
-//                   in 'live' mode (direct Supabase reads/writes via the
-//                   already-attached registration_forms row).
-// closeFormBuilder: unmount the builder WITHOUT touching the pending draft,
-//                   so an accidental open/close (or a Cancel emit) keeps any
-//                   already-saved draft intact (per the agreed contract).
+// openFormBuilder:  mount the FormBuilder (now inside FormBuilderModal). New
+//                   events run in 'local' mode (pure in-memory draft, no DB
+//                   rows); existing events run in 'live' mode (direct Supabase
+//                   reads/writes via the already-attached registration_forms
+//                   row).
 // onFormSaved:      replace the pending draft with whatever the organizer just
-//                   finished designing and close the builder. The draft here
-//                   is {title, description, fields, status}; fields are already
-//                   normalized by the FormBuilder before emitting.
-// onFormCancelled:  the organizer clicked "Cancel" inside the builder. Keep
-//                   any existing pending draft (only a never-saved, brand-new
-//                   draft is effectively dropped because there isn't one yet).
-// removeCustomForm: explicitly discard the in-memory draft so the event
-//                   falls back to the default registration flow. Only applies
-//                   to new events (existing events edit their form live).
+//                   finished designing and close the modal. The draft here is
+//                   {title, description, fields, status}; in local mode it is
+//                   returned from FormBuilder.saveDraft() and forwarded by the
+//                   modal. Also mirrors the draft to localStorage (new events).
+// onFormCancelled:  the organizer clicked "Cancel" (or backdrop/Esc) inside
+//                   the modal. Keep any existing pending draft (only a never-
+//                   saved, brand-new draft is effectively dropped because
+//                   there isn't one yet) so they can reopen and continue.
+// removeCustomForm: explicitly discard the in-memory draft (and its localStorage
+//                   mirror) so the event falls back to the default registration
+//                   flow. Only applies to new events (existing events edit
+//                   their form live).
+//
+// --- localStorage draft persistence (NEW events only) ---------------------
+// For new events the custom-form draft lives only in memory until "Create
+// Event" is clicked. To let an organizer close the modal / refresh the page
+// and continue later, we mirror `pendingFormDraft` to localStorage keyed by
+// the organizer's user id. Live (edit) mode persists straight to Supabase so
+// it doesn't need this. The key is cleared on successful event creation and
+// on explicit "Remove custom form".
 // ---------------------------------------------------------------------------
+const DRAFT_STORAGE_PREFIX = 'univent:regform:draft:'
+function draftStorageKey() {
+  const uid = eventData.value.user_id || 'anon'
+  return DRAFT_STORAGE_PREFIX + uid
+}
+function persistDraftToStorage() {
+  if (eventId) return // only new events
+  try {
+    if (pendingFormDraft.value) {
+      localStorage.setItem(draftStorageKey(), JSON.stringify(pendingFormDraft.value))
+    } else {
+      localStorage.removeItem(draftStorageKey())
+    }
+  } catch {
+    // localStorage may be unavailable (private mode / quota); fail silently.
+  }
+}
+function loadDraftFromStorage() {
+  if (eventId) return // only new events
+  try {
+    const raw = localStorage.getItem(draftStorageKey())
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (parsed && Array.isArray(parsed.fields)) {
+      pendingFormDraft.value = parsed
+    }
+  } catch {
+    // Corrupt entry — ignore.
+  }
+}
+function clearDraftStorage() {
+  try {
+    localStorage.removeItem(draftStorageKey())
+  } catch {
+    // ignore
+  }
+}
+
 function openFormBuilder() {
   formBuilderMode.value = eventId ? 'live' : 'local'
   formBuilderKey.value++
   formBuilderOpen.value = true
 }
-function closeFormBuilder() {
-  // Keeping pendingFormDraft intact on purpose (see contract above).
-  formBuilderOpen.value = false
-}
 function onFormSaved(draft) {
   pendingFormDraft.value = draft
   formBuilderOpen.value = false
+  persistDraftToStorage()
 }
 function onFormCancelled() {
   // Per the agreed contract: a cancel preserves any draft that was already
@@ -499,6 +551,7 @@ function onFormCancelled() {
 function removeCustomForm() {
   pendingFormDraft.value = null
   formBuilderOpen.value = false
+  clearDraftStorage()
   toast.info('Custom form removed. The event will use the default registration flow.')
 }
 onMounted(async () => {
@@ -874,25 +927,20 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- C) Builder open (local for new events, live for existing) -->
-            <div v-else class="custom-form-builder-wrap">
-              <button
-                type="button"
-                class="opt-in-btn opt-in-btn--ghost custom-form-builder-wrap__back"
-                @click="closeFormBuilder"
-              >
-                ← Back to event details
-              </button>
-              <FormBuilder
-                :key="formBuilderKey"
-                :mode="formBuilderMode"
-                :event-id="eventId || null"
-                :organizer-id="eventData.user_id"
-                :initial-draft="pendingFormDraft"
-                @saved="onFormSaved"
-                @cancelled="onFormCancelled"
-              />
-            </div>
+            <!-- C) Builder open as a responsive modal (local for new events,
+                 live for existing). Save = Save as Draft (no publish).
+                 Cancel keeps the in-memory + localStorage draft intact so
+                 the organizer can reopen and continue. -->
+            <FormBuilderModal
+              v-else
+              :key="formBuilderKey"
+              :mode="formBuilderMode"
+              :event-id="eventId || null"
+              :organizer-id="eventData.user_id"
+              :initial-draft="pendingFormDraft"
+              @saved="onFormSaved"
+              @cancel="onFormCancelled"
+            />
           </div>
 
           <div class="field-group">

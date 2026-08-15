@@ -2,30 +2,6 @@ import { ref } from 'vue'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
 
-/**
- * useFormSubmission
- * Student-side composable for custom registration forms (MODE 2 events).
- *
- * Mirrors useStoreUserDetails.registerForEvent so the caller gets the SAME
- * status contract the no-form path returns:
- *   { success, status: 'registered' | 'waitlisted' | 'already_registered' |
- *                      'already_waitlisted' | 'closed' | 'form_outdated' }
- * plus `position` for waitlisted and the existing email behaviour
- * (POST /api/registration_email or /api/confirm_waitlist). This keeps Stage 6E
- * email integration identical to MODE 1 without a duplicate email system.
- *
- * It does NOT touch capacity itself — register_with_form is the atomic
- * SECURITY DEFINER RPC that does capacity/waitlist + form-response insert in
- * one transaction (Stage 6A). The frontend never decides registered vs
- * waitlisted.
- *
- * Exposed:
- *   submitForm(event, formVersionId, answers)  -> new submission
- *   loadOwnResponse(eventId)                  -> prefill for edit
- *   updateForm(eventId, answers)              -> edit existing answers
- *   hasCustomForm(eventId)                    -> used by EventsCard routing
- */
-
 export function useFormSubmission() {
   const toast = useToast()
   const loading = ref(false)
@@ -152,14 +128,6 @@ export function useFormSubmission() {
     }
   }
 
-  /**
-   * loadOwnResponse(eventId)
-   *   Student reads their own already-submitted response via the
-   *   get_form_response_for_user RPC. Used to prefill the editor. Returns the
-   *   answers + the version fields the answers were submitted against so the
-   *   client can render labels/options correctly. Returns null when the
-   *   student has not submitted for this event yet.
-   */
   async function loadOwnResponse(eventId) {
     try {
       const { data, error } = await supabase.rpc('get_form_response_for_user', {
@@ -178,16 +146,6 @@ export function useFormSubmission() {
     }
   }
 
-  /**
-   * updateForm(eventId, answers)
-   *   Edit an already-submitted response via update_form_response. The RPC
-   *   re-validates, enforces "registration must be open", and NEVER touches
-   *   registered_events / waiting_list — so it cannot change the student's
-   *   status or waitlist position. It returns the previously-referenced file
-   *   paths that are no longer used so the client can clean them up (Stage 6G
-   *   wires the storage remove() calls). For text fields this returns
-   *   { success: true }.
-   */
   async function updateForm(eventId, answers) {
     loading.value = true
     try {
@@ -214,14 +172,6 @@ export function useFormSubmission() {
     }
   }
 
-  /**
-   * hasCustomForm(eventId)
-   *   Light probe used by EventsCard to decide which modal to open. Returns
-   *   the published form payload (title/description/fields/form_version_id) or
-   *   null when the event has no published custom form. Same RPC the student
-   *   form modal uses to render, so there's no drift. Cache the result per
-   *   event in the caller (EventsCard keeps a `hasCustomFormMap`).
-   */
   async function hasCustomForm(eventId) {
     if (!eventId) return null
     try {

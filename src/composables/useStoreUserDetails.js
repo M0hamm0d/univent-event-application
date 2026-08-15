@@ -1,16 +1,13 @@
 import { ref } from 'vue'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
+import { useFormUploads } from '@/composables/useFormUploads'
 
 export function useStoreUserDetails() {
   const toast = useToast()
+  const { removeFiles } = useFormUploads()
   const loading = ref(false)
 
-  // registerForEvent: atomic server-side registration + waitlist assignment.
-  // Calls the register_for_event RPC, which locks the event row, counts real
-  // registered_events rows, and inserts into registered_events or waiting_list.
-  // Returns { success, status } where status is one of:
-  //   'registered' | 'waitlisted' | 'already_registered' | 'already_waitlisted' | 'closed'
   async function registerForEvent(event) {
     loading.value = true
     try {
@@ -100,10 +97,6 @@ export function useStoreUserDetails() {
     }
   }
 
-  // cancelRegistration: atomic server-side cancellation + waitlist promotion.
-  // Calls the cancel_registration RPC, which marks the registered_events row
-  // cancelled and promotes the oldest waitlisted student to registered in the
-  // same transaction, returning the promoted user's id (so we email them).
   async function cancelRegistration(event) {
     loading.value = true
     try {
@@ -122,7 +115,6 @@ export function useStoreUserDetails() {
       })
 
       if (error) {
-        // "You are not registered" surfaces as a PostgREST exception message.
         toast.info(error.message)
         return { success: false }
       }
@@ -130,13 +122,17 @@ export function useStoreUserDetails() {
       const result = typeof data === 'string' ? JSON.parse(data) : data
       const status = result?.status
 
+      const removedFilePaths =
+        Array.isArray(result?.removed_file_paths) ? result.removed_file_paths : []
+
       if (status === 'left_waitlist') {
         toast.success('Removed from the waiting list')
+        if (removedFilePaths.length) await removeFiles(removedFilePaths)
         return { success: true, status: 'left_waitlist' }
       }
       if (status === 'cancelled') {
         toast.success('Your registration has been cancelled')
-        // Notify the promoted student (if any) via the existing email endpoint.
+        if (removedFilePaths.length) await removeFiles(removedFilePaths)
         const promotedUserId = result?.promoted_user_id
         if (promotedUserId) {
           try {
