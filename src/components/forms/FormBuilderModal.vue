@@ -1,10 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, useTemplateRef } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, useTemplateRef } from 'vue'
 import { useToast } from 'vue-toastification'
-import { PhFloppyDisk, PhX } from '@phosphor-icons/vue'
+import { PhFloppyDisk, PhRocket, PhX, PhArrowCircleUp } from '@phosphor-icons/vue'
 import FormBuilder from './FormBuilder.vue'
 
-defineProps({
+const props = defineProps({
   mode: { type: String, default: 'live' },
   eventId: { type: [String, null], default: null },
   organizerId: { type: String, default: '' },
@@ -15,10 +15,36 @@ const emit = defineEmits(['saved', 'cancel'])
 
 const toast = useToast()
 const saving = ref(false)
+const publishing = ref(false)
 const builderRef = useTemplateRef('builderRef')
+const bodyRef = useTemplateRef('bodyRef')
+// Show the floating "scroll to top" button once the organizer has scrolled a
+// little way down the (potentially long) field list.
+const showTop = ref(false)
+
+const isLocal = computed(() => (props.mode === 'live' ? false : true))
 
 function closeCancel() {
-  emit('cancel')
+  // Local mode: soft-preserve in-progress edits so reopening the modal (or
+  // refreshing) restores them, as long as the organizer hasn't created the
+  // event yet. We hand the normalized draft back via `emit('saved', draft)`,
+  // which AddEvent.onFormSaved writes to pendingFormDraft + localStorage. When
+  // there are no fields, there's nothing worth keeping — emit 'cancel' so the
+  // parent can drop the pending draft if appropriate. Live mode (existing
+  // events) persists via Save Draft to Supabase; Cancel there discards unsaved
+  // edits as before.
+  if (!isLocal.value) {
+    emit('cancel')
+    return
+  }
+  const builder = builderRef.value
+  const draft =
+    builder && typeof builder.captureDraft === 'function' ? builder.captureDraft() : null
+  if (draft) {
+    emit('saved', draft)
+  } else {
+    emit('cancel')
+  }
 }
 
 async function handleSave() {
@@ -29,11 +55,8 @@ async function handleSave() {
   }
   saving.value = true
   try {
-    const result = await builder.saveDraft()
+    const result = await (isLocal.value ? builder.saveAndPublish() : builder.saveDraft())
     if (!result) return
-    // Local mode returns the draft object; live mode returns `true` (state
-    // already persisted to Supabase). Forward the draft only when present so
-    // AddEvent's onFormSaved stores it / mirrors it to localStorage.
     emit('saved', typeof result === 'object' ? result : undefined)
   } catch (err) {
     toast.error('Could not save: ' + (err?.message || err))
@@ -42,9 +65,29 @@ async function handleSave() {
   }
 }
 
+async function handlePublish() {
+  const builder = builderRef.value
+  if (!builder || typeof builder.publishLive !== 'function') {
+    toast.error('Form builder is not ready yet.')
+    return
+  }
+  // Confirm before pushing a new version students will see immediately.
+  if (!window.confirm('Publish a new version? Students will see this form immediately.')) {
+    return
+  }
+  publishing.value = true
+  try {
+    const ok = await builder.publishLive()
+    if (!ok) return
+    emit('saved', undefined)
+  } catch (err) {
+    toast.error('Could not publish: ' + (err?.message || err))
+  } finally {
+    publishing.value = false
+  }
+}
+
 function onSaved(draft) {
-  // FormBuilder may still emit `saved` from its (now hidden) action buttons;
-  // forward the payload if any. Primary path is handleSave() above.
   emit('saved', draft)
 }
 
@@ -53,7 +96,19 @@ function onCancelled() {
 }
 
 function onKeydown(e) {
-  if (e.key === 'Escape' && !saving.value) closeCancel()
+  if (e.key === 'Escape' && !saving.value && !publishing.value) closeCancel()
+}
+
+function onBodyScroll() {
+  const el = bodyRef.value
+  if (!el) return
+  showTop.value = el.scrollTop > 200
+}
+
+function scrollToTop() {
+  const el = bodyRef.value
+  if (!el) return
+  el.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 let prevOverflow = ''
@@ -72,39 +127,96 @@ onUnmounted(() => {
 
 <template>
   <Teleport to="body">
-    <div class="fb-modal-overlay" @click.self="closeCancel">
-      <div class="fb-modal" role="dialog" aria-modal="true" @click.stop>
-        <header class="fb-modal__header">
-          <h3>Registration Form</h3>
-          <button type="button" class="fb-modal__close" :disabled="saving" @click="closeCancel">
-            <PhX :size="20" />
-          </button>
-        </header>
+    <Transition name="fb-modal-fade" appear>
+      <div class="fb-modal-overlay" @click.self="closeCancel">
+        <Transition name="fb-modal-pop" appear>
+          <div class="fb-modal" role="dialog" aria-modal="true" @click.stop>
+            <header class="fb-modal__header">
+              <h3>Registration Form</h3>
+              <button
+                type="button"
+                class="fb-modal__close"
+                :disabled="saving || publishing"
+                @click="closeCancel"
+              >
+                <PhX :size="20" />
+              </button>
+            </header>
 
-        <div class="fb-modal__body">
-          <FormBuilder
-            ref="builderRef"
-            :mode="mode"
-            :event-id="eventId"
-            :organizer-id="organizerId"
-            :initial-draft="initialDraft"
-            :hide-actions="true"
-            @saved="onSaved"
-            @cancelled="onCancelled"
-          />
-        </div>
+            <div ref="bodyRef" class="fb-modal__body" @scroll.passive="onBodyScroll">
+              <FormBuilder
+                ref="builderRef"
+                :mode="mode"
+                :event-id="eventId"
+                :organizer-id="organizerId"
+                :initial-draft="initialDraft"
+                :hide-actions="true"
+                @saved="onSaved"
+                @cancelled="onCancelled"
+              />
+            </div>
 
-        <footer class="fb-modal__footer">
-          <button type="button" class="fb-modal-btn fb-modal-btn--cancel" :disabled="saving" @click="closeCancel">
-            Cancel
-          </button>
-          <button type="button" class="fb-modal-btn fb-modal-btn--save" :disabled="saving" @click="handleSave">
-            <PhFloppyDisk :size="16" />
-            {{ saving ? 'Saving...' : 'Save' }}
-          </button>
-        </footer>
+            <!-- Floating scroll-to-top button — fades in past 200px. -->
+            <Transition name="fb-top-fade">
+              <button
+                v-if="showTop"
+                type="button"
+                class="fb-modal__top"
+                aria-label="Scroll to top"
+                @click="scrollToTop"
+              >
+                <PhArrowCircleUp :size="24" />
+              </button>
+            </Transition>
+
+            <footer class="fb-modal__footer">
+              <button
+                type="button"
+                class="fb-modal-btn fb-modal-btn--cancel"
+                :disabled="saving || publishing"
+                @click="closeCancel"
+              >
+                Cancel
+              </button>
+
+              <!-- Live mode keeps "Save Draft" separate from "Publish". -->
+              <button
+                v-if="!isLocal"
+                type="button"
+                class="fb-modal-btn fb-modal-btn--save"
+                :disabled="saving || publishing"
+                @click="handleSave"
+              >
+                <PhFloppyDisk :size="16" />
+                {{ saving ? 'Saving...' : 'Save Draft' }}
+              </button>
+              <button
+                v-if="!isLocal"
+                type="button"
+                class="fb-modal-btn fb-modal-btn--publish"
+                :disabled="saving || publishing"
+                @click="handlePublish"
+              >
+                <PhRocket :size="16" />
+                {{ publishing ? 'Publishing...' : 'Publish' }}
+              </button>
+
+              <!-- Local mode: the primary button IS save & publish. -->
+              <button
+                v-else
+                type="button"
+                class="fb-modal-btn fb-modal-btn--publish"
+                :disabled="saving || publishing"
+                @click="handleSave"
+              >
+                <PhRocket :size="16" />
+                {{ saving ? 'Saving...' : 'Save & Publish' }}
+              </button>
+            </footer>
+          </div>
+        </Transition>
       </div>
-    </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -222,6 +334,81 @@ onUnmounted(() => {
 }
 .fb-modal-btn--save:hover:not(:disabled) {
   background: #0447c4;
+}
+.fb-modal-btn--publish {
+  background: #055dfa;
+  color: #fff;
+  box-shadow: 0 4px 6px -1px rgba(5, 93, 250, 0.3);
+}
+.fb-modal-btn--publish:hover:not(:disabled) {
+  background: #0447c4;
+}
+
+/* ---- Smooth modal open/close ---- */
+/* Overlay fades in/out. */
+.fb-modal-fade-enter-active,
+.fb-modal-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+.fb-modal-fade-enter-from,
+.fb-modal-fade-leave-to {
+  opacity: 0;
+}
+/* Card scales + slides up slightly on enter, reverse on leave. */
+.fb-modal-pop-enter-active {
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.18s ease;
+}
+.fb-modal-pop-leave-active {
+  transition:
+    transform 0.16s ease,
+    opacity 0.16s ease;
+}
+.fb-modal-pop-enter-from {
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+}
+.fb-modal-pop-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+}
+
+/* ---- Floating scroll-to-top button ---- */
+.fb-modal__top {
+  position: absolute;
+  right: 20px;
+  bottom: 78px;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: #055dfa;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(5, 93, 250, 0.35);
+  transition:
+    background 0.15s,
+    transform 0.15s;
+  z-index: 5;
+}
+.fb-modal__top:hover {
+  background: #0447c4;
+  transform: translateY(-1px);
+}
+.fb-top-fade-enter-active,
+.fb-top-fade-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.fb-top-fade-enter-from,
+.fb-top-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 @media (max-width: 640px) {
