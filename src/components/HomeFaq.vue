@@ -107,7 +107,6 @@ function toggleData(id) {
 </template>
 
 <style scoped>
-/* Layout */
 a {
   text-decoration: none;
 }
@@ -150,7 +149,6 @@ a {
   align-items: start;
 }
 
-/* Contact Card */
 .contact-card {
   display: flex;
   justify-content: space-between;
@@ -185,7 +183,6 @@ a {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
-/* Accordion */
 .accordion-list {
   display: flex;
   flex-direction: column;
@@ -233,7 +230,6 @@ a {
   line-height: 1.6;
 }
 
-/* Image styling */
 .faq-image-wrapper {
   position: relative;
   height: 100%;
@@ -255,7 +251,6 @@ a {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Responsiveness */
 @media (max-width: 900px) {
   .faq-container {
     grid-template-columns: 1fr;
@@ -264,7 +259,7 @@ a {
     margin: 0 auto 50px;
   }
   .faq-image-wrapper {
-    order: -1; /* Image on top for mobile */
+    order: -1;
   }
 }
 </style>

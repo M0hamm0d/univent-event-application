@@ -27,16 +27,9 @@ const event = ref(null)
 const registered = ref([])
 const waitlisted = ref([])
 const loading = ref(true)
-// Whether this event has a published custom form. Drives which RPC we use for
-// attendee data and whether the "View Submission" affordance renders.
 const hasCustomForm = ref(false)
-// Full form-response payload from get_event_form_responses. Keyed by user_id
-// so we can look up an attendee's submission when they click "View Submission".
 const formResponsesByUser = ref({})
-// The currently-open attendee in the submission detail drawer.
 const selectedAttendee = ref(null)
-// Tracks which file paths in the open drawer are currently being downloaded
-// (keyed by `${user_id}::${path}`) so the link shows a spinner.
 const downloadingFile = ref({})
 
 const capacityDisplay = computed(() => {
@@ -48,7 +41,6 @@ const capacityDisplay = computed(() => {
 async function fetchAttendees() {
   loading.value = true
   try {
-    // Pull basic event info for the header (guarded by RLS — only the owner).
     const { data: evData, error: evError } = await supabase
       .from('events')
       .select('id, event_title, date, capacity, requires_registration')
@@ -62,21 +54,15 @@ async function fetchAttendees() {
       return
     }
     if (!evData) {
-      // Not the organizer or event doesn't exist.
       event.value = null
       return
     }
     event.value = evData
 
     if (!evData.requires_registration) {
-      // No registration required — nothing to show.
       return
     }
 
-    // Probe whether this event has a published custom form. If it does, we use
-    // get_event_form_responses (richer: registration state + form answers +
-    // version field snapshots). If not, we keep the existing get_event_attendees
-    // path unchanged (MODE 1 events have zero behavior change).
     const activeForm = await getActiveForm(eventId)
     hasCustomForm.value = !!activeForm
 
@@ -93,7 +79,6 @@ async function fetchAttendees() {
   }
 }
 
-// MODE 1 path (no custom form) — unchanged from the original.
 async function fetchPlainAttendees() {
   const { data, error } = await supabase.rpc('get_event_attendees', {
     p_event_id: eventId,
@@ -108,30 +93,21 @@ async function fetchPlainAttendees() {
   waitlisted.value = result?.waitlisted ?? []
 }
 
-// MODE 2 path (custom form) — fetch the richer payload that includes answers +
-// version field snapshots, then split into registered/waitlisted arrays the
-// template already knows how to render. Each attendee carries their form
-// answers inline so "View Submission" needs no extra fetch.
 async function fetchFormResponses() {
   const r = await getEventFormResponses(eventId)
   if (!r.success) {
     console.error(r.error)
     toast.error(r.error || 'Failed to load attendee submissions')
-    // Fall back to plain attendees so the page still renders.
     await fetchPlainAttendees()
     return
   }
   const responses = r.data?.responses || []
-  // Index by user_id for the drawer lookup.
   const byUser = {}
   responses.forEach((resp) => {
     byUser[resp.user_id] = resp
   })
   formResponsesByUser.value = byUser
 
-  // Split into the same shape the template already uses, but enriched with a
-  // `has_submission` flag and the answers reference. Keep cancelled students
-  // out of the active lists (they show under a separate "Cancelled" section).
   registered.value = responses
     .filter((r) => r.registration_status === 'registered')
     .map((r) => ({
@@ -155,7 +131,6 @@ async function fetchFormResponses() {
     }))
 }
 
-// Cancelled attendees (only relevant for form events — preserved for audit).
 const cancelledAttendees = computed(() => {
   if (!hasCustomForm.value) return []
   return Object.values(formResponsesByUser.value).filter(
@@ -172,25 +147,17 @@ function closeSubmission() {
   selectedAttendee.value = null
 }
 
-// Render an answer value nicely depending on field type.
 function formatAnswer(field, value) {
   if (value === undefined || value === null || value === '') return '—'
   if (field?.type === 'checkbox' && Array.isArray(value)) {
     return value.join(', ')
   }
   if (field?.type === 'file' || field?.type === 'image') {
-    // Show the filename; the drawer renders this as a clickable download link
-    // that fetches a signed URL via the /api/form-file endpoint.
     return typeof value === 'string' ? value.split('/').pop() : '—'
   }
   return String(value)
 }
 
-// Organizer downloads an attendee's uploaded file. Uses the same
-// /api/form-file endpoint as the student self-download; the endpoint verifies
-// the requester is the organizer of the event AND that the path is referenced
-// by a registration_form_responses row for this event before issuing a
-// short-lived signed URL. Best-effort; failure shows a toast.
 async function handleDownloadAttendeeFile(response, path) {
   if (!path || !response) return
   const key = `${response.user_id}::${path}`
@@ -202,8 +169,6 @@ async function handleDownloadAttendeeFile(response, path) {
   }
 }
 
-// Ordered list of { field, value } pairs for a response, using the version
-// snapshot's order so answers appear in the same order the student saw them.
 function answerEntries(response) {
   if (!response) return []
   const fields = response.form_version_fields || []
@@ -353,7 +318,6 @@ onMounted(fetchAttendees)
         </div>
       </div>
 
-      <!-- Cancelled attendees (form events only — preserved for audit per PRD) -->
       <div v-if="hasCustomForm && cancelledAttendees.length > 0" class="attendees-section">
         <h3>Cancelled</h3>
         <p class="section-hint">
@@ -393,7 +357,6 @@ onMounted(fetchAttendees)
       </div>
     </div>
 
-    <!-- Submission detail drawer -->
     <teleport to="body">
       <Transition name="drawer-fade">
         <div v-if="selectedAttendee" class="drawer-overlay" @click="closeSubmission">
@@ -402,7 +365,6 @@ onMounted(fetchAttendees)
               <PhX :size="18" />
             </button>
 
-            <!-- Attendee header -->
             <div class="drawer-header">
               <div class="avatar">
                 <img
@@ -420,7 +382,6 @@ onMounted(fetchAttendees)
               </div>
             </div>
 
-            <!-- Registration state -->
             <div class="drawer-section">
               <h3 class="drawer-section-title">Registration</h3>
               <div class="reg-grid">
@@ -464,7 +425,6 @@ onMounted(fetchAttendees)
               </div>
             </div>
 
-            <!-- Form responses -->
             <div class="drawer-section">
               <h3 class="drawer-section-title">
                 <PhListChecks :size="16" /> Form Responses
@@ -723,7 +683,6 @@ onMounted(fetchAttendees)
   }
 }
 
-/* ---- Stage 6F additions ---- */
 .attendee-actions {
   display: flex;
   align-items: center;
@@ -763,7 +722,6 @@ onMounted(fetchAttendees)
   margin: -10px 0 15px 0;
 }
 
-/* ---- Submission detail drawer ---- */
 .drawer-fade-enter-active,
 .drawer-fade-leave-active {
   transition: opacity 0.25s ease;

@@ -193,7 +193,6 @@ watch(
         </div>
       </div>
     </div>
-    <!-- up -->
     <div v-if="showDeleteModal" class="modal-overlay" @click="cancel">
       <div class="modal-card" @click.stop>
         <div class="icon-container">
@@ -217,12 +216,10 @@ watch(
         </div>
       </div>
     </div>
-    <!-- end -->
   </div>
 </template>
 
 <style scoped>
-/* Overlay with a subtle blur */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -235,7 +232,6 @@ watch(
   padding: 20px;
 }
 
-/* The White Card */
 .modal-card {
   background: #ffffff;
   border-radius: 24px;
@@ -249,7 +245,6 @@ watch(
   position: relative;
 }
 
-/* Icon Styling */
 .icon-container {
   display: flex;
   justify-content: center;
@@ -258,7 +253,7 @@ watch(
 .icon-circle {
   width: 60px;
   height: 60px;
-  background: #ffe5e5; /* Soft blue tint */
+  background: #ffe5e5;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -288,7 +283,6 @@ watch(
   z-index: 2;
 }
 
-/* Typography */
 h2 {
   font-size: 24px;
   color: #1e293b;
@@ -307,7 +301,6 @@ h2 {
   margin-bottom: 30px;
 }
 
-/* Action Buttons */
 .modal-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -359,10 +352,9 @@ button:disabled {
     padding: 30px 20px 20px 20px;
   }
   .modal-actions {
-    grid-template-columns: 1fr; /* Stack buttons on mobile */
+    grid-template-columns: 1fr;
   }
 }
-/* end */
 .skeleton {
   display: flex;
   gap: 16px;

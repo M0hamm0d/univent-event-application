@@ -18,21 +18,11 @@ const saving = ref(false)
 const publishing = ref(false)
 const builderRef = useTemplateRef('builderRef')
 const bodyRef = useTemplateRef('bodyRef')
-// Show the floating "scroll to top" button once the organizer has scrolled a
-// little way down the (potentially long) field list.
 const showTop = ref(false)
 
 const isLocal = computed(() => (props.mode === 'live' ? false : true))
 
 function closeCancel() {
-  // Local mode: soft-preserve in-progress edits so reopening the modal (or
-  // refreshing) restores them, as long as the organizer hasn't created the
-  // event yet. We hand the normalized draft back via `emit('saved', draft)`,
-  // which AddEvent.onFormSaved writes to pendingFormDraft + localStorage. When
-  // there are no fields, there's nothing worth keeping — emit 'cancel' so the
-  // parent can drop the pending draft if appropriate. Live mode (existing
-  // events) persists via Save Draft to Supabase; Cancel there discards unsaved
-  // edits as before.
   if (!isLocal.value) {
     emit('cancel')
     return
@@ -71,7 +61,6 @@ async function handlePublish() {
     toast.error('Form builder is not ready yet.')
     return
   }
-  // Confirm before pushing a new version students will see immediately.
   if (!window.confirm('Publish a new version? Students will see this form immediately.')) {
     return
   }
@@ -156,7 +145,6 @@ onUnmounted(() => {
               />
             </div>
 
-            <!-- Floating scroll-to-top button — fades in past 200px. -->
             <Transition name="fb-top-fade">
               <button
                 v-if="showTop"
@@ -179,7 +167,6 @@ onUnmounted(() => {
                 Cancel
               </button>
 
-              <!-- Live mode keeps "Save Draft" separate from "Publish". -->
               <!-- <button
                 v-if="!isLocal"
                 type="button"
@@ -201,7 +188,6 @@ onUnmounted(() => {
                 {{ publishing ? 'Publishing...' : 'Publish' }}
               </button>
 
-              <!-- Local mode: the primary button IS save & publish. -->
               <button
                 v-else
                 type="button"
@@ -344,8 +330,6 @@ onUnmounted(() => {
   background: #0447c4;
 }
 
-/* ---- Smooth modal open/close ---- */
-/* Overlay fades in/out. */
 .fb-modal-fade-enter-active,
 .fb-modal-fade-leave-active {
   transition: opacity 0.18s ease;
@@ -354,7 +338,6 @@ onUnmounted(() => {
 .fb-modal-fade-leave-to {
   opacity: 0;
 }
-/* Card scales + slides up slightly on enter, reverse on leave. */
 .fb-modal-pop-enter-active {
   transition:
     transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
@@ -374,7 +357,6 @@ onUnmounted(() => {
   transform: translateY(6px) scale(0.98);
 }
 
-/* ---- Floating scroll-to-top button ---- */
 .fb-modal__top {
   position: absolute;
   right: 20px;

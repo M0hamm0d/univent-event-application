@@ -6,8 +6,6 @@ export function useFormSubmission() {
   const toast = useToast()
   const loading = ref(false)
 
-  // Resolve the authenticated user + their profile row once per action so we
-  // can fire the existing email endpoints with { email, name }.
   async function resolveUser() {
     const {
       data: { user },
@@ -56,17 +54,6 @@ export function useFormSubmission() {
     }
   }
 
-  /**
-   * submitForm(event, formVersionId, answers)
-   *   New submission against a published custom form. Calls register_with_form
-   *   which atomically validates the answers, runs the capacity/waitlist
-   *   decision, and upserts registration_form_responses. Returns the same
-   *   status contract as useStoreUserDetails.registerForEvent so EventsCard's
-   *   onRegisterClick handler works unchanged.
-   *   `formVersionId` may be null — the RPC uses the form's current published
-   *   version in that case. If a stale id is supplied the RPC returns
-   *   'form_outdated' so the client can refresh and refill.
-   */
   async function submitForm(event, formVersionId, answers) {
     loading.value = true
     try {
@@ -81,8 +68,6 @@ export function useFormSubmission() {
       })
 
       if (error) {
-        // RPC RAISEs (e.g. validation, "registration is not open", "not auth'd")
-        // surface as a PostgREST exception message.
         toast.error(error.message)
         return { success: false }
       }

@@ -7,8 +7,8 @@ export function useInterestedEvents(toast) {
   const loading = ref(false)
   const perPage = ref(6)
   async function fetchInterest(page = 1, filters = {}) {
-    const from = (page - 1) * perPage.value //0*2, 1*2
-    const to = from + perPage.value //0+2, 2+2
+    const from = (page - 1) * perPage.value
+    const to = from + perPage.value
     loading.value = true
     try {
       const {
@@ -75,7 +75,6 @@ export function useInterestedEvents(toast) {
         .range(from, to)
       const totalPageNo = Math.ceil(count / perPage.value)
       if (!error) {
-        // Fetch registered events for the user and apply filters
         let regQuery = supabase
           .from('registered_events')
           .select('id, event_id, events!inner(*)', { count: 'exact' })
@@ -138,7 +137,6 @@ export function useInterestedEvents(toast) {
         } else if (regError && regError.code !== 'PGRST116') {
           // console.error('Error fetching registered events:', regError)
         }
-        // Merge interested and registered events, avoiding duplicates
         const allEventsMap = new Map()
         data.forEach((ev) => {
           allEventsMap.set(ev.event_id, { ...ev, is_interested: true })

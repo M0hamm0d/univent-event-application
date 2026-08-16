@@ -87,7 +87,6 @@ const cards = [
     logo: SignUpLogo,
   },
 ]
-////
 const checkAuthenticatedUser = computed(() => {
   if (univentStore.isAuthenticated) {
     return cards.filter((_, i) => i != 1)
@@ -135,7 +134,6 @@ onMounted(async () => {
 
     if (result.success) {
       eventValue.value = result.events
-      // If success but array is empty, set noEvent to true
       noEvent.value = result.events.length === 0
     } else {
       console.error(result.error)
@@ -145,7 +143,7 @@ onMounted(async () => {
     console.error('Fetch failed', err)
     noEvent.value = true
   } finally {
-    isLoading.value = false // Stop skeleton loader regardless of outcome
+    isLoading.value = false
   }
 
   interval = setInterval(() => {

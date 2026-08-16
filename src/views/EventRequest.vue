@@ -288,14 +288,12 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-/* Grid Layout */
 .request-grid {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-/* Card Design */
 .request-card {
   display: grid;
   grid-template-columns: 250px 1fr;
@@ -375,7 +373,6 @@ h3 {
   margin-bottom: 1.5rem;
 }
 
-/* Buttons */
 .actions {
   display: flex;
   gap: 1rem;
@@ -409,7 +406,6 @@ button {
   background: #fecaca;
 }
 
-/* Rejection UI */
 .rejection-box {
   margin-top: 1rem;
   padding-top: 1rem;
@@ -440,7 +436,6 @@ textarea {
   font-size: 0.875rem;
 }
 
-/* Loading Spinner */
 .loader-container {
   text-align: center;
   padding: 3rem;

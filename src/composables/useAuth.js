@@ -1,4 +1,3 @@
-// composables/useAuth.js
 import { supabase } from '@/supabase'
 import { useUniventStore } from '@/stores/counter'
 import { ref } from 'vue'
@@ -75,7 +74,6 @@ export function useAuth(toast) {
       return { success: false }
     }
   }
-  //
   async function signIn(email, password) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({

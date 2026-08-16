@@ -144,7 +144,6 @@ function removeOption(index) {
       ></textarea>
     </div>
 
-    <!-- Options for radio / select / checkbox -->
     <div class="field-group" v-if="isChoiceField(field.type)">
       <label>
         Options
@@ -168,7 +167,6 @@ function removeOption(index) {
       </div>
     </div>
 
-    <!-- Min/Max for number + date -->
     <div class="field-row" v-if="isNumericField(field.type) || field.type === 'date'">
       <div class="field-group">
         <label>
@@ -196,7 +194,6 @@ function removeOption(index) {
       </div>
     </div>
 
-    <!-- Accepted file types for file / image -->
     <div class="field-group" v-if="isFileField(field.type)">
       <label>
         Accepted file types

@@ -23,7 +23,6 @@ onMounted(async () => {
   }
 })
 
-///
 const fetchRequestedAndEvents = async (param = null) => {
   const from = param ? (param - 1) * perPage.value : null
   const to = param ? from + perPage.value - 1 : null
@@ -92,7 +91,6 @@ const fetchRequestedAndEvents = async (param = null) => {
   }
 }
 
-///useEvent
 import { ref } from 'vue'
 import { supabase } from '@/supabase'
 // import { modalStore } from '@/stores/counter'
@@ -257,7 +255,6 @@ generateEmailTemplate({
   width: 100%;
 }
 </style>
-//eVENTCARD
 <!-- <script setup>
 import { ref, watch, computed } from 'vue'
 import dayjs from 'dayjs'

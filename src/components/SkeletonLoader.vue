@@ -111,7 +111,7 @@
     background-color: #e5e7eb;
   }
   50% {
-    background-color: #f3f4f6; /* lighter gray */
+    background-color: #f3f4f6;
   }
   100% {
     background-color: #e5e7eb;
@@ -122,7 +122,7 @@
     background-color: #d1d5db;
   }
   50% {
-    background-color: #9ca3af; /* lighter gray */
+    background-color: #9ca3af;
   }
   100% {
     background-color: #d1d5db;
