@@ -43,9 +43,7 @@ const formBuilderKey = ref(0)
 // probe for it on mount so the summary card can offer "Edit Registration Form".
 const existingFormDetected = ref(false)
 
-const hasCustomForm = computed(
-  () => !!pendingFormDraft.value || existingFormDetected.value,
-)
+const hasCustomForm = computed(() => !!pendingFormDraft.value || existingFormDetected.value)
 
 // Colored dot for the summary card. 'draft' (or nothing yet) is neutral,
 // 'published' is the brand accent. Only meaningful for the in-memory draft.
@@ -81,6 +79,11 @@ const eventData = ref({
 })
 const is_multi_day = ref(false)
 const date_not_fixed = ref(false)
+// Snapshot of the event's date-state as loaded from the DB (edit mode only).
+// `null` here means "new event / not yet loaded". Used in handleSaveEvent to
+// detect undecided <-> date transitions so we only email registered students
+// when the date-state truly changes.
+const loadedDateUndecided = ref(null)
 const loading = ref(false)
 const errorMessage = ref('')
 const currentFileName = ref('')
@@ -165,6 +168,19 @@ async function handleFileUpload(e) {
   }
 }
 
+// Toggled by the "I'm not sure about the date yet" checkbox. When the
+// organizer switches to undecided we clear any captured date/end_date so a
+// stale value isn't sent (the DB CHECK rejects date IS NULL with
+// date_not_fixed = false, and the UI hides the date inputs in this state).
+// When switching back we leave the inputs blank for the user to fill in.
+function handleDateNotFixed() {
+  if (date_not_fixed.value) {
+    eventData.value.date = ''
+    eventData.value.end_date = ''
+    is_multi_day.value = false
+  }
+}
+
 async function handleSaveEvent() {
   // VALIDATIONS
   if (eventData.value.external_registration_link && eventData.value.requires_registration) {
@@ -210,11 +226,6 @@ async function handleSaveEvent() {
 
   if (eventData.value.event_format === 'physical' && !eventData.value.location) {
     toast.error('Please provide a location for physical events')
-    return
-  }
-
-  if (!eventData.value.date) {
-    toast.error('Please provide a date for the event')
     return
   }
 
@@ -280,6 +291,15 @@ async function handleSaveEvent() {
 
   if (eventId) {
     // UPDATE EXISTING EVENT
+    // Detect whether the date-state changed vs. the row we loaded on mount,
+    // so we can notify registered students only on an actual transition:
+    //   undecided -> date   (announce)
+    //   date      -> undecided (un-announce)
+    // Saving without changing the state sends nothing (no duplicates).
+    const newUndecided = !!(date_not_fixed.value || !eventData.value.date)
+    const oldUndecided = loadedDateUndecided.value
+    const eventName = eventData.value.title
+
     console.log(updatePayload, 'bbb')
     const { data, error } = await supabase
       .from('events')
@@ -295,6 +315,28 @@ async function handleSaveEvent() {
 
     toast.success('Event updated successfully')
     result = data
+
+    // Notify registered students only when the date-state truly changed.
+    // The API independently verifies the event + recipient list with the
+    // service role key (do not trust the client for the recipients).
+    if (oldUndecided !== null && oldUndecided !== newUndecided) {
+      const transition = newUndecided ? 'undecided' : 'announced'
+      try {
+        await fetch('/api/notify-date-change', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId,
+            eventName,
+            eventDate: eventData.value.date || null,
+            transition,
+          }),
+        })
+      } catch (e) {
+        console.error('Failed to send date-change notification:', e)
+      }
+    }
+
     // Existing event: the form already attaches to the event id and the
     // FormBuilder runs in live mode. Keep the builder open after the update.
     resetForm({ keepBuilderOpen: true })
@@ -378,7 +420,9 @@ async function attachPendingForm(newEventId) {
       description: d.description || '',
     })
     if (!created.success) {
-      toast.error('Could not attach your custom form: ' + created.error + ' Open the event to retry.')
+      toast.error(
+        'Could not attach your custom form: ' + created.error + ' Open the event to retry.',
+      )
       return
     }
     const saved = await saveDraft(created.form.id, {
@@ -387,17 +431,25 @@ async function attachPendingForm(newEventId) {
       fields_draft: d.fields || [],
     })
     if (!saved.success) {
-      toast.error('Saved the event, but the form fields failed: ' + saved.error + ' Open the event to retry.')
+      toast.error(
+        'Saved the event, but the form fields failed: ' + saved.error + ' Open the event to retry.',
+      )
       return
     }
     if (d.status === 'published') {
       const pub = await publish(created.form.id, d.fields || [])
       if (!pub.success) {
-        toast.error('Form saved as a draft, but publishing failed: ' + pub.error + ' You can publish it later from the event editor.')
+        toast.error(
+          'Form saved as a draft, but publishing failed: ' +
+            pub.error +
+            ' You can publish it later from the event editor.',
+        )
       }
     }
   } catch (e) {
-    toast.error('Could not attach your custom form: ' + (e.message || e) + ' Open the event to retry.')
+    toast.error(
+      'Could not attach your custom form: ' + (e.message || e) + ' Open the event to retry.',
+    )
   }
 }
 
@@ -433,6 +485,8 @@ function resetForm({ keepBuilderOpen = false } = {}) {
   selectedCategories.value = []
   currentFileName.value = ''
   is_multi_day.value = false
+  date_not_fixed.value = false
+  loadedDateUndecided.value = null
   if (!keepBuilderOpen) {
     pendingFormDraft.value = null
     formBuilderOpen.value = false
@@ -587,6 +641,13 @@ onMounted(async () => {
     selectedCategories.value = (data.category || []).map(
       (c) => c.charAt(0).toUpperCase() + c.slice(1),
     )
+
+    // ✅ Restore the date toggle state. The DB stores date_not_fixed, but
+    // treat a null date as undecided too (covers rows created before the
+    // flag existed). Snapshot this for change-detection in handleSaveEvent.
+    date_not_fixed.value = !!(data.date_not_fixed ?? (data.date == null))
+    is_multi_day.value = !!(data.end_date && data.date && data.end_date !== data.date)
+    loadedDateUndecided.value = !!(data.date_not_fixed ?? (data.date == null))
 
     // ✅ FIX filename
     currentFileName.value = data.image_url ? data.image_url.split('/').pop() : ''
@@ -820,7 +881,7 @@ onUnmounted(() => {
           <p>Manage registration and upload flyers.</p>
         </div>
         <div class="section-fields card">
-          <div class="field-group">
+          <!-- <div class="field-group">
             <label>
               External Registration Link
               <span class="optional">(Optional)</span>
@@ -836,7 +897,7 @@ onUnmounted(() => {
               Provide a link only if your event requires external registration. Otherwise, you can
               leave this empty.
             </small>
-          </div>
+          </div> -->
           <div class="field-group checkbox-row">
             <input v-model="eventData.requires_registration" type="checkbox" id="reg-req" />
             <label for="reg-req">Register on UniVent</label>
@@ -891,10 +952,7 @@ onUnmounted(() => {
             </div>
 
             <!-- B) Summary: a custom form is configured, builder closed -->
-            <div
-              v-else-if="hasCustomForm && !formBuilderOpen"
-              class="custom-form-summary"
-            >
+            <div v-else-if="hasCustomForm && !formBuilderOpen" class="custom-form-summary">
               <div class="custom-form-summary__main">
                 <span class="custom-form-summary__tag" :class="pendingFormDraftStatusClass"></span>
                 <div>
@@ -902,12 +960,20 @@ onUnmounted(() => {
                     <strong>Custom registration form configured</strong>
                     <template v-if="pendingFormDraft">
                       · {{ pendingFormDraft.fields?.length || 0 }} field(s) ·
-                      {{ pendingFormDraft.status === 'published' ? 'will be published' : 'saved as draft' }}
-                      <em class="custom-form-summary__hint">(attached when you create the event)</em>
+                      {{
+                        pendingFormDraft.status === 'published'
+                          ? 'will be published'
+                          : 'saved as draft'
+                      }}
+                      <em class="custom-form-summary__hint"
+                        >(attached when you create the event)</em
+                      >
                     </template>
                     <template v-else-if="existingFormDetected">
                       · attached to this event
-                      <em class="custom-form-summary__hint">(edited live against the saved event)</em>
+                      <em class="custom-form-summary__hint"
+                        >(edited live against the saved event)</em
+                      >
                     </template>
                   </p>
                 </div>
@@ -922,17 +988,11 @@ onUnmounted(() => {
                   class="opt-in-btn opt-in-btn--ghost"
                   @click="removeCustomForm"
                 >
-                  Remove — use default registration
+                  Remove (use default registration)
                 </button>
               </div>
             </div>
 
-            <!-- C) Builder open as a responsive modal (local for new events,
-                 live for existing). Local: "Save & Publish" commits the draft
-                 with status 'published' (attached on Create Event). Cancel
-                 soft-preserves in-progress edits so reopen restores them until
-                 the event is created. Live: Save Draft persists to Supabase,
-                 Publish pushes a new version, Cancel discards unsaved edits. -->
             <FormBuilderModal
               v-else
               :key="formBuilderKey"

@@ -12,6 +12,7 @@ import {
   PhClockClockwise,
 } from '@phosphor-icons/vue'
 import FieldEditor from './FieldEditor.vue'
+import draggable from 'vuedraggable'
 import {
   FIELD_TYPES,
   makeField,
@@ -45,8 +46,14 @@ const emit = defineEmits(['saved', 'cancelled'])
 const isLocal = computed(() => props.mode === 'local')
 
 const toast = useToast()
-const { loadForm, createFormDraft, saveDraft: saveDraftRpc, publish, setStatus, listVersions } =
-  useRegistrationForm()
+const {
+  loadForm,
+  createFormDraft,
+  saveDraft: saveDraftRpc,
+  publish,
+  setStatus,
+  listVersions,
+} = useRegistrationForm()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -189,7 +196,7 @@ async function loadVersionHistory() {
 function addField(type) {
   const position = fields.value.length + 1
   const f = makeField(type, {
-    label: `New ${FIELD_TYPES.find((t) => t.type === type)?.label || 'Field'}`,
+    label: '',
     position,
   })
   fields.value = [...fields.value, f]
@@ -197,7 +204,11 @@ function addField(type) {
   // editing it without manually scrolling down inside the modal.
   nextTick(() => {
     const list = document.querySelector('.fb-fields')
-    if (list && list.lastElementChild && typeof list.lastElementChild.scrollIntoView === 'function') {
+    if (
+      list &&
+      list.lastElementChild &&
+      typeof list.lastElementChild.scrollIntoView === 'function'
+    ) {
       list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
   })
@@ -211,20 +222,6 @@ function updateField(index, next) {
 
 function removeField(index) {
   fields.value = fields.value.filter((_, i) => i !== index)
-}
-
-function moveUp(index) {
-  if (index === 0) return
-  const arr = [...fields.value]
-  ;[arr[index - 1], arr[index]] = [arr[index], arr[index - 1]]
-  fields.value = arr
-}
-
-function moveDown(index) {
-  if (index === fields.value.length - 1) return
-  const arr = [...fields.value]
-  ;[arr[index], arr[index + 1]] = [arr[index + 1], arr[index]]
-  fields.value = arr
 }
 
 // Re-normalize positions whenever the array size/order changes.
@@ -287,11 +284,11 @@ async function handlePublish() {
   // Persist the draft first so the editor's current state is recoverable, then
   // snapshot-and-publish via the RPC.
   saving.value = true
-const sd = await saveDraftRpc(formId.value, {
-      title: title.value,
-      description: description.value,
-      fields_draft: fields.value,
-    })
+  const sd = await saveDraftRpc(formId.value, {
+    title: title.value,
+    description: description.value,
+    fields_draft: fields.value,
+  })
   saving.value = false
   if (!sd.success) {
     toast.error('Failed to save before publishing: ' + sd.error)
@@ -620,10 +617,9 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
     <!-- Local-mode banner: nothing is written to Supabase until Create Event. -->
     <div v-if="isLocal" class="fb-local-banner">
       You're designing a form for an event that hasn't been saved yet. Your work stays in this
-      page's memory and is attached to the event when you click <strong>Create Event</strong>.
+      page's memory and is attached to the event when you click <strong>Save Event</strong>.
     </div>
 
-    <!-- Empty state: organizer hasn't opted in yet -->
     <div v-if="!hasForm && fields.length === 0" class="fb-empty">
       <p>
         No custom form yet. Add a question below to start building one — students will see it
@@ -674,10 +670,32 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </button>
     </div>
 
-    <!-- Editor -->
-    <!-- && (hasForm || fields.length > 0) -->
     <div v-if="activeTab === 'editor'">
-      <!-- Add field palette -->
+      <div class="fb-fields" v-if="fields.length > 0">
+        <draggable
+          v-model="fields"
+          item-key="id"
+          handle=".drag-handle"
+          :animation="200"
+          ghost-class="fb-fields__ghost"
+          drag-class="fb-fields__drag"
+          class="field-editor-container"
+        >
+          <template #item="{ element, index }">
+            <FieldEditor
+              :field="element"
+              :index="index"
+              :total="fields.length"
+              @update:field="updateField(index, $event)"
+              @remove="removeField(index)"
+            />
+          </template>
+        </draggable>
+      </div>
+      <div v-else class="fb-fields-empty">
+        No fields yet. Use the palette above to add your first one.
+      </div>
+
       <div class="fb-palette">
         <div class="fb-palette__label"><PhPlus :size="16" /> Add a field</div>
         <div class="fb-palette__grid">
@@ -693,25 +711,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
         </div>
       </div>
 
-      <!-- Field list -->
-      <div class="fb-fields" v-if="fields.length > 0">
-        <FieldEditor
-          v-for="(f, i) in fields"
-          :key="f.id"
-          :field="f"
-          :index="i"
-          :total="fields.length"
-          @update:field="updateField(i, $event)"
-          @remove="removeField(i)"
-          @move-up="moveUp(i)"
-          @move-down="moveDown(i)"
-        />
-      </div>
-      <div v-else class="fb-fields-empty">
-        No fields yet. Use the palette above to add your first one.
-      </div>
-
-      <!-- Validation errors -->
       <div v-if="localErrors.length" class="fb-errors">
         <PhWarning :size="16" />
         <ul>
@@ -789,9 +788,8 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
           This form is archived. It is no longer visible to students.
         </template>
         <template v-else-if="isLocal">
-          This is a preview of your in-progress form. <strong>Nothing is live yet</strong> — click
-          <strong>Save as Draft</strong> or <strong>Save &amp; Publish</strong>, then create the
-          event to attach it.
+          This is a preview of your in-progress form. <strong>Nothing is live yet</strong>, click
+          <strong>Save &amp; Publish</strong>, then create the event to attach it.
         </template>
         <template v-else>
           This is a preview of your draft. <strong>Not yet visible to students</strong> — click
@@ -872,10 +870,7 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
     </div>
 
     <!-- Actions -->
-    <div
-      class="fb-actions"
-      v-if="!hideActions && (hasForm || fields.length > 0)"
-    >
+    <div class="fb-actions" v-if="!hideActions && (hasForm || fields.length > 0)">
       <!-- Local mode: hand the draft back to AddEvent. No DB writes here. -->
       <template v-if="isLocal">
         <button
@@ -1175,10 +1170,26 @@ textarea {
   border-color: #055dfa;
 }
 
+.field-editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .fb-fields {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.fb-fields__ghost {
+  opacity: 0.5;
+  background: rgba(5, 93, 250, 0.06);
+  border: 1px dashed rgba(5, 93, 250, 0.4) !important;
+  border-radius: 12px;
+}
+.fb-fields__drag {
+  cursor: grabbing !important;
+  box-shadow: 0 10px 24px -6px rgba(15, 23, 42, 0.25);
 }
 .fb-fields-empty {
   padding: 24px;
@@ -1187,6 +1198,10 @@ textarea {
   font-size: 14px;
   border: 1px dashed #e2e8f0;
   border-radius: 12px;
+}
+
+.fb-palette {
+  margin: 12px 0;
 }
 
 .fb-errors {

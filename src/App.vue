@@ -529,7 +529,6 @@ a:hover {
 .router-link-active > li,
 .home-nav .activeRoute {
   color: #1969fe;
-  text-decoration: underline;
 }
 .activeRoute {
   color: #1969fe;

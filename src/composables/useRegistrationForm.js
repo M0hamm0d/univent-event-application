@@ -75,7 +75,7 @@ export function makeField(type = 'text', partial = {}) {
       .toString(36)
       .slice(2, 7)}`
   const fallback = `field_${id.replace(/[^a-z0-9]/gi, '').slice(-6)}`
-  const label = partial.label || 'New Field'
+  const label = partial.label ?? ''
   const base = {
     id,
     key: partial.key || slugify(label) || fallback,

@@ -180,7 +180,7 @@ onUnmounted(() => {
               </button>
 
               <!-- Live mode keeps "Save Draft" separate from "Publish". -->
-              <button
+              <!-- <button
                 v-if="!isLocal"
                 type="button"
                 class="fb-modal-btn fb-modal-btn--save"
@@ -189,7 +189,7 @@ onUnmounted(() => {
               >
                 <PhFloppyDisk :size="16" />
                 {{ saving ? 'Saving...' : 'Save Draft' }}
-              </button>
+              </button> -->
               <button
                 v-if="!isLocal"
                 type="button"
