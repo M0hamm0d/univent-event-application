@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { PhTrash, PhArrowUp, PhArrowDown, PhCheck, PhPlus, PhX } from '@phosphor-icons/vue'
+import { PhTrash, PhDotsSixVertical, PhCheck, PhPlus, PhX } from '@phosphor-icons/vue'
 import {
   FIELD_TYPES,
   isChoiceField,
@@ -14,7 +14,7 @@ const props = defineProps({
   total: { type: Number, required: true },
 })
 
-const emit = defineEmits(['update:field', 'remove', 'move-up', 'move-down'])
+const emit = defineEmits(['update:field', 'remove'])
 
 const typeMeta = computed(
   () => FIELD_TYPES.find((t) => t.type === props.field.type) || { label: props.field.type },
@@ -51,24 +51,12 @@ function removeOption(index) {
       <span class="field-editor__position">#{{ index + 1 }}</span>
       <span class="field-editor__type-badge">{{ typeMeta.label }}</span>
       <div class="field-editor__head-actions">
-        <button
-          type="button"
-          class="icon-btn"
-          title="Move up"
-          :disabled="index === 0"
-          @click="$emit('move-up')"
+        <span
+          class="drag-handle"
+          title="Drag to reorder"
         >
-          <PhArrowUp :size="16" />
-        </button>
-        <button
-          type="button"
-          class="icon-btn"
-          title="Move down"
-          :disabled="index === total - 1"
-          @click="$emit('move-down')"
-        >
-          <PhArrowDown :size="16" />
-        </button>
+          <PhDotsSixVertical :size="18" />
+        </span>
         <button
           type="button"
           class="icon-btn icon-btn--danger"
@@ -86,7 +74,7 @@ function removeOption(index) {
         :value="field.label"
         @input="patch({ label: $event.target.value })"
         type="text"
-        placeholder="e.g. Why do you want to attend?"
+        placeholder="Enter your question or label..."
       />
     </div>
 
@@ -156,7 +144,6 @@ function removeOption(index) {
       ></textarea>
     </div>
 
-    <!-- Options for radio / select / checkbox -->
     <div class="field-group" v-if="isChoiceField(field.type)">
       <label>
         Options
@@ -180,7 +167,6 @@ function removeOption(index) {
       </div>
     </div>
 
-    <!-- Min/Max for number + date -->
     <div class="field-row" v-if="isNumericField(field.type) || field.type === 'date'">
       <div class="field-group">
         <label>
@@ -208,7 +194,6 @@ function removeOption(index) {
       </div>
     </div>
 
-    <!-- Accepted file types for file / image -->
     <div class="field-group" v-if="isFileField(field.type)">
       <label>
         Accepted file types
@@ -270,6 +255,26 @@ function removeOption(index) {
   margin-left: auto;
   display: flex;
   gap: 4px;
+  align-items: center;
+}
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: #94a3b8;
+  cursor: grab;
+  border-radius: 8px;
+  transition: all 0.15s;
+  touch-action: none;
+}
+.drag-handle:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+}
+.drag-handle:active {
+  cursor: grabbing;
 }
 .icon-btn {
   display: inline-flex;

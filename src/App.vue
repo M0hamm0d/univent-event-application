@@ -75,7 +75,6 @@ watch(
 
 let subscription
 
-// Add a template ref for your scrollable container
 const scrollContainer = ref(null)
 
 watch(
@@ -102,7 +101,6 @@ onMounted(async () => {
     if (univentStore.userProfile?.id === session?.user?.id) {
       return
     }
-    // Re-hydrate on a fresh sign-in / token refresh.
     resetSessionInit()
     await ensureSessionInit()
   })
@@ -529,7 +527,6 @@ a:hover {
 .router-link-active > li,
 .home-nav .activeRoute {
   color: #1969fe;
-  text-decoration: underline;
 }
 .activeRoute {
   color: #1969fe;

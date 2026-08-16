@@ -22,7 +22,6 @@ const loading = ref(false)
 
 const eventToDelete = ref(null)
 
-// upcoming = registered events whose date is in future
 const upcomingEvents = computed(() => {
   const now = new Date()
   return registeredEvents.value.filter((e) => new Date(e.date) >= now)
@@ -157,7 +156,7 @@ function getStatusClass(state) {
   const status = state?.toLowerCase()
   if (status === 'accepted') return 'badge-success'
   if (status === 'rejected') return 'badge-danger'
-  return 'badge-warning' // default for 'pending'
+  return 'badge-warning'
 }
 
 function activeRegCount(event) {
@@ -175,7 +174,6 @@ onMounted(async () => {
   fetchTrending()
 })
 
-// re-fetch when authentication state changes
 watch(
   () => univentStore.isAuthenticated,
   async (val) => {
@@ -223,7 +221,6 @@ watch(
       <p class="subtext">Here’s a quick look at your UniVent activity</p>
     </div>
 
-    <!-- stats row -->
     <div class="stats-grid">
       <template v-if="loadingUserData">
         <div class="stat-card placeholder"></div>
@@ -250,7 +247,6 @@ watch(
       </template>
     </div>
 
-    <!-- sections for event lists -->
     <div class="section-container">
       <div class="events-section" v-if="createdEvents.length">
         <header class="section-header">
@@ -336,32 +332,27 @@ watch(
   margin-top: 4px;
 }
 
-/* Pending - Soft Orange/Yellow */
 .badge-warning {
   background: #fff4e5;
   color: #b76e00;
   border: 1px solid #ffe5c4;
 }
 
-/* Accepted - Soft Green */
 .badge-success {
   background: #e7f9ed;
   color: #1a7f37;
   border: 1px solid #cfefdb;
 }
 
-/* Rejected - Soft Red */
 .badge-danger {
   background: #fff0f0;
   color: #d12424;
   border: 1px solid #ffdada;
 }
 
-/* Small adjustment to card-main to ensure title and badges don't touch */
 .card-main {
   margin-bottom: 12px;
 }
-/* modal begins here */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -374,7 +365,6 @@ watch(
   padding: 20px;
 }
 
-/* The White Card */
 .modal-card {
   background: #ffffff;
   border-radius: 24px;
@@ -388,7 +378,6 @@ watch(
   position: relative;
 }
 
-/* Icon Styling */
 .icon-container {
   display: flex;
   justify-content: center;
@@ -397,7 +386,7 @@ watch(
 .icon-circle {
   width: 60px;
   height: 60px;
-  background: #ffe5e5; /* Soft blue tint */
+  background: #ffe5e5;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -427,7 +416,6 @@ watch(
   z-index: 2;
 }
 
-/* Typography */
 h2 {
   font-size: 24px;
   color: #1e293b;
@@ -446,7 +434,6 @@ h2 {
   margin-bottom: 30px;
 }
 
-/* Action Buttons */
 .modal-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -498,10 +485,9 @@ button:disabled {
     padding: 30px 20px 20px 20px;
   }
   .modal-actions {
-    grid-template-columns: 1fr; /* Stack buttons on mobile */
+    grid-template-columns: 1fr;
   }
 }
-/* modal ends here */
 button {
   font-family: Satoshi;
 }
@@ -570,8 +556,6 @@ button {
 .section {
   margin-top: 32px;
 }
-/* section */
-/* Container & Header */
 .events-section {
   margin: 40px 0;
   padding: 0 16px;
@@ -601,14 +585,12 @@ button {
   color: #5f6368;
 }
 
-/* Grid Layout */
 .event-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
 }
 
-/* Card Styling */
 .event-card {
   background: #ffffff;
   border: 1px solid #eef0f2;
@@ -708,9 +690,7 @@ button {
   background: #fff5f5;
   color: #dc2626;
 }
-/* vvvvvv */
 
-/* Mobile Adjustments */
 @media (max-width: 480px) {
   .event-grid {
     grid-template-columns: 1fr;

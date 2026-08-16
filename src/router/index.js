@@ -57,21 +57,12 @@ const router = createRouter({
     if (savedPosition) {
       return savedPosition
     } else {
-      // This tells Vue Router to reset the window scroll
       return { top: 0 }
     }
   },
 })
 
-// CLIENT-SIDE GAMES GUARD ONLY (RLS is the real source of truth).
-// The auth-required guard is a UX convenience that sends unauthenticated
-// users home instead of showing them an empty organizer page; the security
-// boundary is enforced by Supabase RLS + the SECURITY DEFINER RPCs.
 router.beforeEach(async (to) => {
-  // Hydrate the app store (session + profile) once before any route renders.
-  // This guarantees auth-required routes boot with univentStore.userProfile
-  // populated, so child components can fetch user-scoped data immediately on
-  // mount instead of racing the bootstrap in App.vue.
   await ensureSessionInit()
 
   if (!authRequired.includes(to.name)) return true

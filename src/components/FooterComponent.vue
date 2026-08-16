@@ -91,7 +91,7 @@ async function copyEmail() {
 
 <style scoped>
 .univent-footer {
-  background-color: #05070a; /* Deep black/navy */
+  background-color: #05070a;
   /* background-color: #0a1226; */
   color: #ffffff;
   padding: 80px 0 50px 0;
@@ -173,7 +173,6 @@ async function copyEmail() {
   opacity: 0.7;
 }
 
-/* Links Styling */
 .footer-links-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -230,7 +229,6 @@ async function copyEmail() {
   font-size: 18px;
 }
 
-/* Responsive Design */
 @media screen and (max-width: 900px) {
   .footer-main {
     grid-template-columns: 1fr;

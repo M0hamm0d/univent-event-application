@@ -109,17 +109,11 @@ async function handleInterest(event) {
 }
 
 async function handleRegister(event) {
-  // Route to the custom-form modal only when we've confirmed (and cached) a
-  // published custom form for this event. Otherwise fall back to the existing
-  // RegisterModal confirmation flow (MODE 1) — never block registration on a
-  // cache miss, and never force a custom form on a no-form event.
   if (hasCustomFormMap.value[event.id]) {
     selectedCustomFormEvent.value = event
     showCustomFormModal.value = true
     return
   }
-  // Cache miss / no custom form -> use MODE 1. We re-probe here so a fast
-  // click after render (before loadAllStatuses finished) still routes correctly.
   const form = await hasCustomForm(event.id)
   if (form) {
     hasCustomFormMap.value = { ...hasCustomFormMap.value, [event.id]: form }
@@ -131,10 +125,6 @@ async function handleRegister(event) {
   showModal.value = true
 }
 
-// Open the custom-form modal in edit mode for a student who already submitted
-// (registered or waitlisted). Per the PRD: they can update their answers
-// without affecting registration status or waitlist position. The modal
-// auto-detects an existing response and prefills, so this just opens it.
 function handleEditResponse(event) {
   selectedCustomFormEvent.value = event
   showCustomFormModal.value = true
@@ -150,7 +140,6 @@ async function onInterestClick(event) {
     const requiresRegistration = !!event.requires_registration
     if (requiresRegistration) {
       if (registeredMap.value[id]) {
-        // Already registered -> cancel via the atomic RPC (also promotes waitlist).
         const result = await cancelRegistration(event)
 
         // if (result.success && result.status === 'cancelled') {
@@ -174,7 +163,6 @@ async function onInterestClick(event) {
           waitingListMap.value[id] = false
         }
       } else if (waitingListMap.value[id]) {
-        // On the waitlist -> cancel removes them from it.
         const result = await cancelRegistration(event)
         // if (result.success && result.status === 'left_waitlist') {
         //   const { error } = await supabase
@@ -229,9 +217,6 @@ async function loadAllStatuses(events) {
     loadWaitingListStatus(event),
   ])
 
-  // Probe custom-form presence for UniVent-registrable events only (external
-  // link + interest-only events never take a form). Best-effort: a network
-  // failure leaves the entry unset, which handleRegister treats as MODE 1.
   for (const event of events) {
     if (event.requires_registration && !event.external_registration_link) {
       promises.push(loadCustomFormPresence(event))
@@ -265,7 +250,6 @@ const formatTime = (timeStr) => {
   return `${hourNum}:${min} ${suffix}`
 }
 
-// Replace the watch with watchEffect for better reactivity
 watchEffect(async () => {
   localEvents.value = [...(props.events || [])]
   selectedEvent.value = localEvents.value.find((e) => e.id === route.query.id)
@@ -359,10 +343,6 @@ watch(
             </Transition>
           </teleport>
         </div>
-        <!-- Custom registration form modal (MODE 2). Reuses onRegisterClick
-             because RegistrationFormModal emits the same { event, status }
-             shape as RegisterModal; that status drives registeredMap /
-             waitingListMap identically. -->
         <div>
           <teleport to="body">
             <Transition name="modal-fade">
@@ -393,11 +373,6 @@ watch(
           </teleport>
         </div>
 
-        <!-- Edit-Response affordance for custom-form events the student already
-             submitted to (registered OR waitlisted). Opens the form modal in
-             edit mode so they can update answers without affecting their
-             registration/waitlist position. Hidden for no-form events and for
-             students who haven't submitted yet. -->
         <button
           v-if="
             route.path.startsWith('/discover') &&

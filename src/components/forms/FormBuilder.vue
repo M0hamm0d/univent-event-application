@@ -12,6 +12,7 @@ import {
   PhClockClockwise,
 } from '@phosphor-icons/vue'
 import FieldEditor from './FieldEditor.vue'
+import draggable from 'vuedraggable'
 import {
   FIELD_TYPES,
   makeField,
@@ -21,56 +22,42 @@ import {
 } from '@/composables/useRegistrationForm'
 
 const props = defineProps({
-  // 'live' writes straight to Supabase against `eventId` (existing event).
-  // 'local' keeps everything in-memory and emits the draft back to the parent
-  // so it can be persisted only after the event is created. See AddEvent.vue.
   mode: { type: String, default: 'live', validator: (v) => v === 'live' || v === 'local' },
-  // Only required in live mode (must reference an existing events row). In
-  // local mode this is null and ignored — no DB rows are touched until the
-  // parent triggers create-draft/save-draft/publish after event creation.
   eventId: { type: [String, null], default: null },
   organizerId: { type: String, default: '' },
-  // Local-mode seed: { title, description, fields, status }. Lets the organizer
-  // re-open the builder and keep their in-progress work. Ignored in live mode.
   initialDraft: { type: Object, default: null },
-  // When true the builder hides its own action row — the parent (e.g.
-  // FormBuilderModal) owns Save/Cancel. Default false keeps existing behavior.
   hideActions: { type: Boolean, default: false },
 })
 
-// Parent listens for these only in local mode (live mode persists itself).
-// `saved` payload shape: { title, description, fields, status }
 const emit = defineEmits(['saved', 'cancelled'])
 
 const isLocal = computed(() => props.mode === 'local')
 
 const toast = useToast()
-const { loadForm, createFormDraft, saveDraft: saveDraftRpc, publish, setStatus, listVersions } =
-  useRegistrationForm()
+const {
+  loadForm,
+  createFormDraft,
+  saveDraft: saveDraftRpc,
+  publish,
+  setStatus,
+  listVersions,
+} = useRegistrationForm()
 
 const loading = ref(true)
 const saving = ref(false)
 const publishing = ref(false)
 const formId = ref(null)
-const formStatus = ref('draft') // draft | published | closed | archived
+const formStatus = ref('draft')
 const publishedVersionId = ref(null)
-// Full published snapshot (the immutable version students submit against).
-// `null` when the form has never been published. Holds { id, version, fields }.
 const publishedSnapshot = ref(null)
-// History of all published versions (newest first) for the version-history panel.
 const versions = ref([])
 const title = ref('Registration Form')
 const description = ref('')
 const fields = ref([])
-const activeTab = ref('editor') // editor | preview
-// Preview source toggle: 'published' renders the immutable snapshot (what
-// students actually see); 'draft' renders the editable fields_draft. Only
-// matters when a published snapshot exists.
+const activeTab = ref('editor')
 const previewSource = ref('published')
 const versionsOpen = ref(false)
-const lastSavedFields = ref([]) // for dirty detection
-// Local-mode only: the saved draft's intended status ('draft' | 'published').
-// In live mode the real status lives in `formStatus` and is DB-driven.
+const lastSavedFields = ref([])
 const intendedStatus = ref('draft')
 
 const hasForm = computed(() => formId.value !== null)
@@ -86,8 +73,6 @@ const isDirty = computed(() => {
 const localErrors = computed(() => validateFields(fields.value))
 const canPublish = computed(() => fields.value.length > 0 && localErrors.value.length === 0)
 
-// Whether the draft diverges from the published snapshot. Drives the
-// "Republish to push changes to students" hint.
 const draftDiffersFromPublished = computed(() => {
   if (!publishedSnapshot.value || !Array.isArray(publishedSnapshot.value.fields)) return false
   const a = JSON.stringify(normalizeFields(fields.value))
@@ -95,8 +80,6 @@ const draftDiffersFromPublished = computed(() => {
   return a !== b
 })
 
-// The field set the preview should render, honoring `previewSource`. When not
-// yet published, falls back to the draft.
 const previewFields = computed(() => {
   if (
     previewSource.value === 'published' &&
@@ -117,9 +100,6 @@ onMounted(init)
 async function init() {
   loading.value = true
   if (isLocal.value) {
-    // Local mode: no Supabase reads/writes. The builder works entirely on
-    // in-memory refs and emits the draft back to AddEvent when the organizer
-    // clicks Save. Nothing is persisted until the event is created.
     formId.value = null
     formStatus.value = 'draft'
     publishedSnapshot.value = null
@@ -153,16 +133,10 @@ async function init() {
       fields.value = Array.isArray(form.fields_draft) ? [...form.fields_draft] : []
       lastSavedFields.value = JSON.parse(JSON.stringify(fields.value))
       publishedVersionId.value = form.current_version_id
-      // `loadForm` joins current_version:registration_form_versions(*), so this
-      // already carries the full immutable field set. Use it as the published
-      // preview source (what students see right now).
       publishedSnapshot.value = form.current_version || null
-      // Make sure the preview shows the live snapshot when one exists.
       previewSource.value = form.current_version ? 'published' : 'draft'
-      // Load version history in the background (non-blocking).
       loadVersionHistory()
     } else {
-      // Leave form-less until the organizer clicks "Add Registration Form".
       formId.value = null
       formStatus.value = 'draft'
       publishedSnapshot.value = null
@@ -189,15 +163,17 @@ async function loadVersionHistory() {
 function addField(type) {
   const position = fields.value.length + 1
   const f = makeField(type, {
-    label: `New ${FIELD_TYPES.find((t) => t.type === type)?.label || 'Field'}`,
+    label: '',
     position,
   })
   fields.value = [...fields.value, f]
-  // Smoothly scroll the newly added field into view so the organizer can start
-  // editing it without manually scrolling down inside the modal.
   nextTick(() => {
     const list = document.querySelector('.fb-fields')
-    if (list && list.lastElementChild && typeof list.lastElementChild.scrollIntoView === 'function') {
+    if (
+      list &&
+      list.lastElementChild &&
+      typeof list.lastElementChild.scrollIntoView === 'function'
+    ) {
       list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
   })
@@ -213,21 +189,6 @@ function removeField(index) {
   fields.value = fields.value.filter((_, i) => i !== index)
 }
 
-function moveUp(index) {
-  if (index === 0) return
-  const arr = [...fields.value]
-  ;[arr[index - 1], arr[index]] = [arr[index], arr[index - 1]]
-  fields.value = arr
-}
-
-function moveDown(index) {
-  if (index === fields.value.length - 1) return
-  const arr = [...fields.value]
-  ;[arr[index], arr[index + 1]] = [arr[index + 1], arr[index]]
-  fields.value = arr
-}
-
-// Re-normalize positions whenever the array size/order changes.
 watch(
   () => fields.value.map((f) => f.id).join('|'),
   () => {
@@ -284,14 +245,12 @@ async function handlePublish() {
   }
   const ok = await ensureFormCreated()
   if (!ok) return
-  // Persist the draft first so the editor's current state is recoverable, then
-  // snapshot-and-publish via the RPC.
   saving.value = true
-const sd = await saveDraftRpc(formId.value, {
-      title: title.value,
-      description: description.value,
-      fields_draft: fields.value,
-    })
+  const sd = await saveDraftRpc(formId.value, {
+    title: title.value,
+    description: description.value,
+    fields_draft: fields.value,
+  })
   saving.value = false
   if (!sd.success) {
     toast.error('Failed to save before publishing: ' + sd.error)
@@ -307,8 +266,6 @@ const sd = await saveDraftRpc(formId.value, {
     publishedVersionId.value = r.versionId
     formStatus.value = 'published'
     lastSavedFields.value = normalizeFields(fields.value)
-    // Reload the full published snapshot (with fields) so the Preview tab
-    // immediately renders exactly what students will see after this publish.
     await reloadPublished()
     toast.success(`Form published (version ${r.version}). Students can now register.`)
   } finally {
@@ -316,13 +273,6 @@ const sd = await saveDraftRpc(formId.value, {
   }
 }
 
-/**
- * reloadPublished()
- *   Re-fetch the registration_forms row (with its current_version join) and the
- *   version history so `publishedSnapshot`, `publishedVersionId`, and
- *   `versions` reflect the DB's current state. Called after publish/close/
- *   reopen. Falls back gracefully if the lookup fails.
- */
 async function reloadPublished() {
   try {
     const form = await loadForm(props.eventId)
@@ -330,16 +280,12 @@ async function reloadPublished() {
       formStatus.value = form.status
       publishedVersionId.value = form.current_version_id
       publishedSnapshot.value = form.current_version || null
-      // The RPC `publish_registration_form` mirrors the published fields into
-      // fields_draft, so on a fresh publish the draft equals the snapshot; keep
-      // lastSavedFields in sync so isDirty resets correctly.
       if (Array.isArray(form.fields_draft) && form.fields_draft.length) {
         lastSavedFields.value = normalizeFields(form.fields_draft)
       }
       if (publishedSnapshot.value) previewSource.value = 'published'
     }
   } catch (err) {
-    // Non-fatal: preview will just keep showing the prior snapshot.
     console.warn('reloadPublished failed:', err)
   }
   await loadVersionHistory()
@@ -371,13 +317,6 @@ async function handleReopen() {
   await reloadPublished()
   toast.success('Registration reopened.')
 }
-
-// ---------------------------------------------------------------------------
-// Local-mode handlers. No DB writes — the draft is handed back to AddEvent
-// via `emit('saved', draft)`. AddEvent persists it (createFormDraft/saveDraft
-// /publish) only after the event row exists, so we never create an orphan
-// registration_forms row. See AddEvent.handleSaveEvent for the persist path.
-// ---------------------------------------------------------------------------
 
 function handleLocalSaveDraft() {
   if (!fields.value.length) {
@@ -413,23 +352,9 @@ function handleLocalSavePublish() {
 }
 
 function handleLocalCancel() {
-  // Per AddEvent's contract, cancel keeps any existing pending draft intact.
-  // If the organizer never saved (no draft), AddEvent has nothing to keep.
   emit('cancelled')
 }
 
-// ---------------------------------------------------------------------------
-// Public save hook (used by FormBuilderModal's footer "Save" button when
-// `hideActions` is true).
-//   - Local mode: returns the draft object `{ title, description, fields,
-//     status }` (truthy) on success so the modal can forward it to AddEvent
-//     via `emit('saved', draft)`. Status is 'draft' — matches the agreed
-//     "Save = Save as Draft" contract (no publish from the modal).
-//   - Live mode:  persists the draft to Supabase (creates the form row on
-//     first save via ensureFormCreated). Returns `true` on success. No
-//     publish/close/reopen here.
-// Returns `false` on failure (caller shows nothing extra; toasts fire inside).
-// ---------------------------------------------------------------------------
 async function saveDraft() {
   try {
     if (isLocal.value) {
@@ -479,19 +404,9 @@ async function saveDraft() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// saveAndPublish()  —  LOCAL mode only. Used by FormBuilderModal's primary
-// "Save & Publish" button when the organizer is designing a form for a brand-
-// new event (the event row doesn't exist yet, so we can't publish to Supabase
-// here). Returns the draft object with status 'published' on success so
-// AddEvent.attachPendingForm runs the real publish RPC after Create Event.
-// Mirrors handleLocalSavePublish's validation, but is callable from the
-// modal's footer. Returns `false` on failure.
-// ---------------------------------------------------------------------------
 async function saveAndPublish() {
   try {
     if (!isLocal.value) {
-      // Live events shouldn't reach this hook from the modal, but guard anyway.
       toast.error('Use Publish in live mode.')
       return false
     }
@@ -509,8 +424,6 @@ async function saveAndPublish() {
       fields: normalizeFields(fields.value),
       status: 'published',
     }
-    // Record the publish intent so a subsequent Cancel (captureDraft) preserves
-    // it instead of reverting to 'draft'.
     intendedStatus.value = 'published'
     toast.success('Custom form saved. It will be published when you create the event.')
     return draft
@@ -520,15 +433,6 @@ async function saveAndPublish() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// captureDraft()  —  non-persisting snapshot of the builder's current state.
-// Used by FormBuilderModal's Cancel path (local mode only) so the organizer's
-// in-progress edits survive an open/close cycle without committing to publish.
-// Returns the normalized draft `{ title, description, fields, status }` using
-// `intendedStatus` to preserve an earlier Save & Publish intent, or `null`
-// when there are no fields (nothing worth preserving). No toasts, no side
-// effects beyond reading refs.
-// ---------------------------------------------------------------------------
 function captureDraft() {
   if (!isLocal.value) return null
   if (!fields.value.length) return null
@@ -540,14 +444,6 @@ function captureDraft() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// publishLive()  —  LIVE mode only. Used by FormBuilderModal's "Publish"
-// button for an existing event. Mirrors handlePublish (ensureFormCreated →
-// saveDraftRpc → publish → reloadPublished) but is callable from the modal
-// footer and returns a boolean so the modal knows whether to close. The
-// caller (FormBuilderModal) is responsible for any confirm() prompt — we
-// don't prompt here to keep this hook reusable. Returns `true` on success.
-// ---------------------------------------------------------------------------
 async function publishLive() {
   try {
     if (isLocal.value) {
@@ -560,8 +456,6 @@ async function publishLive() {
     }
     const ok = await ensureFormCreated()
     if (!ok) return false
-    // Persist the draft first so the editor's current state is recoverable,
-    // then snapshot-and-publish via the RPC.
     saving.value = true
     const sd = await saveDraftRpc(formId.value, {
       title: title.value,
@@ -583,8 +477,6 @@ async function publishLive() {
       publishedVersionId.value = r.versionId
       formStatus.value = 'published'
       lastSavedFields.value = normalizeFields(fields.value)
-      // Reload the full published snapshot so the Preview tab renders exactly
-      // what students will see after this publish.
       await reloadPublished()
       toast.success(`Form published (version ${r.version}). Students can now register.`)
       return true
@@ -605,7 +497,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
 
 <template>
   <div class="form-builder" v-if="!loading">
-    <!-- Toolbar / status -->
     <div class="fb-header">
       <div class="fb-header__title">
         <PhListChecks :size="20" />
@@ -617,13 +508,11 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </div>
     </div>
 
-    <!-- Local-mode banner: nothing is written to Supabase until Create Event. -->
     <div v-if="isLocal" class="fb-local-banner">
       You're designing a form for an event that hasn't been saved yet. Your work stays in this
-      page's memory and is attached to the event when you click <strong>Create Event</strong>.
+      page's memory and is attached to the event when you click <strong>Save Event</strong>.
     </div>
 
-    <!-- Empty state: organizer hasn't opted in yet -->
     <div v-if="!hasForm && fields.length === 0" class="fb-empty">
       <p>
         No custom form yet. Add a question below to start building one — students will see it
@@ -635,7 +524,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </p>
     </div>
 
-    <!-- Title + description -->
     <div class="fb-meta card" v-if="hasForm || fields.length > 0">
       <div class="field-group">
         <label>Form Title</label>
@@ -654,7 +542,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </div>
     </div>
 
-    <!-- Tabs -->
     <div class="fb-tabs" v-if="hasForm || fields.length > 0">
       <button
         type="button"
@@ -674,10 +561,32 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </button>
     </div>
 
-    <!-- Editor -->
-    <!-- && (hasForm || fields.length > 0) -->
     <div v-if="activeTab === 'editor'">
-      <!-- Add field palette -->
+      <div class="fb-fields" v-if="fields.length > 0">
+        <draggable
+          v-model="fields"
+          item-key="id"
+          handle=".drag-handle"
+          :animation="200"
+          ghost-class="fb-fields__ghost"
+          drag-class="fb-fields__drag"
+          class="field-editor-container"
+        >
+          <template #item="{ element, index }">
+            <FieldEditor
+              :field="element"
+              :index="index"
+              :total="fields.length"
+              @update:field="updateField(index, $event)"
+              @remove="removeField(index)"
+            />
+          </template>
+        </draggable>
+      </div>
+      <div v-else class="fb-fields-empty">
+        No fields yet. Use the palette above to add your first one.
+      </div>
+
       <div class="fb-palette">
         <div class="fb-palette__label"><PhPlus :size="16" /> Add a field</div>
         <div class="fb-palette__grid">
@@ -693,25 +602,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
         </div>
       </div>
 
-      <!-- Field list -->
-      <div class="fb-fields" v-if="fields.length > 0">
-        <FieldEditor
-          v-for="(f, i) in fields"
-          :key="f.id"
-          :field="f"
-          :index="i"
-          :total="fields.length"
-          @update:field="updateField(i, $event)"
-          @remove="removeField(i)"
-          @move-up="moveUp(i)"
-          @move-down="moveDown(i)"
-        />
-      </div>
-      <div v-else class="fb-fields-empty">
-        No fields yet. Use the palette above to add your first one.
-      </div>
-
-      <!-- Validation errors -->
       <div v-if="localErrors.length" class="fb-errors">
         <PhWarning :size="16" />
         <ul>
@@ -719,7 +609,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
         </ul>
       </div>
 
-      <!-- Draft divergence hint (editor side) -->
       <div v-if="draftDiffersFromPublished" class="fb-divergence">
         <PhClockClockwise :size="16" />
         <span>
@@ -730,9 +619,7 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </div>
     </div>
 
-    <!-- Preview -->
     <div v-if="activeTab === 'preview' && (hasForm || fields.length > 0)" class="fb-preview-wrap">
-      <!-- Preview source control: what students see (published) vs current draft -->
       <div
         v-if="publishedSnapshot && Array.isArray(publishedSnapshot.fields)"
         class="fb-preview-source"
@@ -761,7 +648,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
         </button>
       </div>
 
-      <!-- Status banner -->
       <div class="fb-preview-banner" :class="`fb-preview-banner--${formStatus}`">
         <template v-if="formStatus === 'published' && previewSource === 'published'">
           This is the published form students see right now. They can submit against these fields.
@@ -789,9 +675,8 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
           This form is archived. It is no longer visible to students.
         </template>
         <template v-else-if="isLocal">
-          This is a preview of your in-progress form. <strong>Nothing is live yet</strong> — click
-          <strong>Save as Draft</strong> or <strong>Save &amp; Publish</strong>, then create the
-          event to attach it.
+          This is a preview of your in-progress form. <strong>Nothing is live yet</strong>, click
+          <strong>Save &amp; Publish</strong>, then create the event to attach it.
         </template>
         <template v-else>
           This is a preview of your draft. <strong>Not yet visible to students</strong> — click
@@ -871,12 +756,7 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </div>
     </div>
 
-    <!-- Actions -->
-    <div
-      class="fb-actions"
-      v-if="!hideActions && (hasForm || fields.length > 0)"
-    >
-      <!-- Local mode: hand the draft back to AddEvent. No DB writes here. -->
+    <div class="fb-actions" v-if="!hideActions && (hasForm || fields.length > 0)">
       <template v-if="isLocal">
         <button
           type="button"
@@ -899,7 +779,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
         </button>
       </template>
 
-      <!-- Live mode: persist directly against the existing event. -->
       <template v-else>
         <button
           type="button"
@@ -939,7 +818,6 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </template>
     </div>
 
-    <!-- Version history (organizer-only audit view) -->
     <div class="fb-versions" v-if="hasForm && versions.length > 0">
       <button type="button" class="fb-versions__toggle" @click="versionsOpen = !versionsOpen">
         <PhClockClockwise :size="16" />
@@ -1175,10 +1053,26 @@ textarea {
   border-color: #055dfa;
 }
 
+.field-editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .fb-fields {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.fb-fields__ghost {
+  opacity: 0.5;
+  background: rgba(5, 93, 250, 0.06);
+  border: 1px dashed rgba(5, 93, 250, 0.4) !important;
+  border-radius: 12px;
+}
+.fb-fields__drag {
+  cursor: grabbing !important;
+  box-shadow: 0 10px 24px -6px rgba(15, 23, 42, 0.25);
 }
 .fb-fields-empty {
   padding: 24px;
@@ -1187,6 +1081,10 @@ textarea {
   font-size: 14px;
   border: 1px dashed #e2e8f0;
   border-radius: 12px;
+}
+
+.fb-palette {
+  margin: 12px 0;
 }
 
 .fb-errors {
@@ -1324,7 +1222,6 @@ textarea {
   line-height: 1.5;
 }
 
-/* ---- Stage 6C: preview source, banner, divergence, version history ---- */
 .fb-preview-wrap {
   display: flex;
   flex-direction: column;

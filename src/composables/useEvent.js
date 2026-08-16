@@ -70,8 +70,6 @@ export const useEvents = () => {
 
       if (error) throw error
 
-      // Return the new event id so callers (e.g. the custom-form builder flow
-      // in AddEvent.vue) can attach a registration form after the event exists.
       return { success: true, id: data?.id || null }
     } catch (err) {
       return {

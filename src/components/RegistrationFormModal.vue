@@ -29,23 +29,17 @@ const isLoggedIn = computed(() => univentStore.isAuthenticated)
 const { loading, submitForm, loadOwnResponse, updateForm, hasCustomForm } = useFormSubmission()
 const { uploadFile, removeFiles, downloadFile } = useFormUploads()
 
-// Per-field upload progress map (keyed by field.key) so multiple file fields
-// can upload concurrently with independent spinners.
 const uploadingField = ref({})
-// Per-field fetch state for the "Download" link on already-uploaded files
-// (edit-mode prefill shows the existing path as a download link).
 const downloadingField = ref({})
 
-// ---- form state ----
-const formPayload = ref(null) // { title, description, form_version_id, fields }
+const formPayload = ref(null)
 const fields = computed(() => formPayload.value?.fields || [])
-const answers = ref({}) // student answers keyed by field.key
-const errors = ref({}) // per-field client-side validation errors
+const answers = ref({})
+const errors = ref({})
 const fetchError = ref('')
 const submitError = ref('')
-const result = ref(null) // { status, position? }
+const result = ref(null)
 
-// Edit-mode state.
 const editExisting = ref(props.editMode)
 const existingResponseMeta = ref(null)
 
@@ -65,8 +59,6 @@ async function loadForm() {
   fetchError.value = ''
   const formData = await hasCustomForm(props.event.id)
   if (!formData) {
-    // No published form — shouldn't happen since EventsCard only opens us when
-    // one exists, but guard anyway so the student isn't stuck on a blank modal.
     fetchError.value = 'This event no longer has a registration form. Please close and try again.'
     return
   }
@@ -74,10 +66,6 @@ async function loadForm() {
   answers.value = {}
   errors.value = {}
 
-  // If the student already submitted, the organizer/PRD wants them to be able
-  // to "Edit Response". Probe in edit mode OR when we discover they already
-  // submitted (so the modal reopens prefilled). This RPC returns null when the
-  // student hasn't submitted yet, which is the normal new-submission path.
   const own = await loadOwnResponse(props.event.id)
   if (own) {
     editExisting.value = true
@@ -98,7 +86,6 @@ function openLogin() {
   emit('close')
 }
 
-// ---- helpers ----
 function fieldLabel(f) {
   return f.label ? `${f.label}${f.required ? ' *' : ''}` : '(no label)'
 }
@@ -119,14 +106,11 @@ function toggleCheckbox(key, option) {
   setAnswer(key, current)
 }
 
-// ---- file / image uploads ----
 async function handleFileChange(field, event) {
   const file = event.target.files?.[0]
   if (!file) return
   const key = field.key
   uploadingField.value = { ...uploadingField.value, [key]: true }
-  // Keep a reference to the previously-set path so we can clean it up after a
-  // successful replace (avoids orphaning the old file in storage).
   const previousPath = typeof answers.value[key] === 'string' ? answers.value[key] : null
   try {
     const r = await uploadFile(file, props.event.id, field.fileTypes || [])
@@ -136,13 +120,10 @@ async function handleFileChange(field, event) {
     }
     setAnswer(key, r.path)
     if (previousPath && previousPath !== r.path) {
-      // Best-effort cleanup of the replaced file; failure is non-fatal (the
-      // orphan sweep is a later cleanup concern, not a UX blocker).
       await removeFiles([previousPath])
     }
   } finally {
     uploadingField.value = { ...uploadingField.value, [key]: false }
-    // Reset the input so selecting the same file again re-triggers change.
     event.target.value = ''
   }
 }
@@ -173,7 +154,6 @@ function fileNameFromPath(path) {
   return path.split('/').pop() || path
 }
 
-// ---- client-side validation (mirrors _validate_form_answers in the RPC) ----
 function validate() {
   const next = {}
   fields.value.forEach((f) => {
@@ -181,7 +161,6 @@ function validate() {
     const v = answers.value[key]
     const required = !!f.required
 
-    // Required / empty checks.
     const isEmpty =
       v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)
 
@@ -191,7 +170,6 @@ function validate() {
     }
     if (isEmpty) return
 
-    // Type-specific sanity (the DB RPC is authoritative; this is UX feedback).
     if (f.type === 'email') {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(v))) {
         next[key] = 'Enter a valid email address.'
@@ -233,16 +211,12 @@ function validate() {
   return Object.keys(next).length === 0
 }
 
-// ---- submit ----
 async function handleSubmit() {
   submitError.value = ''
   if (!validate()) {
-    // Scroll to first error is left to the browser via :invalid styling.
     return
   }
 
-  // Coerce answers to the JSON shapes the validator expects (e.g. number→str
-  // is fine; the RPC re-coerces). Strip undefined keys.
   const cleaned = {}
   Object.keys(answers.value).forEach((k) => {
     const v = answers.value[k]
@@ -250,14 +224,8 @@ async function handleSubmit() {
   })
 
   if (editExisting.value) {
-    // Edit path: update_form_response never runs capacity logic. Status/position
-    // are unchanged. We don't emit 'registered' (no status change happened).
     const r = await updateForm(props.event.id, cleaned)
     if (r.success) {
-      // Clean up orphaned uploads (files the student removed or replaced when
-      // editing). The RPC computes the diff between old and new file answers
-      // and returns the unreferenced storage paths; we delete them here so
-      // storage doesn't accumulate abandoned files. Best-effort.
       const removed = Array.isArray(r.removedFilePaths) ? r.removedFilePaths : []
       if (removed.length) {
         await removeFiles(removed)
@@ -269,12 +237,10 @@ async function handleSubmit() {
     return
   }
 
-  // New submission path: register_with_form (atomic capacity + form response).
   const r = await submitForm(props.event, formPayload.value?.form_version_id || null, cleaned)
 
   if (!r.success) {
     if (r.status === 'form_outdated') {
-      // Refresh the form and let the student refill against the new version.
       await loadForm()
       submitError.value = 'The form was just updated. Please review your answers and submit again.'
     } else {
@@ -283,9 +249,6 @@ async function handleSubmit() {
     return
   }
 
-  // Show the result inline (per PRD: one flow — submitting IS the registration
-  // attempt). Then bubble the status up so EventsCard's onRegisterClick can
-  // update its registeredMap/waitingListMap (same handler as MODE 1).
   result.value = { status: r.status, position: r.position }
   emit('registered', { event: props.event, status: r.status })
 }
@@ -295,13 +258,10 @@ function closeResult() {
 }
 
 function handleOverlayClick() {
-  // Don't close-on-overlay-click while submitting to avoid losing a registration
-  // attempt the student has confirmed.
   if (loading.value) return
   emit('close')
 }
 
-// Date display helper for the event header.
 const eventDateLabel = computed(() => {
   if (!props.event?.date) return ''
   if (props.event.date_not_fixed) return 'Date to be announced'
@@ -317,27 +277,23 @@ const eventDateLabel = computed(() => {
         <PhX :size="18" />
       </button>
 
-      <!-- Login gate (mirrors RegisterModal) -->
       <div v-if="!isLoggedIn" class="rfm-login">
         <h2>Login Required</h2>
         <p>You must be logged in to register for this event.</p>
         <button class="rfm-btn rfm-btn--primary" @click="openLogin">Go to Login</button>
       </div>
 
-      <!-- Loading form -->
       <div v-else-if="!formPayload && !fetchError" class="rfm-state">
         <PhSpinner :size="22" class="rfm-spin" />
         <p>Loading registration form…</p>
       </div>
 
-      <!-- No form / closed -->
       <div v-else-if="fetchError" class="rfm-state rfm-state--error">
         <PhWarning :size="22" />
         <p>{{ fetchError }}</p>
         <button class="rfm-btn rfm-btn--outline" @click="emit('close')">Close</button>
       </div>
 
-      <!-- Result screen after submission -->
       <div v-else-if="result" class="rfm-result">
         <div
           class="rfm-result__icon"
@@ -363,16 +319,13 @@ const eventDateLabel = computed(() => {
         <button class="rfm-btn rfm-btn--primary" @click="closeResult">Done</button>
       </div>
 
-      <!-- Form -->
       <div v-else class="rfm-body">
-        <!-- Event header -->
         <div class="rfm-event-header">
           <h2>{{ event.event_title }}</h2>
           <p v-if="eventDateLabel" class="rfm-event-meta">{{ eventDateLabel }}</p>
           <p v-if="event.location" class="rfm-event-meta">{{ event.location }}</p>
         </div>
 
-        <!-- Edit-mode banner -->
         <div v-if="editExisting" class="rfm-banner rfm-banner--edit">
           <PhClockClockwise :size="16" />
           <span>
@@ -389,7 +342,6 @@ const eventDateLabel = computed(() => {
             <label class="rfm-field__label">{{ fieldLabel(f) }}</label>
             <p v-if="f.description" class="rfm-field__help">{{ f.description }}</p>
 
-            <!-- Text -->
             <input
               v-if="f.type === 'text'"
               type="text"
@@ -399,7 +351,6 @@ const eventDateLabel = computed(() => {
               :class="{ 'rfm-input--err': errors[f.key] }"
             />
 
-            <!-- Long text -->
             <textarea
               v-else-if="f.type === 'textarea'"
               rows="3"
@@ -409,7 +360,6 @@ const eventDateLabel = computed(() => {
               :class="{ 'rfm-input--err': errors[f.key] }"
             ></textarea>
 
-            <!-- Email -->
             <input
               v-else-if="f.type === 'email'"
               type="email"
@@ -419,7 +369,6 @@ const eventDateLabel = computed(() => {
               :class="{ 'rfm-input--err': errors[f.key] }"
             />
 
-            <!-- Phone -->
             <input
               v-else-if="f.type === 'phone'"
               type="tel"
@@ -429,7 +378,6 @@ const eventDateLabel = computed(() => {
               :class="{ 'rfm-input--err': errors[f.key] }"
             />
 
-            <!-- Number -->
             <input
               v-else-if="f.type === 'number'"
               type="number"
@@ -441,7 +389,6 @@ const eventDateLabel = computed(() => {
               :class="{ 'rfm-input--err': errors[f.key] }"
             />
 
-            <!-- Date -->
             <input
               v-else-if="f.type === 'date'"
               type="date"
@@ -452,7 +399,6 @@ const eventDateLabel = computed(() => {
               :class="{ 'rfm-input--err': errors[f.key] }"
             />
 
-            <!-- Select -->
             <select
               v-else-if="f.type === 'select'"
               :value="answers[f.key] ?? ''"
@@ -463,7 +409,6 @@ const eventDateLabel = computed(() => {
               <option v-for="(o, i) in f.options || []" :key="i" :value="o">{{ o }}</option>
             </select>
 
-            <!-- Radio -->
             <div v-else-if="f.type === 'radio'" class="rfm-choices">
               <label v-for="(o, i) in f.options || []" :key="i" class="rfm-choice">
                 <input
@@ -477,7 +422,6 @@ const eventDateLabel = computed(() => {
               </label>
             </div>
 
-            <!-- Checkbox -->
             <div v-else-if="f.type === 'checkbox'" class="rfm-choices">
               <label v-for="(o, i) in f.options || []" :key="i" class="rfm-choice">
                 <input
@@ -490,9 +434,7 @@ const eventDateLabel = computed(() => {
               </label>
             </div>
 
-            <!-- File / image upload (Stage 6G: secure upload to private bucket) -->
             <div v-else-if="isFileField(f.type)" class="rfm-upload">
-              <!-- Already-uploaded state: show filename + download + replace -->
               <div v-if="answers[f.key]" class="rfm-upload__done">
                 <div class="rfm-upload__file">
                   <PhFileText :size="18" />
@@ -533,7 +475,6 @@ const eventDateLabel = computed(() => {
                 </div>
               </div>
 
-              <!-- Empty state: upload prompt -->
               <label
                 v-else
                 class="rfm-upload__zone"
@@ -628,7 +569,6 @@ const eventDateLabel = computed(() => {
   cursor: not-allowed;
 }
 
-/* ---- states ---- */
 .rfm-state,
 .rfm-login,
 .rfm-result {
@@ -684,7 +624,6 @@ const eventDateLabel = computed(() => {
   color: #d97706;
 }
 
-/* ---- body / form ---- */
 .rfm-body {
   display: flex;
   flex-direction: column;
@@ -938,7 +877,6 @@ textarea {
   margin: 0;
 }
 
-/* ---- buttons ---- */
 .rfm-btn {
   padding: 12px 22px;
   border-radius: 12px;

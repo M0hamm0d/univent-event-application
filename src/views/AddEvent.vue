@@ -17,45 +17,19 @@ const currentUser = ref('')
 const route = useRoute()
 const eventId = route.query.id
 
-// ---------------------------------------------------------------------------
-// Custom registration form state.
-//
-// AddEvent owns the overall event-creation state, including the in-memory
-// custom-form DRAFT for new events. The draft lives ONLY in `pendingFormDraft`
-// (a plain object) until the event is successfully created. Then — and only
-// then — we persist it via useRegistrationForm (createFormDraft → saveDraft →
-// publish if requested). This means opening/closing the FormBuilder never
-// creates any registration_forms / registration_form_versions rows just
-// because the organizer explored the builder.
-//
-// For EXISTING events (edit mode) the form already has an id, so the builder
-// runs in 'live' mode and reads/writes Supabase directly against `eventId`.
-//
-// `formBuilderKey` is bumped whenever the builder is (re)opened so the
-// FormBuilder component remounts with fresh props (important for local mode,
-// so an updated pendingFormDraft seed re-hydrates the editor cleanly).
-// ---------------------------------------------------------------------------
-const pendingFormDraft = ref(null) // { title, description, fields, status } | null
+const pendingFormDraft = ref(null)
 const formBuilderOpen = ref(false)
-const formBuilderMode = ref('live') // 'live' | 'local'
+const formBuilderMode = ref('live')
 const formBuilderKey = ref(0)
-// True for an existing event that already has a registration_forms row. We
-// probe for it on mount so the summary card can offer "Edit Registration Form".
 const existingFormDetected = ref(false)
 
-const hasCustomForm = computed(
-  () => !!pendingFormDraft.value || existingFormDetected.value,
-)
+const hasCustomForm = computed(() => !!pendingFormDraft.value || existingFormDetected.value)
 
-// Colored dot for the summary card. 'draft' (or nothing yet) is neutral,
-// 'published' is the brand accent. Only meaningful for the in-memory draft.
 const pendingFormDraftStatusClass = computed(() => {
   if (pendingFormDraft.value?.status === 'published') return 'custom-form-summary__tag--published'
   return 'custom-form-summary__tag--draft'
 })
 
-// FormBuilder is only available for UniVent-registrable events without an
-// external registration link (the same gate as Stage 0's registration mode).
 const canCustomizeForm = computed(
   () => eventData.value.requires_registration && !eventData.value.external_registration_link,
 )
@@ -81,6 +55,7 @@ const eventData = ref({
 })
 const is_multi_day = ref(false)
 const date_not_fixed = ref(false)
+const loadedDateUndecided = ref(null)
 const loading = ref(false)
 const errorMessage = ref('')
 const currentFileName = ref('')
@@ -132,9 +107,6 @@ async function getUserId() {
     eventData.value.user_id = profile[0].id
     currentUser.value = user
     if (error || profile_error) throw error
-    // Restore any in-progress custom-form draft for NEW events after we know
-    // the organizer id (localStorage is keyed by user id). Live/edit mode
-    // loads its form from Supabase in onMounted instead.
     loadDraftFromStorage()
   } catch (error) {
     console.log(error)
@@ -165,8 +137,15 @@ async function handleFileUpload(e) {
   }
 }
 
+function handleDateNotFixed() {
+  if (date_not_fixed.value) {
+    eventData.value.date = ''
+    eventData.value.end_date = ''
+    is_multi_day.value = false
+  }
+}
+
 async function handleSaveEvent() {
-  // VALIDATIONS
   if (eventData.value.external_registration_link && eventData.value.requires_registration) {
     toast.error('You cannot provide an external link AND register on UniVent. Please choose one.')
     return
@@ -213,11 +192,6 @@ async function handleSaveEvent() {
     return
   }
 
-  if (!eventData.value.date) {
-    toast.error('Please provide a date for the event')
-    return
-  }
-
   if (
     eventData.value.event_format === 'hybrid' &&
     (!eventData.value.location || !eventData.value.linkToRegister)
@@ -240,7 +214,6 @@ async function handleSaveEvent() {
     eventData.value.location = ''
   }
 
-  // PREPARE PAYLOAD
   const payload = {
     ...eventData.value,
     category: selectedCategories.value,
@@ -279,7 +252,10 @@ async function handleSaveEvent() {
   let result
 
   if (eventId) {
-    // UPDATE EXISTING EVENT
+    const newUndecided = !!(date_not_fixed.value || !eventData.value.date)
+    const oldUndecided = loadedDateUndecided.value
+    const eventName = eventData.value.title
+
     console.log(updatePayload, 'bbb')
     const { data, error } = await supabase
       .from('events')
@@ -295,16 +271,29 @@ async function handleSaveEvent() {
 
     toast.success('Event updated successfully')
     result = data
-    // Existing event: the form already attaches to the event id and the
-    // FormBuilder runs in live mode. Keep the builder open after the update.
+
+    if (oldUndecided !== null && oldUndecided !== newUndecided) {
+      const transition = newUndecided ? 'undecided' : 'announced'
+      try {
+        await fetch('/api/notify-date-change', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId,
+            eventName,
+            eventDate: eventData.value.date || null,
+            transition,
+          }),
+        })
+      } catch (e) {
+        console.error('Failed to send date-change notification:', e)
+      }
+    }
+
     resetForm({ keepBuilderOpen: true })
   } else {
     loading.value = true
     try {
-      // 1) Pre-validate the in-memory custom-form draft BEFORE creating the
-      //    event so a malformed draft doesn't leave us with a saved event and
-      //    no form. The authoritative validator is the DB RPC; this is the
-      //    same client-side check FormBuilder uses.
       if (pendingFormDraft.value) {
         const errs = validateFields(pendingFormDraft.value.fields || [])
         if (errs.length) {
@@ -313,29 +302,20 @@ async function handleSaveEvent() {
         }
       }
 
-      // 2) Create the event row and get its id.
       result = await saveEvent(payload)
       if (!result.success) {
         throw new Error(result.error)
       }
       const newEventId = result.id
 
-      // 3) Persist the custom registration form (if any) using that event id.
-      //    Done best-effort: the event row already exists, so a form-persist
-      //    failure leaves the event intact and the organizer can retry from
-      //    /add-event?id=<newId>. We do NOT roll the event back.
       if (pendingFormDraft.value && newEventId) {
         await attachPendingForm(newEventId)
       }
 
-      // 4) Capture the organizer's identity + event title BEFORE resetForm
-      //    clears eventData (the confirmation email needs them).
       const organizerEmail = eventData.value.user_email
       const organizerName = eventData.value.user_name
       const eventTitle = eventData.value.title
 
-      // 5) Reset the on-screen event fields (and clear the now-persisted
-      //    draft) before telling the user everything succeeded.
       resetForm()
       toast.success('Event submitted successfully')
       await fetch('/api/send-submission-confirmation', {
@@ -357,16 +337,6 @@ async function handleSaveEvent() {
   }
 }
 
-/**
- * attachPendingForm(eventId)
- *   Replays the in-memory draft into Supabase now that the event exists. Steps:
- *     i.   createFormDraft  → registration_forms row (status 'draft', empty)
- *     ii.  saveDraft        → persist title/description/fields_draft
- *     iii. publish (RPC)    → only when pendingFormDraft.status === 'published'
- *   Each step is reported independently via toast; the event stays in place
- *   regardless. Reuses useRegistrationForm so there's a single persistence path
- *   shared with the live FormBuilder.
- */
 async function attachPendingForm(newEventId) {
   const d = pendingFormDraft.value
   if (!d) return
@@ -378,7 +348,9 @@ async function attachPendingForm(newEventId) {
       description: d.description || '',
     })
     if (!created.success) {
-      toast.error('Could not attach your custom form: ' + created.error + ' Open the event to retry.')
+      toast.error(
+        'Could not attach your custom form: ' + created.error + ' Open the event to retry.',
+      )
       return
     }
     const saved = await saveDraft(created.form.id, {
@@ -387,29 +359,28 @@ async function attachPendingForm(newEventId) {
       fields_draft: d.fields || [],
     })
     if (!saved.success) {
-      toast.error('Saved the event, but the form fields failed: ' + saved.error + ' Open the event to retry.')
+      toast.error(
+        'Saved the event, but the form fields failed: ' + saved.error + ' Open the event to retry.',
+      )
       return
     }
     if (d.status === 'published') {
       const pub = await publish(created.form.id, d.fields || [])
       if (!pub.success) {
-        toast.error('Form saved as a draft, but publishing failed: ' + pub.error + ' You can publish it later from the event editor.')
+        toast.error(
+          'Form saved as a draft, but publishing failed: ' +
+            pub.error +
+            ' You can publish it later from the event editor.',
+        )
       }
     }
   } catch (e) {
-    toast.error('Could not attach your custom form: ' + (e.message || e) + ' Open the event to retry.')
+    toast.error(
+      'Could not attach your custom form: ' + (e.message || e) + ' Open the event to retry.',
+    )
   }
 }
 
-// `resetForm` clears the event-input fields on screen + the custom-form UI
-// state. Both the create and update paths call it after a successful write.
-//
-// `keepBuilderOpen=true` is passed on the EXISTING-event update path so the
-// FormBuilder section stays usable after the update (matches prior behavior,
-// where the builder remained visible on edit). On the NEW-event path we pass
-// false (default) so the draft clears — by that point the form has already
-// been persisted against the newly-created event id, so the in-memory draft
-// is obsolete.
 function resetForm({ keepBuilderOpen = false } = {}) {
   eventData.value = {
     title: '',
@@ -433,12 +404,11 @@ function resetForm({ keepBuilderOpen = false } = {}) {
   selectedCategories.value = []
   currentFileName.value = ''
   is_multi_day.value = false
+  date_not_fixed.value = false
+  loadedDateUndecided.value = null
   if (!keepBuilderOpen) {
     pendingFormDraft.value = null
     formBuilderOpen.value = false
-    // The new-event draft has now been persisted against the created event id
-    // (or the update path doesn't use localStorage at all), so drop the
-    // in-progress localStorage mirror.
     clearDraftStorage()
   }
 }
@@ -465,42 +435,13 @@ const handleBeforeUnload = (e) => {
   e.returnValue = ''
 }
 
-// --- Custom registration form handlers -------------------------------------
-//
-// openFormBuilder:  mount the FormBuilder (now inside FormBuilderModal). New
-//                   events run in 'local' mode (pure in-memory draft, no DB
-//                   rows); existing events run in 'live' mode (direct Supabase
-//                   reads/writes via the already-attached registration_forms
-//                   row).
-// onFormSaved:      replace the pending draft with whatever the organizer just
-//                   finished designing and close the modal. The draft here is
-//                   {title, description, fields, status}; in local mode it is
-//                   returned from FormBuilder.saveDraft() and forwarded by the
-//                   modal. Also mirrors the draft to localStorage (new events).
-// onFormCancelled:  the organizer clicked "Cancel" (or backdrop/Esc) inside
-//                   the modal. Keep any existing pending draft (only a never-
-//                   saved, brand-new draft is effectively dropped because
-//                   there isn't one yet) so they can reopen and continue.
-// removeCustomForm: explicitly discard the in-memory draft (and its localStorage
-//                   mirror) so the event falls back to the default registration
-//                   flow. Only applies to new events (existing events edit
-//                   their form live).
-//
-// --- localStorage draft persistence (NEW events only) ---------------------
-// For new events the custom-form draft lives only in memory until "Create
-// Event" is clicked. To let an organizer close the modal / refresh the page
-// and continue later, we mirror `pendingFormDraft` to localStorage keyed by
-// the organizer's user id. Live (edit) mode persists straight to Supabase so
-// it doesn't need this. The key is cleared on successful event creation and
-// on explicit "Remove custom form".
-// ---------------------------------------------------------------------------
 const DRAFT_STORAGE_PREFIX = 'univent:regform:draft:'
 function draftStorageKey() {
   const uid = eventData.value.user_id || 'anon'
   return DRAFT_STORAGE_PREFIX + uid
 }
 function persistDraftToStorage() {
-  if (eventId) return // only new events
+  if (eventId) return
   try {
     if (pendingFormDraft.value) {
       localStorage.setItem(draftStorageKey(), JSON.stringify(pendingFormDraft.value))
@@ -508,11 +449,10 @@ function persistDraftToStorage() {
       localStorage.removeItem(draftStorageKey())
     }
   } catch {
-    // localStorage may be unavailable (private mode / quota); fail silently.
   }
 }
 function loadDraftFromStorage() {
-  if (eventId) return // only new events
+  if (eventId) return
   try {
     const raw = localStorage.getItem(draftStorageKey())
     if (!raw) return
@@ -521,14 +461,12 @@ function loadDraftFromStorage() {
       pendingFormDraft.value = parsed
     }
   } catch {
-    // Corrupt entry — ignore.
   }
 }
 function clearDraftStorage() {
   try {
     localStorage.removeItem(draftStorageKey())
   } catch {
-    // ignore
   }
 }
 
@@ -543,9 +481,6 @@ function onFormSaved(draft) {
   persistDraftToStorage()
 }
 function onFormCancelled() {
-  // Per the agreed contract: a cancel preserves any draft that was already
-  // saved earlier. A brand-new draft that was never saved just never reaches
-  // pendingFormDraft, so there's nothing to clean up here.
   formBuilderOpen.value = false
 }
 function removeCustomForm() {
@@ -570,7 +505,7 @@ onMounted(async () => {
     eventData.value = {
       title: data.event_title,
       imageUrl: data.image_url,
-      time: convertTo24Hour(data.time), // ✅ FIX
+      time: convertTo24Hour(data.time),
       date: data.date,
       location: data.location,
       description: data.description,
@@ -587,6 +522,13 @@ onMounted(async () => {
     selectedCategories.value = (data.category || []).map(
       (c) => c.charAt(0).toUpperCase() + c.slice(1),
     )
+
+    // ✅ Restore the date toggle state. The DB stores date_not_fixed, but
+    // treat a null date as undecided too (covers rows created before the
+    // flag existed). Snapshot this for change-detection in handleSaveEvent.
+    date_not_fixed.value = !!(data.date_not_fixed ?? (data.date == null))
+    is_multi_day.value = !!(data.end_date && data.date && data.end_date !== data.date)
+    loadedDateUndecided.value = !!(data.date_not_fixed ?? (data.date == null))
 
     // ✅ FIX filename
     currentFileName.value = data.image_url ? data.image_url.split('/').pop() : ''
@@ -820,7 +762,7 @@ onUnmounted(() => {
           <p>Manage registration and upload flyers.</p>
         </div>
         <div class="section-fields card">
-          <div class="field-group">
+          <!-- <div class="field-group">
             <label>
               External Registration Link
               <span class="optional">(Optional)</span>
@@ -836,7 +778,7 @@ onUnmounted(() => {
               Provide a link only if your event requires external registration. Otherwise, you can
               leave this empty.
             </small>
-          </div>
+          </div> -->
           <div class="field-group checkbox-row">
             <input v-model="eventData.requires_registration" type="checkbox" id="reg-req" />
             <label for="reg-req">Register on UniVent</label>
@@ -891,10 +833,7 @@ onUnmounted(() => {
             </div>
 
             <!-- B) Summary: a custom form is configured, builder closed -->
-            <div
-              v-else-if="hasCustomForm && !formBuilderOpen"
-              class="custom-form-summary"
-            >
+            <div v-else-if="hasCustomForm && !formBuilderOpen" class="custom-form-summary">
               <div class="custom-form-summary__main">
                 <span class="custom-form-summary__tag" :class="pendingFormDraftStatusClass"></span>
                 <div>
@@ -902,12 +841,20 @@ onUnmounted(() => {
                     <strong>Custom registration form configured</strong>
                     <template v-if="pendingFormDraft">
                       · {{ pendingFormDraft.fields?.length || 0 }} field(s) ·
-                      {{ pendingFormDraft.status === 'published' ? 'will be published' : 'saved as draft' }}
-                      <em class="custom-form-summary__hint">(attached when you create the event)</em>
+                      {{
+                        pendingFormDraft.status === 'published'
+                          ? 'will be published'
+                          : 'saved as draft'
+                      }}
+                      <em class="custom-form-summary__hint"
+                        >(attached when you create the event)</em
+                      >
                     </template>
                     <template v-else-if="existingFormDetected">
                       · attached to this event
-                      <em class="custom-form-summary__hint">(edited live against the saved event)</em>
+                      <em class="custom-form-summary__hint"
+                        >(edited live against the saved event)</em
+                      >
                     </template>
                   </p>
                 </div>
@@ -922,17 +869,11 @@ onUnmounted(() => {
                   class="opt-in-btn opt-in-btn--ghost"
                   @click="removeCustomForm"
                 >
-                  Remove — use default registration
+                  Remove (use default registration)
                 </button>
               </div>
             </div>
 
-            <!-- C) Builder open as a responsive modal (local for new events,
-                 live for existing). Local: "Save & Publish" commits the draft
-                 with status 'published' (attached on Create Event). Cancel
-                 soft-preserves in-progress edits so reopen restores them until
-                 the event is created. Live: Save Draft persists to Supabase,
-                 Publish pushes a new version, Cancel discards unsaved edits. -->
             <FormBuilderModal
               v-else
               :key="formBuilderKey"

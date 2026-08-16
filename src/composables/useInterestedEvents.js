@@ -1,13 +1,9 @@
-// composables/useInterestedEvents.js
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
 
 export function useInterestedEvents() {
   const toast = useToast()
 
-  // Pure "I'm Interested" toggle. This is NOT registration and has nothing
-  // to do with capacity / waitlist. Registration is handled atomically by the
-  // register_for_event RPC (see useStoreUserDetails.registerForEvent).
   async function toggleInterest(event, localEvents) {
     const {
       data: { user },
