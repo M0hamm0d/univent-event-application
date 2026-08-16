@@ -16,9 +16,13 @@ const tabs = {
 }
 import { ref } from 'vue'
 import SupportSetting from '@/components/icons/SupportSetting.vue'
+import { useRoute } from 'vue-router'
 // import PasswordIcon from '@/components/icons/PasswordIcon.vue'
 // import LogoutIcon from '@/components/icons/LogoutIcon.vue'
-const active = ref('account')
+const route = useRoute()
+const validTabs = ['account', 'dashboard', 'faq', 'support']
+const queryTab = validTabs.includes(route.query.tab) ? route.query.tab : 'account'
+const active = ref(queryTab)
 </script>
 <template>
   <div>

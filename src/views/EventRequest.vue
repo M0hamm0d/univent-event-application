@@ -17,7 +17,7 @@ async function handlePushToEvent(id) {
     requestData.value = request.value.find((r) => r.id === id)
     const eventDate = new Date(requestData.value.date)
     const today = new Date()
-    if (eventDate < today) {
+    if (requestData.value.date !== null && eventDate < today) {
       toast.error('Cannot approve past events')
       return
     }
@@ -221,7 +221,11 @@ onMounted(async () => {
           <div class="card-body">
             <div class="card-header">
               <h3>{{ req.event_title }}</h3>
-              <span class="event-date">{{ new Date(req.date).toLocaleDateString() }}</span>
+              <span class="event-date"
+                >{{
+                  !!req.date ? new Date(req.date).toLocaleDateString() : 'Date to be announced soon'
+                }}
+              </span>
             </div>
 
             <p class="location">📍 {{ req.location }}</p>

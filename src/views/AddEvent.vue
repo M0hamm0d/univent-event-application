@@ -5,7 +5,7 @@ import { useEvents } from '@/composables/useEvent'
 import DownloadIcon from '@/components/icons/DownloadIcon.vue'
 import { supabase } from '@/supabase'
 import BackArrow from '@/components/icons/BackArrow.vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { onMounted, onUnmounted } from 'vue'
 import FormBuilderModal from '@/components/forms/FormBuilderModal.vue'
 import { validateFields, useRegistrationForm } from '@/composables/useRegistrationForm'
@@ -15,6 +15,7 @@ const { uploadFile, saveEvent } = useEvents()
 const { createFormDraft, saveDraft, publish } = useRegistrationForm()
 const currentUser = ref('')
 const route = useRoute()
+const router = useRouter()
 const eventId = route.query.id
 
 const pendingFormDraft = ref(null)
@@ -291,6 +292,7 @@ async function handleSaveEvent() {
     }
 
     resetForm({ keepBuilderOpen: true })
+    router.push('/settings?tab=dashboard')
   } else {
     loading.value = true
     try {
@@ -449,6 +451,7 @@ function persistDraftToStorage() {
       localStorage.removeItem(draftStorageKey())
     }
   } catch {
+    console.warn('Failed to persist draft to localStorage')
   }
 }
 function loadDraftFromStorage() {
@@ -461,12 +464,14 @@ function loadDraftFromStorage() {
       pendingFormDraft.value = parsed
     }
   } catch {
+    console.warn('Failed to load draft from localStorage')
   }
 }
 function clearDraftStorage() {
   try {
     localStorage.removeItem(draftStorageKey())
   } catch {
+    console.warn('Failed to clear draft from localStorage')
   }
 }
 
@@ -482,6 +487,9 @@ function onFormSaved(draft) {
 }
 function onFormCancelled() {
   formBuilderOpen.value = false
+}
+function cancelEdit() {
+  router.push('/settings?tab=dashboard')
 }
 function removeCustomForm() {
   pendingFormDraft.value = null
@@ -518,24 +526,16 @@ onMounted(async () => {
       faculty: data.faculty || '',
     }
 
-    // ✅ FIX category
     selectedCategories.value = (data.category || []).map(
       (c) => c.charAt(0).toUpperCase() + c.slice(1),
     )
 
-    // ✅ Restore the date toggle state. The DB stores date_not_fixed, but
-    // treat a null date as undecided too (covers rows created before the
-    // flag existed). Snapshot this for change-detection in handleSaveEvent.
-    date_not_fixed.value = !!(data.date_not_fixed ?? (data.date == null))
+    date_not_fixed.value = !!(data.date_not_fixed ?? data.date == null)
     is_multi_day.value = !!(data.end_date && data.date && data.end_date !== data.date)
-    loadedDateUndecided.value = !!(data.date_not_fixed ?? (data.date == null))
+    loadedDateUndecided.value = !!(data.date_not_fixed ?? data.date == null)
 
-    // ✅ FIX filename
     currentFileName.value = data.image_url ? data.image_url.split('/').pop() : ''
 
-    // ✅ Detect an existing custom registration form for this event so the
-    // builder section opens automatically on edit. RLS filters to the
-    // organizer's own events; a non-owner would get null here.
     if (data.requires_registration && !data.external_registration_link) {
       const { data: existingForm } = await supabase
         .from('registration_forms')
@@ -560,9 +560,9 @@ onUnmounted(() => {
 <template>
   <div class="create-event-page">
     <div class="form-header">
-      <RouterLink to="/" class="back-nav">
+      <RouterLink to="/settings?tab=dashboard" class="back-nav">
         <BackArrow />
-        <h1>Create New Event</h1>
+        <h1>{{ eventId ? 'Edit Event' : 'Create New Event' }}</h1>
       </RouterLink>
       <p class="subtitle">
         Kindly complete the form below to submit your event. After submission, it will be reviewed
@@ -800,28 +800,12 @@ onUnmounted(() => {
             >
           </div>
 
-          <!-- ============================================================ -->
-          <!-- Custom Registration Form (Stage 6B)                          -->
-          <!-- Only relevant for UniVent-registrable events without an      -->
-          <!-- external link. Independent from the default MODE 1 flow: if  -->
-          <!-- the organizer skips this, the event keeps the existing simple -->
-          <!-- RegisterModal + register_for_event flow.                     -->
-          <!--                                                              -->
-          <!-- State key:                                                   -->
-          <!--   - Opt-in CTA      when !hasCustomForm && !formBuilderOpen   -->
-          <!--   - Summary card    when hasCustomForm && !formBuilderOpen   -->
-          <!--   - Inline builder  when formBuilderOpen                     -->
-          <!-- For NEW events the builder runs in 'local' mode (in-memory   -->
-          <!-- draft, persisted only at Create Event time). For EXISTING    -->
-          <!-- events it runs in 'live' mode against the real event id.     -->
-          <!-- ============================================================ -->
           <div v-if="canCustomizeForm" class="field-group">
             <label>
               Custom Registration Form
               <span class="optional">optional</span>
             </label>
 
-            <!-- A) Opt-in: nothing configured, builder closed -->
             <div v-if="!hasCustomForm && !formBuilderOpen" class="custom-form-opt-in">
               <p>
                 Add a custom form students fill in when registering (questions, file uploads, etc.).
@@ -903,7 +887,7 @@ onUnmounted(() => {
       </section>
 
       <div class="form-actions">
-        <button class="btn-cancel">Cancel</button>
+        <button class="btn-cancel" @click="cancelEdit">Cancel</button>
         <div class="">
           <button v-if="eventId" class="btn-save" @click="handleSaveEvent" :disabled="loading">
             {{ loading ? 'updating event...' : 'Update Event' }}
