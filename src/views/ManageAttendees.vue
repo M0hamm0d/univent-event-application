@@ -13,6 +13,7 @@ import {
   PhClock,
   PhListChecks,
   PhDownloadSimple,
+  PhArrowLeft,
 } from '@phosphor-icons/vue'
 
 const route = useRoute()
@@ -131,12 +132,12 @@ async function fetchFormResponses() {
     }))
 }
 
-const cancelledAttendees = computed(() => {
-  if (!hasCustomForm.value) return []
-  return Object.values(formResponsesByUser.value).filter(
-    (r) => r.registration_status === 'cancelled',
-  )
-})
+// const cancelledAttendees = computed(() => {
+//   if (!hasCustomForm.value) return []
+//   return Object.values(formResponsesByUser.value).filter(
+//     (r) => r.registration_status === 'cancelled',
+//   )
+// })
 
 function openSubmission(attendee) {
   const resp = formResponsesByUser.value[attendee.user_id]
@@ -201,7 +202,10 @@ onMounted(fetchAttendees)
 <template>
   <div class="manage-attendees-container">
     <div class="header">
-      <button class="back-btn" @click="router.back()">← Back</button>
+      <RouterLink to="/settings?tab=dashboard" class="back-nav">
+        <!-- <BackArrow /> -->
+        <button class="back-btn"><PhArrowLeft /> Back</button>
+      </RouterLink>
       <h1>Manage Attendees</h1>
       <p v-if="event">{{ event.event_title }}</p>
     </div>
@@ -281,7 +285,7 @@ onMounted(fetchAttendees)
         </div>
       </div>
 
-      <div v-if="waitlisted.length > 0" class="attendees-section">
+      <!-- <div v-if="waitlisted.length > 0" class="attendees-section">
         <h3>Waitlisted</h3>
         <div class="attendees-list">
           <div
@@ -316,9 +320,9 @@ onMounted(fetchAttendees)
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
 
-      <div v-if="hasCustomForm && cancelledAttendees.length > 0" class="attendees-section">
+      <!-- <div v-if="hasCustomForm && cancelledAttendees.length > 0" class="attendees-section">
         <h3>Cancelled</h3>
         <p class="section-hint">
           These students cancelled their registration. Their form responses are preserved for your
@@ -354,7 +358,7 @@ onMounted(fetchAttendees)
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
     </div>
 
     <teleport to="body">
@@ -509,6 +513,10 @@ onMounted(fetchAttendees)
   font-size: 1.1rem;
 }
 
+.back-nav {
+  text-decoration: none;
+}
+
 .back-btn {
   background: transparent;
   border: 1px solid #eaeaea;
@@ -518,6 +526,9 @@ onMounted(fetchAttendees)
   cursor: pointer;
   color: #1969fe;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .loading,

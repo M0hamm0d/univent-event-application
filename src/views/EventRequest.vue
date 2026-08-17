@@ -3,6 +3,7 @@ import { ref, onMounted, toRaw } from 'vue'
 import { useRequestedEvents } from '@/composables/useRequestedEvents'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
+import BaseButton from '@/components/BaseButton.vue'
 
 const { fetchRequestedAndEvents } = useRequestedEvents()
 const toast = useToast()
@@ -117,6 +118,7 @@ async function handleReject(req) {
       return
     }
 
+    loading.value = true
     const res = await fetch('/api/send-rejection-reason', {
       method: 'POST',
       headers: {
@@ -152,6 +154,8 @@ async function handleReject(req) {
   } catch (err) {
     console.error(err)
     toast.error('Failed to send rejection email')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -233,12 +237,22 @@ onMounted(async () => {
 
             <!-- Action Buttons -->
             <div class="actions" v-if="showRejectInput !== req.id">
-              <button @click="handlePushToEvent(req.id)" class="btn-approve" :disabled="loading">
+              <BaseButton
+                variant="success"
+                size="sm"
+                :loading="loading"
+                @click="handlePushToEvent(req.id)"
+              >
                 Approve
-              </button>
-              <button @click="showRejectInput = req.id" class="btn-reject" :disabled="loading">
+              </BaseButton>
+              <BaseButton
+                variant="soft-danger"
+                size="sm"
+                :loading="loading"
+                @click="showRejectInput = req.id"
+              >
                 Reject
-              </button>
+              </BaseButton>
             </div>
 
             <!-- Rejection UI -->
@@ -249,7 +263,14 @@ onMounted(async () => {
                 rows="3"
               ></textarea>
               <div class="rejection-actions">
-                <button @click="handleReject(req)" class="btn-send">Send Rejection</button>
+                <BaseButton
+                  variant="danger"
+                  size="sm"
+                  :loading="loading"
+                  @click="handleReject(req)"
+                >
+                  Send Rejection
+                </BaseButton>
                 <button @click="showRejectInput = null" class="btn-cancel">Cancel</button>
               </div>
             </div>
@@ -392,24 +413,6 @@ button {
   border: none;
 }
 
-.btn-approve {
-  background: #10b981;
-  color: white;
-}
-
-.btn-approve:hover {
-  background: #059669;
-}
-
-.btn-reject {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.btn-reject:hover {
-  background: #fecaca;
-}
-
 .rejection-box {
   margin-top: 1rem;
   padding-top: 1rem;
@@ -429,11 +432,6 @@ textarea {
   gap: 0.5rem;
 }
 
-.btn-send {
-  background: #dc2626;
-  color: white;
-  font-size: 0.875rem;
-}
 .btn-cancel {
   background: #9ca3af;
   color: white;

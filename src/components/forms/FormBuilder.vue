@@ -13,6 +13,7 @@ import {
 } from '@phosphor-icons/vue'
 import FieldEditor from './FieldEditor.vue'
 import draggable from 'vuedraggable'
+import BaseButton from '@/components/BaseButton.vue'
 import {
   FIELD_TYPES,
   makeField,
@@ -758,63 +759,70 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
 
     <div class="fb-actions" v-if="!hideActions && (hasForm || fields.length > 0)">
       <template v-if="isLocal">
-        <button
-          type="button"
-          class="fb-btn fb-btn--secondary"
+        <BaseButton
+          variant="secondary"
+          size="sm"
           :disabled="!fields.length || localErrors.length > 0"
           @click="handleLocalSaveDraft"
         >
-          <PhFloppyDisk :size="16" /> Save as Draft
-        </button>
-        <button
-          type="button"
-          class="fb-btn fb-btn--primary"
+          <template #icon-left><PhFloppyDisk :size="16" /></template>
+          Save as Draft
+        </BaseButton>
+        <BaseButton
+          variant="primary"
+          size="sm"
+          shadow
           :disabled="!canPublish"
           @click="handleLocalSavePublish"
         >
-          <PhRocket :size="16" /> Save &amp; Publish
-        </button>
-        <button type="button" class="fb-btn fb-btn--ghost" @click="handleLocalCancel">
+          <template #icon-left><PhRocket :size="16" /></template>
+          Save &amp; Publish
+        </BaseButton>
+        <BaseButton variant="ghost" size="sm" @click="handleLocalCancel">
           Cancel
-        </button>
+        </BaseButton>
       </template>
 
       <template v-else>
-        <button
-          type="button"
-          class="fb-btn fb-btn--secondary"
-          :disabled="saving || publishing || !isDirty"
+        <BaseButton
+          variant="secondary"
+          size="sm"
+          :loading="saving"
+          :disabled="publishing || !isDirty"
           @click="handleSaveDraft"
         >
-          <PhFloppyDisk :size="16" /> {{ saving ? 'Saving...' : 'Save Draft' }}
-        </button>
-        <button
-          type="button"
-          class="fb-btn fb-btn--primary"
-          :disabled="saving || publishing || !canPublish"
+          <template #icon-left><PhFloppyDisk :size="16" /></template>
+          Save Draft
+        </BaseButton>
+        <BaseButton
+          variant="primary"
+          size="sm"
+          shadow
+          :loading="publishing"
+          :disabled="saving || !canPublish"
           @click="handlePublish"
         >
-          <PhRocket :size="16" />
-          {{ publishing ? 'Publishing...' : isPublished ? 'Republish' : 'Publish' }}
-        </button>
-        <button
+          <template #icon-left><PhRocket :size="16" /></template>
+          {{ isPublished ? 'Republish' : 'Publish' }}
+        </BaseButton>
+        <BaseButton
           v-if="isPublished"
-          type="button"
-          class="fb-btn fb-btn--ghost"
+          variant="ghost"
+          size="sm"
           :disabled="saving || publishing"
           @click="handleClose"
         >
           Close Registration
-        </button>
-        <button
+        </BaseButton>
+        <BaseButton
           v-else-if="isClosed"
-          type="button"
-          class="fb-btn fb-btn--ghost"
+          variant="ghost"
+          size="sm"
           :disabled="saving || publishing"
           @click="handleReopen"
         >
           Reopen Registration
-        </button>
+        </BaseButton>
       </template>
     </div>
 
@@ -1164,46 +1172,6 @@ textarea {
   gap: 10px;
   flex-wrap: wrap;
   padding-top: 8px;
-}
-.fb-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 18px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.fb-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.fb-btn--primary {
-  background: #055dfa;
-  color: #fff;
-  box-shadow: 0 4px 6px -1px rgba(5, 93, 250, 0.3);
-}
-.fb-btn--primary:hover:not(:disabled) {
-  background: #0447c4;
-}
-.fb-btn--secondary {
-  background: #f1f5f9;
-  color: #334155;
-  border-color: #e2e8f0;
-}
-.fb-btn--secondary:hover:not(:disabled) {
-  background: #e2e8f0;
-}
-.fb-btn--ghost {
-  background: transparent;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-.fb-btn--ghost:hover:not(:disabled) {
-  background: #fef2f2;
 }
 
 .fb-loading {

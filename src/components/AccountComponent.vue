@@ -15,6 +15,7 @@ import { useUniventStore } from '@/stores/counter'
 import CautionIcon from './icons/CautionIcon.vue'
 import ProfileIcon from './icons/ProfileIcon.vue'
 import DropdownIcon from './icons/DropdownIcon.vue'
+import BaseButton from '@/components/BaseButton.vue'
 
 const toast = useToast()
 const univentStore = useUniventStore()
@@ -162,7 +163,15 @@ onMounted(async () => {
           <p><CautionIcon /> Select up to 3 to personalize your feed.</p>
         </div>
       </div>
-      <button class="save-changes" @click="submitEditProfile">Save Changes</button>
+      <BaseButton
+        class="save-changes"
+        variant="primary"
+        pill
+        :loading="loading"
+        @click="submitEditProfile"
+      >
+        Save Changes
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -370,12 +379,7 @@ form div input:focus {
 }
 .save-changes {
   width: fit-content;
-  background: #1969fe;
-  border: 1px solid #bad2ff;
   padding: 16px 20px;
-  color: #fff;
-  font-weight: 600;
-  border-radius: 64px;
   font-size: 19px;
   line-height: 120%;
 }

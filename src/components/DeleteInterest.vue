@@ -1,5 +1,6 @@
 <script setup>
 import { defineEmits } from 'vue'
+import BaseButton from '@/components/BaseButton.vue'
 
 const props = defineProps({
   event: { type: Object, required: true },
@@ -15,6 +16,8 @@ const mainText = computed(() => {
     return "You're about to remove this event from your interests."
   } else if (props.actionType === 'cancelRegistration') {
     return "You're about to cancel your registration for this event."
+  } else if (props.actionType === 'leaveWaitlist') {
+    return "You're about to leave the waiting list for this event."
   }
   return ''
 })
@@ -24,8 +27,22 @@ const subText = computed(() => {
     return 'This will remove the event from your interests list.'
   } else if (props.actionType === 'cancelRegistration') {
     return "We'll cancel your registration and notify the organizer."
+  } else if (props.actionType === 'leaveWaitlist') {
+    return "If a spot opens up later, you won't be notified. You can re-register any time."
   }
   return ''
+})
+
+const heading = computed(() => {
+  if (props.actionType === 'deleteInterest') return 'Remove Interest?'
+  if (props.actionType === 'cancelRegistration') return 'Cancel Registration?'
+  if (props.actionType === 'leaveWaitlist') return 'Leave Waiting List?'
+  return ''
+})
+
+const confirmLabel = computed(() => {
+  if (props.actionType === 'leaveWaitlist') return 'Yes, Leave'
+  return 'Yes, I Agree'
 })
 function cancel() {
   emit('close')
@@ -45,17 +62,21 @@ async function agree() {
       </div>
 
       <div class="modal-body">
-        <h2 v-if="props.actionType === 'deleteInterest'">Remove Interest?</h2>
-        <h2 v-else-if="props.actionType === 'cancelRegistration'">Cancel Registration?</h2>
+        <h2>{{ heading }}</h2>
 
         <p class="main-text">{{ mainText }}</p>
         <p class="sub-text">{{ subText }}</p>
 
         <div class="modal-actions">
-          <button class="btn-outline" @click="cancel">Cancel</button>
-          <button class="btn-confirm" @click="agree" :disabled="props.loading">
-            {{ props.loading ? 'Processing...' : 'Yes, I Agree' }}
-          </button>
+          <BaseButton variant="outline" size="lg" @click="cancel">Cancel</BaseButton>
+          <BaseButton
+            variant="primary-outline"
+            size="lg"
+            :loading="props.loading"
+            @click="agree"
+          >
+            {{ confirmLabel }}
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -151,43 +172,6 @@ h2 {
 }
 .single-btn {
   grid-template-columns: 1fr;
-}
-
-button {
-  padding: 14px 20px;
-  border-radius: 14px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1.5px solid #e2e8f0;
-  color: #64748b;
-}
-.btn-outline:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-.btn-confirm,
-.btn-primary {
-  background: transparent;
-  border: 1.5px solid #1969fe;
-  color: #1969fe;
-}
-.btn-confirm:hover,
-.btn-primary:hover {
-  background: #1969fe;
-  color: #ffffff;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 @media (max-width: 480px) {

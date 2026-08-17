@@ -158,17 +158,20 @@ export function useFormSubmission() {
   }
 
   async function hasCustomForm(eventId) {
-    if (!eventId) return null
+    if (!eventId) return { form: null, error: null }
     try {
       const { data, error } = await supabase.rpc('get_active_registration_form', {
         p_event_id: eventId,
       })
-      if (error) return null
+      if (error) {
+        console.error('hasCustomForm rpc error:', error)
+        return { form: null, error: 'fetch_failed' }
+      }
       const result = typeof data === 'string' ? JSON.parse(data) : data
-      return result || null
+      return { form: result || null, error: null }
     } catch (err) {
       console.error('hasCustomForm error:', err)
-      return null
+      return { form: null, error: 'fetch_failed' }
     }
   }
 

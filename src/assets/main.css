@@ -11,3 +11,38 @@ body.no-scroll {
   height: 100vh;
   overflow: hidden;
 }
+
+:root {
+  /* Brand / semantic colors */
+  --btn-primary: #055dfa;
+  --btn-primary-hover: #0447c4;
+  --btn-primary-shadow: rgba(99, 102, 241, 0.3);
+  --btn-danger: #dc2626;
+  --btn-danger-hover: #b91c1c;
+  --btn-danger-bg-soft: #fee2e2;
+  --btn-danger-border-soft: #fecaca;
+  --btn-danger-bg-softer: #fef2f2;
+  --btn-success: #10b981;
+  --btn-success-hover: #059669;
+  --btn-dark: #1a1a1a;
+
+  /* Neutrals */
+  --btn-text: #475569;
+  --btn-text-muted: #64748b;
+  --btn-text-dark: #1e293b;
+  --btn-border: #e2e8f0;
+  --btn-border-strong: #cbd5e1;
+  --btn-bg-soft: #f1f5f9;
+  --btn-bg-softer: #f8fafc;
+  --btn-white: #ffffff;
+
+  /* Radii */
+  --btn-radius-sm: 8px;
+  --btn-radius-md: 12px;
+  --btn-radius-lg: 14px;
+  --btn-radius-pill: 999px;
+  --btn-radius-circle: 50%;
+
+  /* Focus ring */
+  --btn-focus-ring: 0 0 0 3px rgba(5, 93, 250, 0.25);
+}

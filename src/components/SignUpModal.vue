@@ -6,6 +6,7 @@ import { ref } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import CancelBtn from './icons/CancelBtn.vue'
 import GoogleLogo from './icons/GoogleLogo.vue'
+import BaseButton from '@/components/BaseButton.vue'
 const signupName = ref('')
 const signupEmail = ref('')
 const signupPassword = ref('')
@@ -140,9 +141,9 @@ async function signInWithGoogle() {
       <p class="error">{{ errorMessage }}</p>
     </div>
     <div class="create-account-section">
-      <button @click="handleSignUp">
-        {{ loading ? 'Creating account...' : 'Create Account' }}
-      </button>
+      <BaseButton variant="dark" block :loading="loading" @click="handleSignUp">
+        Create Account
+      </BaseButton>
       <div class="or-continue-with">
         <div class=""></div>
         <p>or continue with</p>

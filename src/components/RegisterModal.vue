@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
 import { useUniventStore } from '@/stores/counter'
+import BaseButton from '@/components/BaseButton.vue'
 
 const props = defineProps({
   event: {
@@ -60,7 +61,9 @@ async function agree() {
         <p>You must be logged in to register for an event.</p>
 
         <div class="modal-actions single-btn">
-          <button class="btn-primary" @click="openLogin">Go to Login</button>
+          <BaseButton variant="primary-outline" size="lg" @click="openLogin"
+            >Go to Login</BaseButton
+          >
         </div>
       </div>
 
@@ -76,10 +79,17 @@ async function agree() {
         </div>
 
         <div class="modal-actions">
-          <button class="btn-outline" @click="cancel" :disabled="loading">Cancel</button>
-          <button class="btn-confirm" @click="agree" :disabled="loading">
-            {{ loading ? 'Processing...' : 'Yes, I Agree' }}
-          </button>
+          <BaseButton variant="outline" size="lg" :disabled="loading" @click="cancel"
+            >Cancel</BaseButton
+          >
+          <BaseButton
+            variant="primary-outline"
+            size="lg"
+            :loading="loading"
+            @click="agree"
+          >
+            Yes, I Agree
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -175,43 +185,6 @@ h2 {
 }
 .single-btn {
   grid-template-columns: 1fr;
-}
-
-button {
-  padding: 14px 20px;
-  border-radius: 14px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1.5px solid #e2e8f0;
-  color: #64748b;
-}
-.btn-outline:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-.btn-confirm,
-.btn-primary {
-  background: transparent;
-  border: 1.5px solid #1969fe;
-  color: #1969fe;
-}
-.btn-confirm:hover,
-.btn-primary:hover {
-  background: #1969fe;
-  color: #ffffff;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .error-text {

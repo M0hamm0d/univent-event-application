@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, useTemplateRef } from 'vue'
 import { useToast } from 'vue-toastification'
-import { PhFloppyDisk, PhRocket, PhX, PhArrowCircleUp } from '@phosphor-icons/vue'
+import { PhRocket, PhX, PhArrowCircleUp } from '@phosphor-icons/vue'
 import FormBuilder from './FormBuilder.vue'
+import BaseButton from '@/components/BaseButton.vue'
 
 const props = defineProps({
   mode: { type: String, default: 'live' },
@@ -156,16 +157,15 @@ onUnmounted(() => {
                 <PhArrowCircleUp :size="24" />
               </button>
             </Transition>
-
             <footer class="fb-modal__footer">
-              <button
-                type="button"
-                class="fb-modal-btn fb-modal-btn--cancel"
+              <BaseButton
+                variant="secondary"
+                size="sm"
                 :disabled="saving || publishing"
                 @click="closeCancel"
               >
                 Cancel
-              </button>
+              </BaseButton>
 
               <!-- <button
                 v-if="!isLocal"
@@ -177,27 +177,32 @@ onUnmounted(() => {
                 <PhFloppyDisk :size="16" />
                 {{ saving ? 'Saving...' : 'Save Draft' }}
               </button> -->
-              <button
+
+              <BaseButton
                 v-if="!isLocal"
-                type="button"
-                class="fb-modal-btn fb-modal-btn--publish"
-                :disabled="saving || publishing"
+                variant="primary"
+                size="sm"
+                shadow
+                :loading="publishing"
+                :disabled="saving"
                 @click="handlePublish"
               >
-                <PhRocket :size="16" />
-                {{ publishing ? 'Publishing...' : 'Publish' }}
-              </button>
+                <template #icon-left><PhRocket :size="16" /></template>
+                Publish
+              </BaseButton>
 
-              <button
+              <BaseButton
                 v-else
-                type="button"
-                class="fb-modal-btn fb-modal-btn--publish"
-                :disabled="saving || publishing"
+                variant="primary"
+                size="sm"
+                shadow
+                :loading="saving"
+                :disabled="publishing"
                 @click="handleSave"
               >
-                <PhRocket :size="16" />
-                {{ saving ? 'Saving...' : 'Save & Publish' }}
-              </button>
+                <template #icon-left><PhRocket :size="16" /></template>
+                Save & Publish
+              </BaseButton>
             </footer>
           </div>
         </Transition>
@@ -288,46 +293,6 @@ onUnmounted(() => {
   padding: 14px 20px;
   border-top: 1px solid #f1f5f9;
   background: #fff;
-}
-.fb-modal-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 22px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.fb-modal-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.fb-modal-btn--cancel {
-  background: #f1f5f9;
-  color: #475569;
-  border-color: #e2e8f0;
-}
-.fb-modal-btn--cancel:hover:not(:disabled) {
-  background: #e2e8f0;
-}
-.fb-modal-btn--save {
-  background: #055dfa;
-  color: #fff;
-  box-shadow: 0 4px 6px -1px rgba(5, 93, 250, 0.3);
-}
-.fb-modal-btn--save:hover:not(:disabled) {
-  background: #0447c4;
-}
-.fb-modal-btn--publish {
-  background: #055dfa;
-  color: #fff;
-  box-shadow: 0 4px 6px -1px rgba(5, 93, 250, 0.3);
-}
-.fb-modal-btn--publish:hover:not(:disabled) {
-  background: #0447c4;
 }
 
 .fb-modal-fade-enter-active,

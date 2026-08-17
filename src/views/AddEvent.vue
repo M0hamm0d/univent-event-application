@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { onMounted, onUnmounted } from 'vue'
 import FormBuilderModal from '@/components/forms/FormBuilderModal.vue'
 import { validateFields, useRegistrationForm } from '@/composables/useRegistrationForm'
+import BaseButton from '@/components/BaseButton.vue'
 
 const toast = useToast()
 const { uploadFile, saveEvent } = useEvents()
@@ -811,9 +812,9 @@ onUnmounted(() => {
                 Add a custom form students fill in when registering (questions, file uploads, etc.).
                 If you skip this, the event uses UniVent's default confirmation flow.
               </p>
-              <button type="button" class="opt-in-btn" @click="openFormBuilder">
+              <BaseButton variant="primary" size="sm" @click="openFormBuilder">
                 Add Registration Form
-              </button>
+              </BaseButton>
             </div>
 
             <!-- B) Summary: a custom form is configured, builder closed -->
@@ -844,17 +845,17 @@ onUnmounted(() => {
                 </div>
               </div>
               <div class="custom-form-summary__actions">
-                <button type="button" class="opt-in-btn" @click="openFormBuilder">
+                <BaseButton variant="primary" size="sm" @click="openFormBuilder">
                   Edit Registration Form
-                </button>
-                <button
+                </BaseButton>
+                <BaseButton
                   v-if="pendingFormDraft"
-                  type="button"
-                  class="opt-in-btn opt-in-btn--ghost"
+                  variant="outline"
+                  size="sm"
                   @click="removeCustomForm"
                 >
                   Remove (use default registration)
-                </button>
+                </BaseButton>
               </div>
             </div>
 
@@ -887,14 +888,28 @@ onUnmounted(() => {
       </section>
 
       <div class="form-actions">
-        <button class="btn-cancel" @click="cancelEdit">Cancel</button>
+        <BaseButton variant="secondary" size="lg" @click="cancelEdit">Cancel</BaseButton>
         <div class="">
-          <button v-if="eventId" class="btn-save" @click="handleSaveEvent" :disabled="loading">
-            {{ loading ? 'updating event...' : 'Update Event' }}
-          </button>
-          <button v-else class="btn-save" @click="handleSaveEvent" :disabled="loading">
-            {{ loading ? 'Saving...' : 'Save Event' }}
-          </button>
+          <BaseButton
+            v-if="eventId"
+            variant="primary"
+            size="lg"
+            shadow
+            :loading="loading"
+            @click="handleSaveEvent"
+          >
+            Update Event
+          </BaseButton>
+          <BaseButton
+            v-else
+            variant="primary"
+            size="lg"
+            shadow
+            :loading="loading"
+            @click="handleSaveEvent"
+          >
+            Save Event
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -1157,26 +1172,6 @@ textarea:focus {
   gap: 12px;
   margin-top: 40px;
 }
-.btn-cancel {
-  padding: 12px 24px;
-  background: #f1f5f9;
-  border: none;
-  border-radius: 8px;
-  color: #475569;
-  font-weight: 500;
-  cursor: pointer;
-}
-.btn-save {
-  padding: 12px 32px;
-  /* background: #6366f1; */
-  background: #055dfa;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3);
-}
 
 @media (max-width: 768px) {
   .form-section {
@@ -1274,27 +1269,5 @@ textarea:focus {
 }
 .custom-form-builder-wrap__back {
   align-self: flex-start;
-}
-.opt-in-btn {
-  padding: 8px 16px;
-  background: #055dfa;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.opt-in-btn:hover {
-  background: #0447c4;
-}
-.opt-in-btn--ghost {
-  background: transparent;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-}
-.opt-in-btn--ghost:hover {
-  background: #f1f5f9;
 }
 </style>

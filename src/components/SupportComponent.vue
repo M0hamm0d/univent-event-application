@@ -5,6 +5,7 @@ import { handleFileChange, submitIssue } from '@/composables/useFeedback'
 import ClearIcon from './icons/ClearIcon.vue'
 import IssueTag from './icons/IssueTag.vue'
 import DropdownIcon from './icons/DropdownIcon.vue'
+import BaseButton from '@/components/BaseButton.vue'
 
 const toast = useToast()
 const selected = ref('Select your Type of issue')
@@ -135,7 +136,15 @@ function clearForm() {
         </div>
       </div>
       <div class="submit-clear">
-        <button class="save-changes" @click="onSubmit">Save Changes</button>
+        <BaseButton
+          class="save-changes"
+          variant="primary"
+          pill
+          :loading="loading"
+          @click="onSubmit"
+        >
+          Save Changes
+        </BaseButton>
         <button class="clear-form" @click="clearForm">
           <span><ClearIcon /> </span>
           <span>Clear Form</span>
@@ -296,7 +305,12 @@ form div input:focus {
   display: flex;
   gap: 10px;
 }
-.save-changes,
+.save-changes {
+  width: 174px;
+  padding: 16px 20px;
+  font-size: 19px;
+  line-height: 120%;
+}
 .clear-form {
   width: fit-content;
   background: #1969fe;
