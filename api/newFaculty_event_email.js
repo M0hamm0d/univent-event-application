@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Must be an App Password
+    pass: process.env.EMAIL_PASS,
   },
 })
 
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     await Promise.all(
       users.map(async (user) => {
         try {
-          let faculty = ""
+          let faculty = ''
 
           // Parsing logic
           if (typeof user.faculty === 'string') {
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
               faculty = user.faculty
             }
           } else {
-            faculty = user.faculty || ""
+            faculty = user.faculty || ''
           }
 
           if (!faculty) return
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
             .from('events')
             .select('event_title, description, date, location, id, image_url, category, price')
             .overlaps('faculty', [faculty])
-            .gt('created_at', fiveDaysAgo) // ISO string used here
+            .gt('created_at', fiveDaysAgo)
 
           if (eventsError) throw eventsError
 

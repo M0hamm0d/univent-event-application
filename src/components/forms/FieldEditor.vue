@@ -7,6 +7,7 @@ import {
   isFileField,
   isNumericField,
 } from '@/composables/useRegistrationForm'
+import BaseButton from '@/components/BaseButton.vue'
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -51,20 +52,17 @@ function removeOption(index) {
       <span class="field-editor__position">#{{ index + 1 }}</span>
       <span class="field-editor__type-badge">{{ typeMeta.label }}</span>
       <div class="field-editor__head-actions">
-        <span
-          class="drag-handle"
-          title="Drag to reorder"
-        >
+        <span class="drag-handle" title="Drag to reorder">
           <PhDotsSixVertical :size="18" />
         </span>
-        <button
-          type="button"
-          class="icon-btn icon-btn--danger"
+        <BaseButton
+          variant="danger"
+          icon-only
           title="Remove field"
           @click="$emit('remove')"
         >
-          <PhTrash :size="16" />
-        </button>
+          <template #icon-left><PhTrash :size="16" /></template>
+        </BaseButton>
       </div>
     </div>
 
@@ -152,14 +150,14 @@ function removeOption(index) {
       <div class="options-list">
         <div v-for="(opt, i) in field.options || []" :key="i" class="option-row">
           <input :value="opt" @input="setOption(i, $event.target.value)" type="text" />
-          <button
-            type="button"
-            class="icon-btn icon-btn--danger"
-            @click="removeOption(i)"
+          <BaseButton
+            variant="danger"
+            icon-only
             title="Remove option"
+            @click="removeOption(i)"
           >
-            <PhX :size="16" />
-          </button>
+            <template #icon-left><PhX :size="16" /></template>
+          </BaseButton>
         </div>
         <button type="button" class="add-option-btn" @click="addOption">
           <PhPlus :size="16" /> Add option
@@ -229,6 +227,7 @@ function removeOption(index) {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  position: relative;
 }
 .field-editor__head {
   display: flex;
@@ -268,6 +267,10 @@ function removeOption(index) {
   border-radius: 8px;
   transition: all 0.15s;
   touch-action: none;
+  /* position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); */
 }
 .drag-handle:hover {
   color: #1e293b;
@@ -275,33 +278,6 @@ function removeOption(index) {
 }
 .drag-handle:active {
   cursor: grabbing;
-}
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #475569;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.icon-btn:hover:not(:disabled) {
-  background: #fff;
-  border-color: #cbd5e1;
-  color: #1e293b;
-}
-.icon-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.icon-btn--danger:hover:not(:disabled) {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #dc2626;
 }
 
 .field-group {

@@ -7,6 +7,7 @@ import { ref } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import router from '@/router'
 import CancelBtn from './icons/CancelBtn.vue'
+import BaseButton from '@/components/BaseButton.vue'
 const emit = defineEmits(['closeBtn'])
 let toast = useToast()
 let passwordType = ref('password')
@@ -116,15 +117,9 @@ async function forgotPassword() {
       <p v-if="error" class="error">{{ error }}</p>
     </div>
     <div class="create-account-section">
-      <button
-        @click="handleLogin"
-        :style="{
-          backgroundColor: isLoading ? '#6B7280' : '#000000',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
-        }"
-      >
-        {{ isLoading ? 'Signing In....' : 'Log in' }}
-      </button>
+      <BaseButton variant="dark" block :loading="isLoading" @click="handleLogin">
+        Log in
+      </BaseButton>
       <div class="or-continue-with">
         <div class=""></div>
         <p>or Login with</p>

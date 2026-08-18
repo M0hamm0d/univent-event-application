@@ -13,6 +13,7 @@ import {
 } from '@phosphor-icons/vue'
 import { useUniventStore } from '@/stores/counter'
 import { useFormSubmission } from '@/composables/useFormSubmission'
+import BaseButton from '@/components/BaseButton.vue'
 import { useFormUploads } from '@/composables/useFormUploads'
 import { isChoiceField, isFileField } from '@/composables/useRegistrationForm'
 
@@ -57,7 +58,11 @@ watch(
 
 async function loadForm() {
   fetchError.value = ''
-  const formData = await hasCustomForm(props.event.id)
+  const { form: formData, error: formError } = await hasCustomForm(props.event.id)
+  if (formError) {
+    fetchError.value = "We couldn't load the registration form. Please close and try again."
+    return
+  }
   if (!formData) {
     fetchError.value = 'This event no longer has a registration form. Please close and try again.'
     return
@@ -280,7 +285,7 @@ const eventDateLabel = computed(() => {
       <div v-if="!isLoggedIn" class="rfm-login">
         <h2>Login Required</h2>
         <p>You must be logged in to register for this event.</p>
-        <button class="rfm-btn rfm-btn--primary" @click="openLogin">Go to Login</button>
+        <BaseButton variant="primary" @click="openLogin">Go to Login</BaseButton>
       </div>
 
       <div v-else-if="!formPayload && !fetchError" class="rfm-state">
@@ -291,7 +296,7 @@ const eventDateLabel = computed(() => {
       <div v-else-if="fetchError" class="rfm-state rfm-state--error">
         <PhWarning :size="22" />
         <p>{{ fetchError }}</p>
-        <button class="rfm-btn rfm-btn--outline" @click="emit('close')">Close</button>
+        <BaseButton variant="outline" @click="emit('close')">Close</BaseButton>
       </div>
 
       <div v-else-if="result" class="rfm-result">
@@ -316,7 +321,7 @@ const eventDateLabel = computed(() => {
           >. If a spot opens up you'll be promoted automatically and emailed — no need to fill the
           form again.
         </p>
-        <button class="rfm-btn rfm-btn--primary" @click="closeResult">Done</button>
+        <BaseButton variant="primary" @click="closeResult">Done</BaseButton>
       </div>
 
       <div v-else class="rfm-body">
@@ -503,12 +508,15 @@ const eventDateLabel = computed(() => {
 
           <p v-if="submitError" class="rfm-submit-err">{{ submitError }}</p>
 
-          <button type="submit" class="rfm-btn rfm-btn--primary rfm-submit" :disabled="loading">
-            <span v-if="loading" class="rfm-spin-wrap"
-              ><PhSpinner :size="18" class="rfm-spin" /> Processing…</span
-            >
-            <span v-else>{{ editExisting ? 'Save Updates' : 'Submit Registration' }}</span>
-          </button>
+          <BaseButton
+            class="rfm-submit"
+            variant="primary"
+            block
+            type="submit"
+            :loading="loading"
+          >
+            {{ editExisting ? 'Save Updates' : 'Submit Registration' }}
+          </BaseButton>
           <p class="rfm-submit-hint">
             {{
               editExisting
@@ -875,46 +883,6 @@ textarea {
   font-size: 12px;
   color: #94a3b8;
   margin: 0;
-}
-
-.rfm-btn {
-  padding: 12px 22px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.rfm-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.rfm-btn--primary {
-  background: #055dfa;
-  color: #fff;
-  border-color: #055dfa;
-}
-.rfm-btn--primary:hover:not(:disabled) {
-  background: #0447c4;
-  border-color: #0447c4;
-}
-.rfm-btn--outline {
-  background: transparent;
-  color: #475569;
-  border-color: #e2e8f0;
-}
-.rfm-btn--outline:hover:not(:disabled) {
-  background: #f8fafc;
-}
-.rfm-spin-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 @media (max-width: 480px) {

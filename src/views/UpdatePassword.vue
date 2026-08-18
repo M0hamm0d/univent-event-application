@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
+import BaseButton from '@/components/BaseButton.vue'
 
 const password = ref('')
 const toast = useToast()
@@ -30,8 +31,8 @@ async function updatePassword() {
   <div class="">
     <h1>Update Password</h1>
     <input v-model="password" type="text" />
-    <button @click="updatePassword">
-      {{ loading ? 'Updating password...' : 'Update Password' }}
-    </button>
+    <BaseButton variant="primary" :loading="loading" @click="updatePassword">
+      Update Password
+    </BaseButton>
   </div>
 </template>

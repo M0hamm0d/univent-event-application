@@ -9,6 +9,7 @@ import { onMounted, ref, toRaw, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
 import EmptyState from '@/components/EmptyState.vue'
+import BaseButton from '@/components/BaseButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -208,10 +209,15 @@ watch(
           <p class="sub-text">{{ subText }}</p>
 
           <div class="modal-actions">
-            <button class="btn-outline" @click="cancel">Cancel</button>
-            <button class="btn-confirm" @click="deleteConfirmed" :disabled="loading">
-              {{ loading ? 'Processing...' : 'Yes, I Agree' }}
-            </button>
+            <BaseButton variant="outline" size="lg" @click="cancel">Cancel</BaseButton>
+            <BaseButton
+              variant="danger-outline"
+              size="lg"
+              :loading="loading"
+              @click="deleteConfirmed"
+            >
+              Yes, I Agree
+            </BaseButton>
           </div>
         </div>
       </div>
@@ -318,28 +324,6 @@ button {
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1.5px solid #e2e8f0;
-  color: #64748b;
-}
-.btn-outline:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-.btn-confirm,
-.btn-primary {
-  background: transparent;
-  border: 1.5px solid red;
-  color: red;
-}
-.btn-confirm:hover,
-.btn-primary:hover {
-  background: red;
-  color: #ffffff;
 }
 
 button:disabled {

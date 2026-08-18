@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import { useInterestedEvents } from '@/composables/useInterestedEvents'
 // import { useRegistrable } from '@/composables/useRegistrable'
 import { useRoute, useRouter } from 'vue-router'
+import { PhPencilSimple } from '@phosphor-icons/vue'
 import DeleteIcon from './icons/DeleteIcon.vue'
 import ShareIcon from './icons/ShareIcon.vue'
 import CalendarIcon from './icons/CalendarIcon.vue'
@@ -12,12 +13,15 @@ import LocationIcon from './icons/LocationIcon.vue'
 import { useUniventStore } from '@/stores/counter'
 import RegisterModal from './RegisterModal.vue'
 import RegistrationFormModal from './RegistrationFormModal.vue'
+import DeleteInterest from './DeleteInterest.vue'
 import { isEventRegistered } from '@/composables/useRegisteredEvents'
 import { isInWaitingList } from '@/composables/UseWaitingList'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
 import { useFormSubmission } from '@/composables/useFormSubmission'
 import { supabase } from '@/supabase'
+import { useToast } from 'vue-toastification'
 
+const toast = useToast()
 const univentStore = useUniventStore()
 const route = useRoute()
 const router = useRouter()
@@ -40,8 +44,13 @@ const waitingListMap = ref({})
 const selectedRegisterEvent = ref(null)
 const loadingMap = ref({})
 const hasCustomFormMap = ref({})
+const formErrorMap = ref({})
 const showCustomFormModal = ref(false)
 const selectedCustomFormEvent = ref(null)
+const showConfirmModal = ref(false)
+const confirmAction = ref('')
+const confirmEvent = ref(null)
+const confirmLoading = ref(false)
 
 const getInterestButtonText = computed(() => (event) => {
   const id = event.id
@@ -114,13 +123,24 @@ async function handleRegister(event) {
     showCustomFormModal.value = true
     return
   }
-  const form = await hasCustomForm(event.id)
+  if (formErrorMap.value[event.id]) {
+    toast.error("We couldn't load the registration form. Please try again.")
+    return
+  }
+  const { form, error } = await hasCustomForm(event.id)
+  if (error) {
+    formErrorMap.value = { ...formErrorMap.value, [event.id]: true }
+    toast.error("We couldn't load the registration form. Please try again.")
+    return
+  }
   if (form) {
     hasCustomFormMap.value = { ...hasCustomFormMap.value, [event.id]: form }
+    formErrorMap.value = { ...formErrorMap.value, [event.id]: false }
     selectedCustomFormEvent.value = event
     showCustomFormModal.value = true
     return
   }
+  formErrorMap.value = { ...formErrorMap.value, [event.id]: false }
   selectedRegisterEvent.value = event
   showModal.value = true
 }
@@ -140,45 +160,13 @@ async function onInterestClick(event) {
     const requiresRegistration = !!event.requires_registration
     if (requiresRegistration) {
       if (registeredMap.value[id]) {
-        const result = await cancelRegistration(event)
-
-        // if (result.success && result.status === 'cancelled') {
-        //   const { error } = await supabase
-        //     .from('registered_events')
-        //     .delete()
-        //     .eq('event_id', event.id)
-        //     .eq('user_id', univentStore.userProfile?.id)
-
-        //   if (error) {
-        //     console.error('Error deleting registered event:', error)
-        //     return
-        //   }
-        // }
-
-        if (
-          result.success &&
-          (result.status === 'cancelled' || result.status === 'left_waitlist')
-        ) {
-          registeredMap.value[id] = false
-          waitingListMap.value[id] = false
-        }
+        confirmEvent.value = event
+        confirmAction.value = 'cancelRegistration'
+        showConfirmModal.value = true
       } else if (waitingListMap.value[id]) {
-        const result = await cancelRegistration(event)
-        // if (result.success && result.status === 'left_waitlist') {
-        //   const { error } = await supabase
-        //     .from('registered_events')
-        //     .delete()
-        //     .eq('event_id', event.id)
-        //     .eq('user_id', univentStore.userProfile?.id)
-
-        //   if (error) {
-        //     console.error('Error deleting registered event:', error)
-        //     return
-        //   }
-        // }
-        if (result.success && result.status === 'left_waitlist') {
-          waitingListMap.value[id] = false
-        }
+        confirmEvent.value = event
+        confirmAction.value = 'leaveWaitlist'
+        showConfirmModal.value = true
       } else {
         await handleRegister(event)
       }
@@ -196,6 +184,37 @@ async function onInterestClick(event) {
     loadingMap.value[id] = false
   }
 }
+
+async function onConfirmAgree() {
+  const event = confirmEvent.value
+  if (!event) return
+  const id = event.id
+  confirmLoading.value = true
+  try {
+    const result = await cancelRegistration(event)
+    if (result.success) {
+      if (result.status === 'cancelled') {
+        registeredMap.value[id] = false
+        waitingListMap.value[id] = false
+      } else if (result.status === 'left_waitlist') {
+        waitingListMap.value[id] = false
+      }
+      showConfirmModal.value = false
+      confirmEvent.value = null
+      confirmAction.value = ''
+    }
+  } catch (err) {
+    console.error('onConfirmAgree error:', err)
+  } finally {
+    confirmLoading.value = false
+  }
+}
+
+function closeConfirmModal() {
+  showConfirmModal.value = false
+  confirmEvent.value = null
+  confirmAction.value = ''
+}
 async function toggleSelectedEvent(event) {
   selectedEvent.value = event
   await supabase
@@ -208,6 +227,18 @@ async function toggleSelectedEvent(event) {
 async function updateInterested(e) {
   await toggleInterest(e.event, localEvents)
 }
+async function loadCustomFormPresence(event) {
+  try {
+    const { form, error } = await hasCustomForm(event.id)
+    hasCustomFormMap.value = { ...hasCustomFormMap.value, [event.id]: form || false }
+    formErrorMap.value = { ...formErrorMap.value, [event.id]: !!error }
+  } catch (err) {
+    console.error('Error probing custom form presence:', err)
+    hasCustomFormMap.value = { ...hasCustomFormMap.value, [event.id]: false }
+    formErrorMap.value = { ...formErrorMap.value, [event.id]: true }
+  }
+}
+
 async function loadAllStatuses(events) {
   const userId = univentStore.userProfile?.id
   if (!userId || !events.length) return
@@ -224,16 +255,6 @@ async function loadAllStatuses(events) {
   }
 
   await Promise.all(promises)
-}
-
-async function loadCustomFormPresence(event) {
-  try {
-    const form = await hasCustomForm(event.id)
-    hasCustomFormMap.value = { ...hasCustomFormMap.value, [event.id]: form || false }
-  } catch (err) {
-    console.error('Error probing custom form presence:', err)
-    hasCustomFormMap.value = { ...hasCustomFormMap.value, [event.id]: false }
-  }
 }
 
 const formatTime = (timeStr) => {
@@ -278,6 +299,18 @@ watch(
 <template>
   <div class="event-card" v-for="event in localEvents" :key="event.id">
     <div v-if="waitingListMap[event.id] === true" class="waitlist-badge">In Wait-list</div>
+    <button
+      v-if="
+        route.path.startsWith('/interested') &&
+        hasCustomFormMap[event.id] &&
+        (registeredMap[event.id] || waitingListMap[event.id])
+      "
+      class="edit-response-icon-btn"
+      title="Edit Response"
+      @click="handleEditResponse(event)"
+    >
+      <PhPencilSimple :size="16" />
+    </button>
     <div class="event-flier">
       <img
         loading="lazy"
@@ -324,7 +357,7 @@ watch(
             },
           ]"
           v-if="route.path.startsWith('/discover')"
-          :disabled="waitingListMap[event.id] === true || loadingMap[event.id]"
+          :disabled="loadingMap[event.id]"
           @click="onInterestClick(event)"
         >
           {{ getInterestButtonText(event) }}
@@ -356,6 +389,21 @@ watch(
             </Transition>
           </teleport>
         </div>
+        <div>
+          <teleport to="body">
+            <Transition name="modal-fade">
+              <DeleteInterest
+                v-if="showConfirmModal"
+                :event="confirmEvent"
+                :action-type="confirmAction"
+                :show-modal="showConfirmModal"
+                :loading="confirmLoading"
+                @close="closeConfirmModal"
+                @confirm="onConfirmAgree"
+              />
+            </Transition>
+          </teleport>
+        </div>
         <div class="view-details" @click="toggleSelectedEvent(event)">
           <p>View Details</p>
           <teleport to="body">
@@ -372,18 +420,6 @@ watch(
             </Transition>
           </teleport>
         </div>
-
-        <button
-          v-if="
-            route.path.startsWith('/discover') &&
-            hasCustomFormMap[event.id] &&
-            (registeredMap[event.id] || waitingListMap[event.id])
-          "
-          class="edit-response-btn"
-          @click="handleEditResponse(event)"
-        >
-          Edit Response
-        </button>
 
         <div class="share-and-delete" v-if="route.path.startsWith('/interested')">
           <button class="share-btn" @click="univentStore.shareEvent(event)">
@@ -717,19 +753,26 @@ h3 {
   /* flex-wrap: wrap; */
 }
 
-.edit-response-btn {
-  width: 100%;
-  padding: 10px 16px;
-  background: transparent;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
+.edit-response-icon-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #eaeaea;
+  padding: 0;
+  background-color: #fff;
+  border-radius: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  color: #475569;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.2s;
 }
-.edit-response-btn:hover {
+.edit-response-icon-btn:hover {
   background: #f8fafc;
   color: #055dfa;
   border-color: #055dfa;
@@ -754,7 +797,7 @@ h3 {
 .waitlist-badge {
   position: absolute;
   top: 16px;
-  right: 16px;
+  right: 60px;
   background: #ffe066;
   color: #a67c00;
   border-radius: 16px;
