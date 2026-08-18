@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { supabase } from '@/supabase'
 import { useUniventStore } from '@/stores/counter'
 import { useToast } from 'vue-toastification'
@@ -17,7 +17,7 @@ import {
 } from '@phosphor-icons/vue'
 
 const route = useRoute()
-const router = useRouter()
+// const router = useRouter()
 const univentStore = useUniventStore()
 const toast = useToast()
 const { getActiveForm, getEventFormResponses } = useRegistrationForm()

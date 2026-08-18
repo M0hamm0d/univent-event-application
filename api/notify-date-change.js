@@ -15,14 +15,6 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-// Notify registered students when an event's date-state changes:
-//   transition = 'announced'  -> an undated event just got a real date
-//   transition = 'undecided'  -> a previously dated event reverted to undated
-//
-// The client (organizer's browser) only sends { eventId, eventName, eventDate,
-// transition }. We DO NOT trust the client for the recipient list — we fetch
-// the currently-registered students ourselves with the service role key so
-// only users with status='registered' are emailed (no waitlisted students).
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
@@ -38,8 +30,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Independently verify the event exists and matches the claimed
-    // transition before emailing anyone.
     const { data: event, error: eventError } = await supabaseAdmin
       .from('events')
       .select('id, event_title, date, date_not_fixed')
@@ -51,13 +41,9 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: 'Event not found' })
     }
 
-    // Guard against the client lying about the transition: the DB row's
-    // current date-state must agree with the claimed transition direction.
     const dbUndecided = !!(event.date_not_fixed || event.date == null)
     if (transition === 'announced' && dbUndecided) {
-      return res
-        .status(409)
-        .json({ message: 'Event is still undated; cannot send announce email' })
+      return res.status(409).json({ message: 'Event is still undated; cannot send announce email' })
     }
     if (transition === 'undecided' && !dbUndecided) {
       return res
@@ -65,9 +51,6 @@ export default async function handler(req, res) {
         .json({ message: 'Event still has a date; cannot send undecided email' })
     }
 
-    // Fetch currently-registered students (status='registered' only — no
-    // waitlisted). Same join shape used by api/reminder.js
-    // (fetchRegisteredEvents).
     const { data: registrations, error: regError } = await supabaseAdmin
       .from('registered_events')
       .select(
