@@ -11,12 +11,17 @@ import { useToast } from 'vue-toastification'
 import { computed } from 'vue'
 // import { supabase } from '@/supabase'
 
+
 const route = useRoute()
 const router = useRouter()
+
+console.log('ROUTE:', route)
+console.log('ROUTER:', router)
 const toast = useToast()
 const { filter, loading, noEvent, filterUpcomingEventOnlyAndInterested } = useEventFilters()
 const { fetchRequestedAndEvents } = useRequestedEvents()
 const univentStore = useUniventStore()
+const dataSource = ref('online')
 const pagesNo = ref(false)
 const emptyEvent = ref(false)
 const resultNo = ref(null)
@@ -24,12 +29,13 @@ const unavailableEvent = ref(false)
 const count = ref(null)
 const searchFromId = ref([])
 const isFilterActive = ref(false)
+
 const isAnyFilterApplied = computed(() => {
   return Object.values(univentStore.activeFilters).some((value) => {
     return Array.isArray(value) ? value.length > 0 : !!value
   })
 })
-
+// dataSource.value = result.source || 'online'
 async function loadEvents() {
   // if (loading.value) return
   loading.value = true
@@ -43,7 +49,11 @@ async function loadEvents() {
     route.query.page && !isNaN(Number(route.query.page)) ? Number(route.query.page) : 1
   univentStore.currentPage = pageFromUrl
   if (route.query.eventId) {
-    const allEvent = await fetchRequestedAndEvents(univentStore.currentPage)
+    const allEvent = await fetchRequestedAndEvents(
+      univentStore.currentPage,
+    )
+
+    dataSource.value = allEvent.source || 'online'
     const eventId = route.query.eventId
     searchFromId.value = allEvent.allEvents.filter((e) => e.id === eventId)
     if (searchFromId.value.length === 0) {
@@ -58,7 +68,13 @@ async function loadEvents() {
         univentStore.currentPage,
         univentStore.activeFilters,
       )
-      univentStore.pageSum = Array.from({ length: result.pagesNo }, (_, i) => i + 1)
+
+      dataSource.value = result.source || 'online'
+
+      univentStore.pageSum = Array.from(
+        { length: result.pagesNo },
+        (_, i) => i + 1,
+      )
       univentStore.pageCount = result.pagesNo
       pagesNo.value = result.pagesNo > 1
       resultNo.value = result.pagesNo
@@ -90,7 +106,7 @@ async function handleFilters(filters) {
     univentStore.currentPage = 1
     univentStore.activeFilters = filters
     const result = await fetchRequestedAndEvents(univentStore.currentPage, filters)
-
+    dataSource.value = result.source || 'online'
     univentStore.pageSum = []
     for (let i = 1; i <= result.pagesNo; i++) {
       univentStore.pageSum.push(i)
@@ -145,26 +161,23 @@ onMounted(async () => {
 
 <template>
   <div class="">
-    <EventSearchHeader
-      header="Discover Events on Campus"
+    <EventSearchHeader header="Discover Events on Campus"
       title="Find the best happenings on campus – from academic workshops to social hangouts."
-      @filter-changed="handleFilters"
-      @search-performed="handleFilters"
-      @show-filter="showFilter"
-    />
+      @filter-changed="handleFilters" @search-performed="handleFilters" @show-filter="showFilter" />
+      <p v-if="dataSource !== 'online'" class="offline-notice">
+      You're viewing saved event data.
+    </p>
     <div class="no-result" v-if="isAnyFilterApplied && noEvent">
       <img loading="lazy" src="/no-result.png" alt="" />
     </div>
     <div :class="isFilterActive ? 'skeleton open' : 'skeleton'" v-if="loading">
       <SkeletonLoader v-for="i in 3" :key="i" />
     </div>
-    <button
-      :class="isFilterActive ? 'back-btn open' : 'back-btn'"
-      v-if="route.query.eventId"
-      @click="backToDiscoverPage"
-    >
+    <button :class="isFilterActive ? 'back-btn open' : 'back-btn'" v-if="route.query.eventId"
+      @click="backToDiscoverPage">
       ← Back to all Event
     </button>
+
     <div class="" v-if="unavailableEvent">Event currently unavailable</div>
     <div :class="isFilterActive ? 'events-section open' : 'events-section'" v-if="!loading">
       <EventsCard :events="route.query.eventId ? searchFromId : filter" />
@@ -175,30 +188,19 @@ onMounted(async () => {
       </div>
       <p>Sorry no event</p>
     </div>
-    <div
-      :class="isFilterActive ? 'pagination open' : 'pagination'"
-      v-if="univentStore.pageCount > 1 && !route.query.eventId"
-    >
+    <div :class="isFilterActive ? 'pagination open' : 'pagination'"
+      v-if="univentStore.pageCount > 1 && !route.query.eventId">
       <h3>Page {{ univentStore.currentPage }} of {{ univentStore.pageCount }}</h3>
       <div class="buttons">
-        <button
-          v-for="i in univentStore.pageSum.slice(0, 4)"
-          :key="i"
-          @click="pagination(i)"
-          :class="{ activeFilter: univentStore.currentPage == i }"
-        >
+        <button v-for="i in univentStore.pageSum.slice(0, 4)" :key="i" @click="pagination(i)"
+          :class="{ activeFilter: univentStore.currentPage == i }">
           {{ i }}
         </button>
       </div>
 
       <div class="go-to-page">
         <p>Go to page</p>
-        <select
-          name="page"
-          id="page"
-          @change="pagination($event.target.value)"
-          v-model="univentStore.currentPage"
-        >
+        <select name="page" id="page" @change="pagination($event.target.value)" v-model="univentStore.currentPage">
           <option v-for="i in univentStore.pageCount" :value="i" :key="i">
             {{ i }}
           </option>
@@ -215,12 +217,15 @@ onMounted(async () => {
   gap: 16px;
   margin-top: 30px;
 }
+
 .filter-not-applied .empty-state {
   width: 200px;
 }
+
 .filter-not-applied .empty-state img {
   width: 100%;
 }
+
 .pagination {
   display: flex;
   align-items: center;
@@ -232,26 +237,32 @@ onMounted(async () => {
   transform: translateY(-70px);
   margin: 30px auto;
 }
+
 .pagination.open {
   transform: translateY(0px);
 }
+
 .back-btn {
   transition: all 0.5s ease;
   transform: translateY(-80px);
   margin-left: 30px;
 }
+
 .back-btn.open {
   transform: translateY(0px);
 }
+
 .pagination h3 {
   font-size: 14px;
   font-weight: 600;
   color: rgba(31, 31, 31, 1);
 }
+
 .pagination .buttons {
   display: flex;
   gap: 4px;
 }
+
 .go-to-page {
   display: flex;
   gap: 14px;
@@ -259,6 +270,7 @@ onMounted(async () => {
   color: #aaa;
   font-size: 14px;
 }
+
 .pagination button {
   height: 100%;
   background-color: transparent;
@@ -267,11 +279,13 @@ onMounted(async () => {
   padding: 8px;
   border: none;
 }
+
 .pagination .activeFilter {
   border: 1px solid #1969fe;
   color: #1f1f1f;
   border-radius: 6px;
 }
+
 .skeleton {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -282,16 +296,20 @@ onMounted(async () => {
   transition: all 0.5s ease;
   transform: translateY(-70px);
 }
+
 .skeleton.open {
   transform: translateY(0px);
 }
+
 .no-result {
   width: 347px;
   margin: auto;
 }
+
 .no-result img {
   width: 100%;
 }
+
 .events-section {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -304,35 +322,43 @@ onMounted(async () => {
   transition: all 0.5s ease;
   transform: translateY(-70px);
 }
+
 .events-section.open {
   transform: translateY(0px);
 }
+
 @media screen and (max-width: 1024px) {
   .events-section {
     gap: 12px;
     margin: 20px auto;
   }
+
   .skeleton {
     gap: 12px;
     margin: 20px auto;
   }
+
   .pagination {
     justify-content: center;
     transform: none;
     margin: 16px auto;
   }
+
   .pagination .buttons {
     gap: 6px;
     flex-wrap: wrap;
   }
+
   .go-to-page {
     gap: 10px;
   }
+
   .back-btn {
     transform: none;
     margin: 12px auto;
     display: block;
   }
+
   .events-section.open,
   .skeleton.open {
     transform: none;
@@ -346,25 +372,31 @@ onMounted(async () => {
     margin-top: 0;
     transform: translateY(-350px);
   }
+
   .pagination {
     margin-top: 0px;
     transform: translateY(-250px);
   }
+
   .skeleton {
     grid-template-columns: 1fr;
     margin-top: 0;
     transform: translateY(-310px);
   }
+
   .pagination.open {
     margin-bottom: 100px;
   }
+
   .go-to-page select {
     min-width: 80px;
   }
+
   .no-result {
     width: 100%;
     padding: 0 16px;
   }
+
   .back-btn {
     z-index: 10000;
     position: relative;

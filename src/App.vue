@@ -17,6 +17,8 @@ import BookmarkIcon from './components/icons/BookmarkIcon.vue'
 import RequestEvent from './components/icons/RequestEvent.vue'
 import { useRoute, useRouter } from 'vue-router'
 import FooterComponent from './components/FooterComponent.vue'
+// import { useRequestedEvents } from '@/composables/useRequestedEvents'
+
 // import UniventAssistance from './components/UniventAssistance.vue'
 const route = useRoute()
 const { ensureSessionInit, resetSessionInit } = useSessionInit()
@@ -91,21 +93,36 @@ watch(
 
 onMounted(async () => {
   await ensureSessionInit()
-  const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_OUT') {
-      univentStore.$reset()
-      resetSessionInit()
-      toast.success('Logged out successfully')
-      return
-    }
-    if (univentStore.userProfile?.id === session?.user?.id) {
-      return
-    }
+  // const { syncEventsInBackground } = useRequestedEvents()
+
+  // syncEventsInBackground()
+ const { data } = supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    univentStore.$reset()
     resetSessionInit()
-    await ensureSessionInit()
-  })
+    toast.success('Logged out successfully')
+    return
+  }
+
+  if (univentStore.userProfile?.id === session?.user?.id) {
+    return
+  }
+
+  // Don't call Supabase methods directly inside
+  // the auth state change callback.
+  setTimeout(async () => {
+    try {
+      resetSessionInit()
+      await ensureSessionInit()
+    } catch (error) {
+      console.error('Failed to initialize session:', error)
+    }
+  }, 0)
+})
   subscription = data.subscription
 })
+
+
 onUnmounted(() => {
   if (subscription) {
     subscription.unsubscribe()
