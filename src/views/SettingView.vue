@@ -38,7 +38,7 @@ const active = ref(queryTab)
         <div class="nav-container" @click="active = 'dashboard'">
           <div :class="['nav', { activeNav: active == 'dashboard' }]">
             <span>
-              <PhChartBar :size="24" color="active === 'dashboard' ? '#000' : '#aaa'" />
+              <PhChartBar :size="24" :color="active === 'dashboard' ? '#000' : '#aaa'" />
             </span>
             <span>Dashboard</span>
           </div>

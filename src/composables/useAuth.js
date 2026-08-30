@@ -50,6 +50,7 @@ export function useAuth(toast) {
       let { data, error: supabaseError } = await supabase.auth.signUp({
         email,
         password,
+        data: { full_name: name },
       })
       if (supabaseError) {
         showError(supabaseError.message)
@@ -57,15 +58,21 @@ export function useAuth(toast) {
       }
       const userId = data.user.id
       if (userId) {
-        await supabase.from('profile').insert({
+        const { error: insertError } = await supabase.from('profile').insert({
           id: userId,
           user_name: signUpForm.value.name,
           user_email: signUpForm.value.email,
         })
+        if (insertError) {
+          console.error('Profile insert failed after signup:', insertError.message)
+          showError('Account created but profile setup failed. Please contact support.')
+          return { success: false }
+        }
+        // Email confirmation is required: do NOT set isAuthenticated=true
+        // or populate userProfile here. The user must verify their email and
+        // then sign in. Show a clear notice instead.
         uniVentStore.signupModal = false
-        uniVentStore.userProfile.user_name = name
-        uniVentStore.isAuthenticated = true
-        toast?.success('Account created successfully.')
+        toast?.success('Account created! Check your email to verify your account before signing in.')
         return { success: true }
       }
     } catch (err) {
@@ -86,15 +93,36 @@ export function useAuth(toast) {
         return { success: false, error: error ? error.message : 'Login failed' }
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profile')
         .select('*')
         .eq('id', data.user.id)
-        .single()
+        .maybeSingle()
+
+      // If the profile row is missing (e.g. signup insert failed or an OAuth
+      // user without a profile), create a minimal one so downstream components
+      // that read userProfile.id don't crash.
+      let finalProfile = profile
+      if (!finalProfile && !profileError) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('profile')
+          .insert({
+            id: data.user.id,
+            user_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name || 'User',
+            user_email: data.user.email,
+          })
+          .select()
+          .maybeSingle()
+        if (insertError) {
+          console.error('Failed to create missing profile on login:', insertError.message)
+        } else {
+          finalProfile = inserted
+        }
+      }
 
       uniVentStore.isAuthenticated = true
-      uniVentStore.userProfile = profile
-      uniVentStore.imageUrl = profile?.profile_pics || null
+      uniVentStore.userProfile = finalProfile || {}
+      uniVentStore.imageUrl = finalProfile?.profile_pics || null
       uniVentStore.loginModal = false
 
       toast?.success('Logged in successfully')
@@ -122,9 +150,11 @@ export function useAuth(toast) {
       toast?.error('Sign out failed')
       return false
     }
-    // uniVentStore.$reset()
-    // toast?.success('Signed out successfully')
-    // uniVentStore.isAuthenticated = false
+    // Reset store immediately so the UI reflects logout without waiting for
+    // the async SIGNED_OUT auth event (which may be delayed or missed).
+    uniVentStore.$reset()
+    uniVentStore.isAuthenticated = false
+    toast?.success('Signed out successfully')
     return true
   }
 

@@ -2,32 +2,56 @@
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 import nodemailer from 'nodemailer'
-// import cron from 'node-cron'
+import { requireAuth } from './auth.js'
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
 const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
+
+/**
+ * Normalize a stored time value to "HH:MM" 24-hour format for comparison.
+ * Handles: "13:00", "1:00 PM", "01:00PM", "1:00:00", "", null/undefined.
+ * Returns "" if the input cannot be parsed (so it never matches a real time).
+ */
+function normalizeTimeTo24h(input) {
+  if (!input || typeof input !== 'string') return ''
+  let s = input.trim()
+  // Already 24h like "13:00" or "13:00:00"
+  const m24 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
+  if (m24) {
+    return `${m24[1].padStart(2, '0')}:${m24[2]}`
+  }
+  // 12h like "1:00 PM", "01:00PM", "1:00:00 PM"
+  const m12 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i)
+  if (m12) {
+    let h = parseInt(m12[1], 10)
+    const ampm = m12[3].toUpperCase()
+    if (ampm === 'PM' && h < 12) h += 12
+    if (ampm === 'AM' && h === 12) h = 0
+    return `${String(h).padStart(2, '0')}:${m12[2]}`
+  }
+  return ''
+}
+
+/** Build the "next hour" target as "HH:00" 24h for comparison. */
+function nextHour24h(now = new Date()) {
+  const next = new Date(now)
+  next.setHours(now.getHours() + 1, 0, 0, 0)
+  return `${String(next.getHours()).padStart(2, '0')}:00`
+}
 
 async function fetchInterestedEvents() {
   let now = new Date()
   let tomorrowEvent = []
   let oneHrBeforeEvent = []
 
-  let oneHrBefore = new Date(now)
-  oneHrBefore.setHours(now.getHours() + 1)
-
-  let hours = oneHrBefore.getHours()
-  const ampm = hours >= 12 ? 'PM' : 'AM'
-  hours = hours % 12
-  hours = hours ? hours : 12
-  // let minutes = oneHrBefore.getMinutes()
-  const timeStr = `${hours.toString().padStart(2, '0')}:00${ampm}`
+  const targetTime24h = nextHour24h(now)
 
   const tomorrow = new Date(now)
   tomorrow.setDate(now.getDate() + 1)
   const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
   const todayStr = now.toISOString().split('T')[0]
-  console.log(`Checking for Today (${todayStr}) at ${timeStr} and Tomorrow (${tomorrowStr})`)
+  console.log(`Checking for Today (${todayStr}) at ${targetTime24h} and Tomorrow (${tomorrowStr})`)
   try {
     let { data: interested_events, error } = await supabaseAdmin
       .from('interested_events')
@@ -64,7 +88,11 @@ async function fetchInterestedEvents() {
       return event.event_id.date == tomorrowStr && !event.a_day_email
     })
     oneHrBeforeEvent = interested_events.filter((event) => {
-      return event.event_id.date == todayStr && event.event_id.time == timeStr && !event.an_hr_email
+      return (
+        event.event_id.date == todayStr &&
+        normalizeTimeTo24h(event.event_id.time) === targetTime24h &&
+        !event.an_hr_email
+      )
     })
     return { tomorrowEvent, oneHrBeforeEvent }
   } catch (err) {
@@ -81,14 +109,7 @@ async function fetchRegisteredEvents() {
   let tomorrowEvent = []
   let oneHrBeforeEvent = []
 
-  let oneHrBefore = new Date(now)
-  oneHrBefore.setHours(now.getHours() + 1)
-
-  let hours = oneHrBefore.getHours()
-  const ampm = hours >= 12 ? 'PM' : 'AM'
-  hours = hours % 12
-  hours = hours ? hours : 12
-  const timeStr = `${hours.toString().padStart(2, '0')}:00${ampm}`
+  const targetTime24h = nextHour24h(now)
 
   const tomorrow = new Date(now)
   tomorrow.setDate(now.getDate() + 1)
@@ -133,7 +154,11 @@ async function fetchRegisteredEvents() {
       return event.event_id.date == tomorrowStr && !event.a_day_email
     })
     oneHrBeforeEvent = registered_events.filter((event) => {
-      return event.event_id.date == todayStr && event.event_id.time == timeStr && !event.an_hr_email
+      return (
+        event.event_id.date == todayStr &&
+        normalizeTimeTo24h(event.event_id.time) === targetTime24h &&
+        !event.an_hr_email
+      )
     })
     return { tomorrowEvent, oneHrBeforeEvent }
   } catch (err) {
@@ -141,32 +166,6 @@ async function fetchRegisteredEvents() {
     return { tomorrowEvent: [], oneHrBeforeEvent: [] }
   }
 }
-
-let events = await fetchInterestedEvents()
-
-console.log('----- TOMORROW EVENTS ---------')
-console.table(
-  events.tomorrowEvent.map((e) => ({
-    user: e.user_id.user_email,
-    title: e.event_id.event_title,
-    date: e.event_id.date,
-    time: e.event_id.time,
-    aDayBeforeEmailSent: e.a_day_email,
-  })),
-)
-console.log('----- EVENTS HAPPENING IN AN HOUR ---------')
-console.table(
-  events.oneHrBeforeEvent.map((e) => ({
-    user: e.user_id.user_email,
-    title: e.event_id.event_title,
-    date: e.event_id.date,
-    time: e.event_id.time,
-    anHrBeforeEmailSent: e.an_hr_email,
-  })),
-)
-
-console.log('Attempting login for:', process.env.EMAIL_USER)
-console.log('Password length:', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0)
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -213,7 +212,7 @@ async function setReminder() {
 
               <!-- Button -->
               <div style="text-align: center; margin-top: 30px;">
-                <a href="https://univent-app.com/events/${event.event_id._id}"
+                <a href="https://univent.website/discover?modal=open&id=${event.event_id.id}"
                    style="background-color: #111827; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
                    View Event Details
                 </a>
@@ -272,7 +271,7 @@ async function setReminder() {
 
           <!-- CTA Button -->
           <div style="text-align: center; margin-top: 30px;">
-            <a href="https://univent-app.com/events/${event.event_id._id}"
+            <a href="https://univent.website/discover?modal=open&id=${event.event_id.id}"
                style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
                View Event Details
             </a>
@@ -377,6 +376,11 @@ async function setReminder() {
 }
 // await setReminder()
 export default async function handler(req, res) {
+  // Secret-only: this is a cron-triggered endpoint.
+  const auth = await requireAuth(req, res, { allowSecretOnly: true })
+  if (!auth.ok) {
+    return res.status(401).json({ message: 'Unauthorized: missing or invalid API secret' })
+  }
   try {
     await setReminder()
     return res.status(200).json({

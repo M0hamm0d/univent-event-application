@@ -4,6 +4,7 @@ import { useUniventStore } from '../stores/counter'
 import { supabase } from '@/supabase'
 import { ref } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { useToast } from 'vue-toastification'
 import CancelBtn from './icons/CancelBtn.vue'
 import GoogleLogo from './icons/GoogleLogo.vue'
 import BaseButton from '@/components/BaseButton.vue'
@@ -13,14 +14,13 @@ const signupPassword = ref('')
 const signupConfirmPassword = ref('')
 const loading = ref(false)
 const login = useUniventStore()
+const toast = useToast()
 const emit = defineEmits(['closeBtn'])
-const { signupBtn, errorMessage } = useAuth()
+const { signupBtn, errorMessage } = useAuth(toast)
 function openLoginModal() {
   login.loginModal = true
   login.signupModal = false
-  console.log('login is' + login.loginModal)
 }
-// const error = ref('')
 
 import { PhEye, PhEyeSlash } from '@phosphor-icons/vue'
 let passwordType = ref('password')
@@ -50,7 +50,7 @@ async function handleSignUp() {
       signupConfirmPassword.value,
     )
     if (!success) {
-      alert('signUp failed')
+      toast.error('Sign up failed. Please check your details and try again.')
     }
   } finally {
     loading.value = false
@@ -138,7 +138,7 @@ async function signInWithGoogle() {
         </div>
       </div>
 
-      <p class="error">{{ errorMessage }}</p>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     </div>
     <div class="create-account-section">
       <BaseButton variant="dark" block :loading="loading" @click="handleSignUp">

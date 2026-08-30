@@ -31,15 +31,23 @@ function togglePassword() {
 const isLoading = ref(false)
 const { signIn } = useAuth(toast)
 async function handleLogin() {
+  if (!email.value || !password.value) {
+    error.value = 'Please enter your email and password.'
+    setTimeout(() => {
+      error.value = ''
+    }, 4000)
+    return
+  }
   isLoading.value = true
   const { success, error: signInError } = await signIn(email.value, password.value)
-  router.push('/')
 
   if (!success) {
     error.value = signInError
     setTimeout(() => {
       error.value = ''
     }, 4000)
+  } else {
+    router.push('/')
   }
   isLoading.value = false
 }

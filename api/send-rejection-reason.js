@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
+import { requireAuth } from './auth.js'
 async function sendEmail({ to, message }) {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -33,12 +34,17 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
+  const auth = await requireAuth(req, res)
+  if (!auth.ok) return
   const { email, rejectionReason } = req.body
+  if (!email || !rejectionReason) {
+    return res.status(400).json({ message: 'email and rejectionReason are required' })
+  }
   try {
     await sendEmail({ to: email, message: rejectionReason })
-    return res.status(200).json({ message: 'Duplicate event notification sent' })
+    return res.status(200).json({ message: 'Rejection email sent' })
   } catch (err) {
-    console.error('Error sending duplicate event notification:', err)
+    console.error('Error sending rejection email:', err)
     return res.status(500).json({ message: 'Failed to send email' })
   }
 }

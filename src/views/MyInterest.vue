@@ -5,7 +5,7 @@ import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useToast } from 'vue-toastification'
 import { useInterestedEvents } from '@/composables/useInterestEvents'
 import { useUniventStore } from '@/stores/counter'
-import { onMounted, ref, toRaw, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStoreUserDetails } from '@/composables/useStoreUserDetails'
 import EmptyState from '@/components/EmptyState.vue'
@@ -16,8 +16,7 @@ const router = useRouter()
 
 const toast = useToast()
 const univentStore = useUniventStore()
-const { active, deleteInterest, loading, fetchInterest, filtersArray, interest } =
-  useInterestedEvents(toast)
+const { active, deleteInterest, loading, fetchInterest } = useInterestedEvents(toast)
 const searchInput = ref(route.query.q || '')
 const { cancelRegistration } = useStoreUserDetails()
 const result = ref([])
@@ -57,7 +56,6 @@ async function deleteConfirmed() {
   if (activeModal.value === 'deleteInterest') {
     await deleteInterest(eventToDelete.value)
   } else if (activeModal.value === 'cancelRegistration') {
-    console.log(toRaw(eventToDelete.value), 'event to delete')
     await cancelRegistration(eventToDelete.value)
     await deleteInterest(eventToDelete.value)
   }
@@ -76,6 +74,7 @@ watch(active, async () => {
   result.value = await fetchInterest(1, univentStore.interestFilters)
   router.replace({ query: {} })
   res.value = result.value.events.map((e) => e.events)
+  pageSum.value = Array.from({ length: result.value.pageSum || 0 }, (_, i) => i + 1)
 })
 
 const pageSum = ref([])
@@ -83,9 +82,7 @@ async function handleFilters(e) {
   univentStore.interestFilters = e
   result.value = await fetchInterest(univentStore.interestCount, e)
   res.value = result.value.events.map((e) => e.events)
-  for (let i = 0; i < result.value.pageSum; i++) {
-    pageSum.value.push(i + 1)
-  }
+  pageSum.value = Array.from({ length: result.value.pageSum || 0 }, (_, i) => i + 1)
 }
 function showFilter() {
   isFilterActive.value = !isFilterActive.value
@@ -99,19 +96,14 @@ onMounted(async () => {
   univentStore.interestCount = Number(route.query.page) || 1
   result.value = await fetchInterest(univentStore.interestCount)
   res.value = result.value.events.map((e) => e.events)
-  for (let i = 0; i < result.value.pageSum; i++) {
-    pageSum.value.push(i + 1)
-  }
+  pageSum.value = Array.from({ length: result.value.pageSum || 0 }, (_, i) => i + 1)
 })
 async function pagination(param) {
-  result.value = await fetchInterest(param, univentStore.interestFilters)
-  univentStore.interestCount = param
-  console.log(univentStore.interestCurrentPage)
-
+  const pageNum = Number(param)
+  result.value = await fetchInterest(pageNum, univentStore.interestFilters)
+  univentStore.interestCount = pageNum
   res.value = result.value.events.map((e) => e.events)
-  for (let i = 0; i < result.value.pageSum; i++) {
-    pageSum.value.push(i + 1)
-  }
+  pageSum.value = Array.from({ length: result.value.pageSum || 0 }, (_, i) => i + 1)
 }
 watch(
   () => univentStore.interestCount,
@@ -153,9 +145,9 @@ watch(
       <div class="upcoming-events-container">
         <EventsCard
           :events="
-            interest.map((e) => ({
-              ...e.events,
-              is_interested: e.is_interested || false,
+            res.map((e) => ({
+              ...e,
+              is_interested: true,
               is_registered: e.is_registered || false,
             }))
           "
@@ -164,13 +156,12 @@ watch(
           @deleteUserRegistration="handleDeleteUserRegistration"
         />
       </div>
-      <div class="" v-if="!res.length >= 1 && !loading">
+      <div class="" v-if="res.length === 0 && !loading">
         <EmptyState />
       </div>
       <div class="skeleton" v-if="loading">
         <SkeletonLoader v-for="i in 3" :key="i" />
       </div>
-      <p>{{ filtersArray }}</p>
       <div class="pagination" v-if="result?.pageSum > 1">
         <h3>Page {{ result?.currentPage }} of {{ result?.pageSum }}</h3>
         <div class="buttons">

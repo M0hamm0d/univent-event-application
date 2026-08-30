@@ -1,11 +1,17 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
+import { requireAuth } from './auth.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
+  const auth = await requireAuth(req, res)
+  if (!auth.ok) return
   const { email, name, event } = req.body
+  if (!email || !event) {
+    return res.status(400).json({ message: 'email and event are required' })
+  }
   try {
     const result = await sendEmail({ to: email, name, event })
     return res.status(200).json(result)

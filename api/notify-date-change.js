@@ -2,6 +2,7 @@
 import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
+import { requireAuth } from './auth.js'
 
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
@@ -19,6 +20,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
+  const auth = await requireAuth(req, res)
+  if (!auth.ok) return
 
   const { eventId, eventName, eventDate, transition } = req.body || {}
 
@@ -67,11 +70,35 @@ export default async function handler(req, res) {
 
     if (regError) throw regError
 
+    // Also notify waitlisted attendees — they may be promoted later and would
+    // otherwise miss the date change entirely.
+    const { data: waitlisted, error: waitError } = await supabaseAdmin
+      .from('waiting_list')
+      .select(
+        `
+        user_id (
+          id,
+          user_name,
+          user_email
+        )
+      `,
+      )
+      .eq('event_id', eventId)
+
+    if (waitError) throw waitError
+
     const title = event.event_title || eventName || 'your event'
+    const displayDate = event.date || eventDate || null
 
     let sent = 0
-    for (const reg of registrations || []) {
-      const profile = reg.user_id
+    const allRecipients = [
+      ...(registrations || []).map((r) => r.user_id),
+      ...(waitlisted || []).map((w) => w.user_id),
+    ]
+    const seen = new Set()
+    for (const profile of allRecipients) {
+      if (!profile || seen.has(profile.id)) continue
+      seen.add(profile.id)
       const to = profile?.user_email
       const name = profile?.user_name || 'there'
       if (!to) continue
@@ -84,7 +111,7 @@ export default async function handler(req, res) {
 
 Good news — the date for "${title}", an event you registered for on UniVent, has just been announced.
 
-Date: ${eventDate || event.date}
+Date: ${displayDate || 'TBA'}
 
 Please check the event page for full details and add it to your calendar. We'll send you a reminder closer to the day.
 
