@@ -4,6 +4,7 @@ import { useRequestedEvents } from '@/composables/useRequestedEvents'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
 import BaseButton from '@/components/BaseButton.vue'
+import { withAuthHeader } from '@/composables/useApiAuth'
 
 const { fetchRequestedAndEvents } = useRequestedEvents()
 const toast = useToast()
@@ -42,7 +43,7 @@ async function handlePushToEvent(id) {
 
     if (events && events.length > 0) {
       try {
-        const res = await fetch('/api/send-duplicate-email', {
+        const res = await fetch('/api/send-duplicate-email', await withAuthHeader({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -50,7 +51,7 @@ async function handlePushToEvent(id) {
           body: JSON.stringify({
             email: requestData.value.user_email,
           }),
-        })
+        }))
         if (!res.ok) {
           throw new Error('Failed to send duplicate email')
         }
@@ -87,7 +88,7 @@ async function handlePushToEvent(id) {
     request.value = request.value.filter((r) => r.id !== id)
     toast.success('Event approved successfully')
     try {
-      await fetch('/api/send-review-success', {
+      await fetch('/api/send-review-success', await withAuthHeader({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +97,7 @@ async function handlePushToEvent(id) {
           email: requestData.value.user_email,
           event: requestData.value.event_title,
         }),
-      })
+      }))
     } catch (emailError) {
       console.error('Error sending review success email:', emailError)
       toast.error('Failed to send review success email')
@@ -119,7 +120,7 @@ async function handleReject(req) {
     }
 
     loading.value = true
-    const res = await fetch('/api/send-rejection-reason', {
+    const res = await fetch('/api/send-rejection-reason', await withAuthHeader({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -128,7 +129,7 @@ async function handleReject(req) {
         email: req.user_email,
         rejectionReason: rejectionReasons.value,
       }),
-    })
+    }))
 
     if (!res.ok) {
       throw new Error('Failed to send rejection email')

@@ -2,6 +2,7 @@
 import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
+import { requireAuth } from './auth.js'
 
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
@@ -15,52 +16,71 @@ const transporter = nodemailer.createTransport({
   },
 })
 
+const PAGE_SIZE = 100
+const MAX_CONCURRENCY = 5
+
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
+  }
+  // Secret-only: this is a batch/cron endpoint, not user-triggered.
+  const auth = await requireAuth(req, res, { allowSecretOnly: true })
+  if (!auth.ok) {
+    return res.status(401).json({ message: 'Unauthorized: missing or invalid API secret' })
   }
 
   try {
-    const { data: users, error: usersError } = await supabaseAdmin
-      .from('profile')
-      .select('id, user_email, interested_events')
-
-    if (usersError) throw usersError
-
     // Calculate 7 days ago in ISO format
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    await Promise.all(
-      users.map(async (user) => {
-        try {
-          let categories = []
+    let page = 0
+    let done = false
+    while (!done) {
+      const from = page * PAGE_SIZE
+      const { data: users, error: usersError } = await supabaseAdmin
+        .from('profile')
+        .select('id, user_email, interested_events')
+        .range(from, from + PAGE_SIZE - 1)
 
-          // Parsing logic
-          if (typeof user.interested_events === 'string') {
+      if (usersError) throw usersError
+      if (!users || users.length < PAGE_SIZE) done = true
+
+      // Process this page with bounded concurrency.
+      for (let i = 0; i < (users || []).length; i += MAX_CONCURRENCY) {
+        const batch = users.slice(i, i + MAX_CONCURRENCY)
+        await Promise.all(
+          batch.map(async (user) => {
             try {
-              categories = JSON.parse(user.interested_events)
-            } catch {
-              categories = [user.interested_events]
-            }
-          } else {
-            categories = user.interested_events || []
-          }
+              let categories = []
 
-          if (!categories.length) return
+              // Parsing logic
+              if (typeof user.interested_events === 'string') {
+                try {
+                  categories = JSON.parse(user.interested_events)
+                } catch {
+                  categories = [user.interested_events]
+                }
+              } else {
+                categories = user.interested_events || []
+              }
 
-          const { data: events, error: eventsError } = await supabaseAdmin
-            .from('events')
-            .select('event_title, description, date, location, id, image_url, category, price')
-            .overlaps('category', categories)
-            .gt('created_at', sevenDaysAgo) // ISO string used here
+              if (!categories.length) return
 
-          if (eventsError) throw eventsError
+              const { data: events, error: eventsError } = await supabaseAdmin
+                .from('events')
+                .select(
+                  'event_title, description, date, location, id, image_url, category, price',
+                )
+                .overlaps('category', categories)
+                .gt('created_at', sevenDaysAgo) // ISO string used here
 
-          if (events && events.length > 0) {
-            const eventsList = events
-              .slice(0, 5)
-              .map((e) => {
-                return `
+              if (eventsError) throw eventsError
+
+              if (events && events.length > 0) {
+                const eventsList = events
+                  .slice(0, 5)
+                  .map((e) => {
+                    return `
   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
 
     <!-- Event Image -->
@@ -153,11 +173,11 @@ export default async function handler(req, res) {
 
   </table>
   `
-              })
-              .join('')
+                  })
+                  .join('')
 
-            // Create HTML content for the email and display the list of events with better formatting
-            const htmlContent = `
+                // Create HTML content for the email and display the list of events with better formatting
+                const htmlContent = `
   <div style="max-width:600px;margin:auto;font-family:Arial,sans-serif;">
 
     <h2 style="text-align:center;">🎉 New Events For You</h2>
@@ -185,18 +205,21 @@ export default async function handler(req, res) {
   </div>
 `
 
-            await transporter.sendMail({
-              from: process.env.EMAIL_USER,
-              to: user.user_email,
-              subject: `New Events You'll Love! 🎊`,
-              html: htmlContent,
-            })
-          }
-        } catch (err) {
-          console.error(`Failed to process user ${user.user_email}:`, err.message)
-        }
-      }),
-    )
+                await transporter.sendMail({
+                  from: `"UniVent" <${process.env.EMAIL_USER}>`,
+                  to: user.user_email,
+                  subject: `New Events You'll Love! 🎊`,
+                  html: htmlContent,
+                })
+              }
+            } catch (err) {
+              console.error(`Failed to process user ${user.user_email}:`, err.message)
+            }
+          }),
+        )
+      }
+      page++
+    }
 
     return res.status(200).json({ message: 'Update check completed.' })
   } catch (error) {

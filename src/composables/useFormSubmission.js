@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
+import { withAuthHeader } from '@/composables/useApiAuth'
 
 export function useFormSubmission() {
   const toast = useToast()
@@ -24,7 +25,7 @@ export function useFormSubmission() {
 
   async function fireRegistrationEmail(user, profile, event) {
     try {
-      await fetch('/api/registration_email', {
+      await fetch('/api/registration_email', await withAuthHeader({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -32,7 +33,7 @@ export function useFormSubmission() {
           name: profile?.user_name,
           event,
         }),
-      })
+      }))
     } catch (err) {
       console.error('Error sending registration email:', err)
     }
@@ -40,7 +41,7 @@ export function useFormSubmission() {
 
   async function fireWaitlistEmail(user, profile, event) {
     try {
-      await fetch('/api/confirm_waitlist', {
+      await fetch('/api/confirm_waitlist', await withAuthHeader({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -48,7 +49,7 @@ export function useFormSubmission() {
           name: profile?.user_name,
           event,
         }),
-      })
+      }))
     } catch (err) {
       console.error('Error sending waitlist email:', err)
     }

@@ -10,6 +10,7 @@ import { onMounted, onUnmounted } from 'vue'
 import FormBuilderModal from '@/components/forms/FormBuilderModal.vue'
 import { validateFields, useRegistrationForm } from '@/composables/useRegistrationForm'
 import BaseButton from '@/components/BaseButton.vue'
+import { withAuthHeader } from '@/composables/useApiAuth'
 
 const toast = useToast()
 const { uploadFile, saveEvent } = useEvents()
@@ -246,10 +247,8 @@ async function handleSaveEvent() {
       eventData.value.capacity !== null
         ? parseInt(eventData.value.capacity, 10)
         : null,
-    email: user_email,
+    user_email: user_email,
   }
-
-  console.log(updatePayload, 'aaa')
 
   let result
 
@@ -258,7 +257,6 @@ async function handleSaveEvent() {
     const oldUndecided = loadedDateUndecided.value
     const eventName = eventData.value.title
 
-    console.log(updatePayload, 'bbb')
     const { data, error } = await supabase
       .from('events')
       .update(updatePayload)
@@ -277,7 +275,7 @@ async function handleSaveEvent() {
     if (oldUndecided !== null && oldUndecided !== newUndecided) {
       const transition = newUndecided ? 'undecided' : 'announced'
       try {
-        await fetch('/api/notify-date-change', {
+        await fetch('/api/notify-date-change', await withAuthHeader({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -286,7 +284,7 @@ async function handleSaveEvent() {
             eventDate: eventData.value.date || null,
             transition,
           }),
-        })
+        }))
       } catch (e) {
         console.error('Failed to send date-change notification:', e)
       }
@@ -321,7 +319,7 @@ async function handleSaveEvent() {
 
       resetForm()
       toast.success('Event submitted successfully')
-      await fetch('/api/send-submission-confirmation', {
+      await fetch('/api/send-submission-confirmation', await withAuthHeader({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -329,7 +327,7 @@ async function handleSaveEvent() {
           name: organizerName,
           event: eventTitle,
         }),
-      })
+      }))
     } catch (err) {
       console.error('Error saving event:', err)
       toast.error('Failed to save event: ' + err.message)

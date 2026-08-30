@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { supabase } from '@/supabase'
 import { useToast } from 'vue-toastification'
 import { useFormUploads } from '@/composables/useFormUploads'
+import { withAuthHeader } from '@/composables/useApiAuth'
 
 export function useStoreUserDetails() {
   const toast = useToast()
@@ -54,7 +55,7 @@ export function useStoreUserDetails() {
       if (status === 'registered') {
         toast.success('Registration successful')
         try {
-          await fetch('/api/registration_email', {
+          await fetch('/api/registration_email', await withAuthHeader({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -62,7 +63,7 @@ export function useStoreUserDetails() {
               name: userName?.user_name,
               event,
             }),
-          })
+          }))
         } catch (err) {
           console.error('Error sending registration email:', err)
         }
@@ -71,7 +72,7 @@ export function useStoreUserDetails() {
       if (status === 'waitlisted') {
         toast.success(`Added to the waiting list (position ${result.position ?? '?'})`)
         try {
-          await fetch('/api/confirm_waitlist', {
+          await fetch('/api/confirm_waitlist', await withAuthHeader({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -79,7 +80,7 @@ export function useStoreUserDetails() {
               name: userName?.user_name,
               event,
             }),
-          })
+          }))
         } catch (err) {
           console.error('Error sending waitlist email:', err)
         }
@@ -142,7 +143,7 @@ export function useStoreUserDetails() {
               .eq('id', promotedUserId)
               .maybeSingle()
             if (promotedProfile) {
-              await fetch('/api/registration_email', {
+              await fetch('/api/registration_email', await withAuthHeader({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -150,7 +151,7 @@ export function useStoreUserDetails() {
                   name: promotedProfile.user_name,
                   event,
                 }),
-              })
+              }))
             }
           } catch (err) {
             console.error('Error notifying promoted student:', err)

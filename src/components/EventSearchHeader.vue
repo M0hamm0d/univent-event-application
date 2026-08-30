@@ -97,11 +97,12 @@ function showFilterDropdown(param) {
   univentStore.facultyDropdown = param === 'faculty' ? !univentStore.facultyDropdown : false
 }
 
+let filterTimer = null
 watch(
   filterObject,
   (newVal) => {
-    console.log('page reloaded from search header', univentStore.currentPage)
-    emit('filter-changed', newVal)
+    // Sync the URL immediately (cheap) but debounce the network request so
+    // typing in the search box doesn't fire one fetch per keystroke.
     router.replace({
       query: {
         ...route.query,
@@ -114,13 +115,16 @@ watch(
         page: univentStore.currentPage,
       },
     })
+    if (filterTimer) clearTimeout(filterTimer)
+    filterTimer = setTimeout(() => {
+      emit('filter-changed', newVal)
+    }, 300)
   },
   { deep: true },
 )
 watch(
   () => univentStore.interestFilters.activeVal,
-  (newVal) => {
-    console.log(newVal, 'newVal')
+  () => {
     filterObject.value.category = []
     filterObject.value.location = []
     filterObject.value.date = ''
@@ -152,8 +156,8 @@ onMounted(() => {
   filterObject.value.category = univentStore.activeFilters.category
   filterObject.value.faculty = univentStore.activeFilters.faculty
   filterObject.value.location = univentStore.activeFilters.location
-
-  emit('filter-changed', filterObject.value)
+  // Do NOT emit filter-changed on mount — the parent view already fetches in
+  // its own onMounted. Emitting here caused a double fetch.
 })
 </script>
 <template>

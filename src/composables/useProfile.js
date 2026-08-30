@@ -1,9 +1,9 @@
 import { ref } from 'vue'
 import { supabase } from '@/supabase'
 import { useUniventStore } from '@/stores/counter'
-const univentStore = useUniventStore()
 
 export function useProfile(toast) {
+  const univentStore = useUniventStore()
   const formData = ref({
     fullname: '',
     email: '',
@@ -16,18 +16,32 @@ export function useProfile(toast) {
   async function handleFileChange(event) {
     const file = event.target.files[0]
     if (!file) return
+    // Validate file type (UI claims JPEG/PNG, max 2MB).
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      toast?.error('Only JPEG, PNG, or WebP images are allowed')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast?.error('Image must be 2MB or less')
+      return
+    }
     loading.value = true
 
     try {
+      // Remove the previous profile picture from the SAME bucket it was
+      // uploaded to (profile_pictures), not the event-fliers bucket.
       if (currentFileName.value) {
         await supabase.storage.from('profile_pictures').remove([currentFileName.value])
       }
 
       const fileName = `${Date.now()}_${file.name}`
-      const { error } = await supabase.storage.from('event-fliers').upload(fileName, file)
+      const { error } = await supabase.storage.from('profile_pictures').upload(fileName, file)
       if (error) throw error
 
-      const { data: publicData } = supabase.storage.from('event-fliers').getPublicUrl(fileName)
+      const { data: publicData } = supabase.storage
+        .from('profile_pictures')
+        .getPublicUrl(fileName)
       formData.value.image_url = publicData.publicUrl
       currentFileName.value = fileName
     } catch (err) {
@@ -65,9 +79,7 @@ export function useProfile(toast) {
       return
     }
 
-    console.log(univentStore.userProfile?.user_email, 'store email')
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('profile')
       .update(updates)
       .eq('id', session.user.id)
@@ -84,7 +96,6 @@ export function useProfile(toast) {
           emailRedirectTo: 'https://univent.website/email-verified',
         },
       })
-      console.log('updated email in auth')
 
       if (authError) {
         toast?.error(`Profile updated but failed to update auth email: ${authError.message}`)
