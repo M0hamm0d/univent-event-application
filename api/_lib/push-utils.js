@@ -2,6 +2,10 @@
 /**
  * Shared Web Push utility for UniVent serverless endpoints.
  *
+ * IMPORTANT: This module uses lazy initialization for the Supabase client
+ * and VAPID configuration. Nothing runs at import time, so importing this
+ * module will NEVER crash — even if push env vars are missing.
+ *
  * Usage:
  *   import { sendPushToUser, sendPushToUsers } from './push-utils.js'
  *
@@ -17,25 +21,59 @@
 import { createClient } from '@supabase/supabase-js'
 import webPush from 'web-push'
 
-const baseUrl = process.env.SUPABASE_URL
-const serviceRoleKey = process.env.SERVICE_ROLE_KEY
-const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
+/* ------------------------------------------------------------------ */
+/*  Lazy initialization — runs once on first use, never at import time */
+/* ------------------------------------------------------------------ */
 
-// Configure VAPID only if keys are present (allows local dev without push).
-const vapidPublicKey = process.env.VAPID_PUBLIC_KEY
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
-const vapidEmail = process.env.VAPID_EMAIL || 'mailto:admin@univent.website'
+let _supabaseAdmin = null
+let _vapidConfigured = false
 
-if (vapidPublicKey && vapidPrivateKey) {
-  webPush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey)
+/**
+ * Return a singleton Supabase admin client.
+ * Creates it on first call; returns the cached instance afterward.
+ * Never throws at import time.
+ */
+function getSupabase() {
+  if (!_supabaseAdmin) {
+    const url = process.env.SUPABASE_URL
+    const key = process.env.SERVICE_ROLE_KEY
+    if (!url || !key) {
+      console.error('push-utils: SUPABASE_URL or SERVICE_ROLE_KEY is not set — push disabled')
+      return null
+    }
+    _supabaseAdmin = createClient(url, key)
+  }
+  return _supabaseAdmin
 }
+
+/**
+ * Ensure VAPID details are configured on webPush.
+ * Runs once; no-ops on subsequent calls.
+ */
+function ensureVapid() {
+  if (_vapidConfigured) return
+  _vapidConfigured = true
+  const pub = process.env.VAPID_PUBLIC_KEY
+  const priv = process.env.VAPID_PRIVATE_KEY
+  const email = process.env.VAPID_EMAIL || 'mailto:admin@univent.website'
+  if (pub && priv) {
+    webPush.setVapidDetails(email, pub, priv)
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Dedup helpers (push_notification_log)                              */
+/* ------------------------------------------------------------------ */
 
 /**
  * Check whether a push notification has already been sent for this
  * (type, user, event, window) combination. Returns true if already sent.
  */
 export async function isPushAlreadySent(notificationType, userId, eventId, reminderWindow = null) {
-  const { data, error } = await supabaseAdmin
+  const db = getSupabase()
+  if (!db) return false
+
+  const { data, error } = await db
     .from('push_notification_log')
     .select('id')
     .eq('notification_type', notificationType)
@@ -55,7 +93,10 @@ export async function isPushAlreadySent(notificationType, userId, eventId, remin
  * Record that a push notification was sent (for dedup).
  */
 export async function recordPushSent(notificationType, userId, eventId, reminderWindow = null) {
-  const { error } = await supabaseAdmin
+  const db = getSupabase()
+  if (!db) return
+
+  const { error } = await db
     .from('push_notification_log')
     .insert({
       notification_type: notificationType,
@@ -71,11 +112,18 @@ export async function recordPushSent(notificationType, userId, eventId, reminder
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Subscription cleanup                                               */
+/* ------------------------------------------------------------------ */
+
 /**
  * Delete a stale subscription (404 or 410 from push service).
  */
 async function deleteStaleSubscription(endpoint) {
-  const { error } = await supabaseAdmin
+  const db = getSupabase()
+  if (!db) return
+
+  const { error } = await db
     .from('push_subscriptions')
     .delete()
     .eq('endpoint', endpoint)
@@ -85,17 +133,32 @@ async function deleteStaleSubscription(endpoint) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Push sending                                                       */
+/* ------------------------------------------------------------------ */
+
 /**
  * Send a push notification to all subscriptions of a single user.
  * Silently skips if VAPID keys are not configured.
  * Returns { sent, failed } counts.
  */
 export async function sendPushToUser(userId, payload) {
-  if (!vapidPublicKey || !vapidPrivateKey) {
+  ensureVapid()
+
+  const vapidPub = process.env.VAPID_PUBLIC_KEY
+  const vapidPriv = process.env.VAPID_PRIVATE_KEY
+
+  if (!vapidPub || !vapidPriv) {
+    console.log('push-utils: VAPID keys not configured — push skipped')
     return { sent: 0, failed: 0, skipped: true, reason: 'VAPID keys not configured' }
   }
 
-  const { data: subscriptions, error } = await supabaseAdmin
+  const db = getSupabase()
+  if (!db) {
+    return { sent: 0, failed: 0, skipped: true, reason: 'Supabase admin client unavailable' }
+  }
+
+  const { data: subscriptions, error } = await db
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth_key')
     .eq('user_id', userId)
