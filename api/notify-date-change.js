@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 import { requireAuth } from './auth.js'
+import { sendPushToUser } from './push-utils.js'
 
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
@@ -142,6 +143,30 @@ The UniVent Team`,
         sent++
       } catch (err) {
         console.error(`Failed to email ${to} for event ${eventId}:`, err.message)
+      }
+
+      // --- Push notification: date announced or undecided ---
+      try {
+        const userId = profile.id
+        if (userId) {
+          const pushPayload =
+            transition === 'announced'
+              ? {
+                  title: `📅 Date announced for ${title}`,
+                  body: `The date for "${title}" is now set for ${displayDate || 'TBA'}. Check the event for details.`,
+                  url: `/discover?modal=open&id=${eventId}`,
+                  tag: `date-announced-${eventId}`,
+                }
+              : {
+                  title: `⚠️ Date update for ${title}`,
+                  body: `The previously announced date for "${title}" is no longer confirmed. You'll be notified when a new date is set.`,
+                  url: `/discover?modal=open&id=${eventId}`,
+                  tag: `date-undecided-${eventId}`,
+                }
+          await sendPushToUser(userId, pushPayload)
+        }
+      } catch (pushErr) {
+        console.error(`Push failed for date change (user ${profile.id}):`, pushErr.message)
       }
     }
 

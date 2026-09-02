@@ -1,6 +1,11 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
+import { createClient } from '@supabase/supabase-js'
+import 'dotenv/config'
 import { requireAuth } from './auth.js'
+import { sendPushToUser } from './push-utils.js'
+
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,6 +19,27 @@ export default async function handler(req, res) {
   }
   try {
     await sendEmail({ to: email, name, event })
+
+    // --- Push notification: submission received ---
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profile')
+        .select('id')
+        .eq('user_email', email)
+        .maybeSingle()
+      if (profile?.id) {
+        const title = typeof event === 'string' ? event : event?.event_title || 'your event'
+        await sendPushToUser(profile.id, {
+          title: `📨 Submission received: ${title}`,
+          body: `Your event has been received and is pending review. We'll notify you once it's approved.`,
+          url: '/settings?tab=dashboard',
+          tag: `submission-${event?.id || ''}`,
+        })
+      }
+    } catch (pushErr) {
+      console.error('Push failed for submission confirmation:', pushErr.message)
+    }
+
     return res.status(200).json({ message: 'Submission confirmation sent' })
   } catch (err) {
     console.error('Error sending submission confirmation:', err)

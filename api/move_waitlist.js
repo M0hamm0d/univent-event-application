@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
 import 'dotenv/config'
 import { requireAuth } from './auth.js'
+import { sendPushToUser, isPushAlreadySent, recordPushSent } from './push-utils.js'
 
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
@@ -126,6 +127,22 @@ async function moveNextStudentToRegistered(eventId) {
   // serverless function, which fails in the serverless runtime).
   if (userData?.user_email) {
     await sendRegistrationEmail(userData.user_email, userData.user_name, freshEvent)
+  }
+
+  // --- Push notification: waitlist promoted to registered ---
+  try {
+    const userId = student.user_id
+    if (userId && !(await isPushAlreadySent('waitlist_promo', userId, eventId))) {
+      await sendPushToUser(userId, {
+        title: `🎉 You're registered for ${freshEvent.event_title}!`,
+        body: `A spot opened up and you've been moved from the waitlist. Check the event for details.`,
+        url: `/discover?modal=open&id=${eventId}`,
+        tag: `waitlist-promo-${eventId}`,
+      })
+      await recordPushSent('waitlist_promo', userId, eventId)
+    }
+  } catch (pushErr) {
+    console.error('Push failed for waitlist promotion:', pushErr.message)
   }
 
   return { success: true, message: 'Next waiting student registered and notified' }

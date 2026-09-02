@@ -27,6 +27,8 @@ export const useUniventStore = defineStore('appStore', () => {
   const interestCount = ref(1)
   const activeFilters = ref([])
   const interestFilters = ref({})
+  const pushSubscribed = ref(false)
+  const pushSubscriptionCount = ref(0)
 
   function setEditModal() {
     editModal.value = !editModal.value
@@ -66,6 +68,8 @@ export const useUniventStore = defineStore('appStore', () => {
     userProfile.value = null
     imageUrl.value = null
     loginModal.value = false
+    pushSubscribed.value = false
+    pushSubscriptionCount.value = 0
   }
 
   return {
@@ -95,6 +99,8 @@ export const useUniventStore = defineStore('appStore', () => {
     setChangePasswordModal,
     setMobileSideBar,
     shareEvent,
+    pushSubscribed,
+    pushSubscriptionCount,
     $reset,
   }
 })

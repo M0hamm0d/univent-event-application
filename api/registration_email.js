@@ -1,6 +1,11 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
+import { createClient } from '@supabase/supabase-js'
+import 'dotenv/config'
 import { requireAuth } from './auth.js'
+import { sendPushToUser } from './push-utils.js'
+
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,6 +19,26 @@ export default async function handler(req, res) {
   }
   try {
     const result = await sendEmail({ to: email, name, event })
+
+    // --- Push notification: registration confirmed ---
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profile')
+        .select('id')
+        .eq('user_email', email)
+        .maybeSingle()
+      if (profile?.id) {
+        await sendPushToUser(profile.id, {
+          title: `✅ Registered for ${event.event_title}`,
+          body: `Your spot is confirmed! ${event.date ? event.date + ' at ' + (event.time || '') : ''}`,
+          url: `/discover?modal=open&id=${event.id}`,
+          tag: `registration-${event.id}`,
+        })
+      }
+    } catch (pushErr) {
+      console.error('Push failed for registration confirmation:', pushErr.message)
+    }
+
     return res.status(200).json(result)
   } catch (err) {
     console.error('Error sending registration email:', err)

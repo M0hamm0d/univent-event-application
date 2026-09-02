@@ -1,6 +1,11 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
+import { createClient } from '@supabase/supabase-js'
+import 'dotenv/config'
 import { requireAuth } from './auth.js'
+import { sendPushToUser } from './push-utils.js'
+
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,6 +19,26 @@ export default async function handler(req, res) {
   }
   try {
     const result = await sendEmail({ to: email, name, event })
+
+    // --- Push notification: added to waitlist ---
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profile')
+        .select('id')
+        .eq('user_email', email)
+        .maybeSingle()
+      if (profile?.id) {
+        await sendPushToUser(profile.id, {
+          title: `📋 You're on the waitlist for ${event.event_title}`,
+          body: `The event is full, but you'll be automatically registered if a spot opens up.`,
+          url: `/discover?modal=open&id=${event.id}`,
+          tag: `waitlist-confirm-${event.id}`,
+        })
+      }
+    } catch (pushErr) {
+      console.error('Push failed for waitlist confirmation:', pushErr.message)
+    }
+
     return res.status(200).json(result)
   } catch (err) {
     console.error('Error sending waitlist confirmation email:', err)

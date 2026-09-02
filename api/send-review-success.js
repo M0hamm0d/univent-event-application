@@ -1,7 +1,12 @@
 
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
+import { createClient } from '@supabase/supabase-js'
+import 'dotenv/config'
 import { requireAuth } from './auth.js'
+import { sendPushToUser } from './push-utils.js'
+
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,6 +20,27 @@ export default async function handler(req, res) {
   }
   try {
     await sendEmail({ to: email, name, event })
+
+    // --- Push notification: event is now live ---
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profile')
+        .select('id')
+        .eq('user_email', email)
+        .maybeSingle()
+      if (profile?.id) {
+        const title = typeof event === 'string' ? event : event?.event_title || 'your event'
+        await sendPushToUser(profile.id, {
+          title: `🎉 Your event is now live!`,
+          body: `"${title}" has been approved and is now visible to students on UniVent.`,
+          url: '/settings?tab=dashboard',
+          tag: `review-success-${event?.id || ''}`,
+        })
+      }
+    } catch (pushErr) {
+      console.error('Push failed for review success:', pushErr.message)
+    }
+
     return res.status(200).json({ message: 'Review success email sent' })
   } catch (err) {
     console.error('Error sending review success email:', err)

@@ -11,6 +11,9 @@ export default defineConfig({
     vueDevTools(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
 
       manifest: {
         name: 'UniVent',
@@ -30,30 +33,8 @@ export default defineConfig({
         ],
       },
 
-      workbox: {
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) =>
-              url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/v1/'),
-
-            handler: 'NetworkFirst',
-
-            options: {
-              cacheName: 'supabase-rest-cache',
-
-              networkTimeoutSeconds: 3,
-
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 1 day
-              },
-
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
       },
 
       devOptions: {

@@ -6,13 +6,15 @@ import ProfileIcon from '@/components/icons/ProfileIcon.vue'
 import FaqIcon from '@/components/icons/FaqIcon.vue'
 import FaqComponent from '@/components/FaqComponent.vue'
 import SupportComponent from '@/components/SupportComponent.vue'
-import { PhChartBar } from '@phosphor-icons/vue'
+import NotificationsComponent from '@/components/NotificationsComponent.vue'
+import { PhChartBar, PhBell } from '@phosphor-icons/vue'
 // const tabs = { account: AccountComponent, faq: FaqComponent }
 const tabs = {
   account: AccountComponent,
   faq: FaqComponent,
   support: SupportComponent,
   dashboard: dashboardComponent,
+  notifications: NotificationsComponent,
 }
 import { ref } from 'vue'
 import SupportSetting from '@/components/icons/SupportSetting.vue'
@@ -20,7 +22,7 @@ import { useRoute } from 'vue-router'
 // import PasswordIcon from '@/components/icons/PasswordIcon.vue'
 // import LogoutIcon from '@/components/icons/LogoutIcon.vue'
 const route = useRoute()
-const validTabs = ['account', 'dashboard', 'faq', 'support']
+const validTabs = ['account', 'dashboard', 'faq', 'support', 'notifications']
 const queryTab = validTabs.includes(route.query.tab) ? route.query.tab : 'account'
 const active = ref(queryTab)
 </script>
@@ -50,6 +52,13 @@ const active = ref(queryTab)
             <span>FAQ</span>
           </div>
           <div :class="['side-border', { active: active == 'faq' }]"></div>
+        </div>
+        <div class="nav-container" @click="active = 'notifications'">
+          <div :class="['nav', { activeNav: active == 'notifications' }]">
+            <span><PhBell :size="24" :color="active === 'notifications' ? '#000' : '#aaa'" /></span>
+            <span>Notifications</span>
+          </div>
+          <div :class="['side-border', { active: active == 'notifications' }]"></div>
         </div>
         <div class="nav-container" @click="active = 'support'">
           <div :class="['nav', { activeNav: active == 'support' }]">

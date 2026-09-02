@@ -1,6 +1,11 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
+import { createClient } from '@supabase/supabase-js'
+import 'dotenv/config'
 import { requireAuth } from './auth.js'
+import { sendPushToUser } from './push-utils.js'
+
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY)
 async function sendEmail({ to }) {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -40,6 +45,26 @@ export default async function handler(req, res) {
   }
   try {
     await sendEmail({ to: email })
+
+    // --- Push notification: duplicate event detected ---
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profile')
+        .select('id')
+        .eq('user_email', email)
+        .maybeSingle()
+      if (profile?.id) {
+        await sendPushToUser(profile.id, {
+          title: `⚠️ Duplicate event detected`,
+          body: `Your event submission looks like a duplicate. Check your email for details.`,
+          url: '/settings?tab=dashboard',
+          tag: 'duplicate-event',
+        })
+      }
+    } catch (pushErr) {
+      console.error('Push failed for duplicate event notification:', pushErr.message)
+    }
+
     return res.status(200).json({ message: 'Duplicate event notification sent' })
   } catch (err) {
     console.error('Error sending duplicate event notification:', err)

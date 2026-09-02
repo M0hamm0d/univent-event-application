@@ -82,11 +82,11 @@ export function useFormSubmission() {
       }
       if (status === 'already_registered') {
         toast.info('You are already registered for this event')
-        return { success: true, status: 'registered' }
+        return { success: false, status: 'already_registered' }
       }
       if (status === 'already_waitlisted') {
         toast.info('You are already on the waiting list for this event')
-        return { success: true, status: 'waitlisted' }
+        return { success: false, status: 'already_waitlisted' }
       }
       if (status === 'closed') {
         toast.error('Registration for this event is closed')
