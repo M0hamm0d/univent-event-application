@@ -493,7 +493,7 @@ async function publishLive() {
   }
 }
 
-defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
+defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft, isDirty })
 </script>
 
 <template>
@@ -505,7 +505,7 @@ defineExpose({ saveDraft, saveAndPublish, publishLive, captureDraft })
       </div>
       <div class="fb-header__status">
         <span class="status-badge" :class="`status-badge--${formStatus}`">{{ formStatus }}</span>
-        <span v-if="publishedVersion" class="version-info">v{{ publishedVersion.version }}</span>
+        <span v-if="publishedSnapshot" class="version-info">v{{ publishedSnapshot.version }}</span>
       </div>
     </div>
 

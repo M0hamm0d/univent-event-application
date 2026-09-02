@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, useTemplateRef } from 'vue'
 import { useToast } from 'vue-toastification'
-import { PhRocket, PhX, PhArrowCircleUp } from '@phosphor-icons/vue'
+import { PhRocket, PhX, PhArrowCircleUp, PhFloppyDisk } from '@phosphor-icons/vue'
 import FormBuilder from './FormBuilder.vue'
 import BaseButton from '@/components/BaseButton.vue'
 
@@ -29,13 +29,17 @@ function closeCancel() {
     return
   }
   const builder = builderRef.value
-  const draft =
-    builder && typeof builder.captureDraft === 'function' ? builder.captureDraft() : null
-  if (draft) {
-    emit('saved', draft)
-  } else {
-    emit('cancel')
+  // In local mode, don't auto-save on close. If there are unsaved changes,
+  // ask the user whether to save or discard.
+  const isDirtyNow = builder?.isDirty === true
+  if (isDirtyNow) {
+    const save = window.confirm('You have unsaved changes. Save them before closing?')
+    if (save) {
+      handleSave()
+      return
+    }
   }
+  emit('cancel')
 }
 
 async function handleSave() {
@@ -167,16 +171,17 @@ onUnmounted(() => {
                 Cancel
               </BaseButton>
 
-              <!-- <button
+              <BaseButton
                 v-if="!isLocal"
-                type="button"
-                class="fb-modal-btn fb-modal-btn--save"
-                :disabled="saving || publishing"
+                variant="secondary"
+                size="sm"
+                :loading="saving"
+                :disabled="publishing"
                 @click="handleSave"
               >
-                <PhFloppyDisk :size="16" />
-                {{ saving ? 'Saving...' : 'Save Draft' }}
-              </button> -->
+                <template #icon-left><PhFloppyDisk :size="16" /></template>
+                Save Draft
+              </BaseButton>
 
               <BaseButton
                 v-if="!isLocal"

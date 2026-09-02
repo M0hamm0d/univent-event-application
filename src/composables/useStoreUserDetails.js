@@ -128,12 +128,18 @@ export function useStoreUserDetails() {
 
       if (status === 'left_waitlist') {
         toast.success('Removed from the waiting list')
-        if (removedFilePaths.length) await removeFiles(removedFilePaths)
+        if (removedFilePaths.length) {
+          const res = await removeFiles(removedFilePaths)
+          if (res && !res.success) console.warn('Failed to remove orphaned files:', res.error)
+        }
         return { success: true, status: 'left_waitlist' }
       }
       if (status === 'cancelled') {
         toast.success('Your registration has been cancelled')
-        if (removedFilePaths.length) await removeFiles(removedFilePaths)
+        if (removedFilePaths.length) {
+          const res = await removeFiles(removedFilePaths)
+          if (res && !res.success) console.warn('Failed to remove orphaned files:', res.error)
+        }
         const promotedUserId = result?.promoted_user_id
         if (promotedUserId) {
           try {

@@ -42,6 +42,7 @@ export function useInterestedEvents() {
 
       toast.success('Removed from interested')
       localEvents.value[eventIndex].is_interest = false
+      await adjustInterestedCount(event.id, -1)
     } else {
       const { error: insertError } = await supabase
         .from('interested_events')
@@ -54,6 +55,22 @@ export function useInterestedEvents() {
 
       toast.success('Marked as interested')
       localEvents.value[eventIndex].is_interest = true
+      await adjustInterestedCount(event.id, 1)
+    }
+  }
+
+  async function adjustInterestedCount(eventId, delta) {
+    try {
+      const { data: ev } = await supabase
+        .from('events')
+        .select('interested_students')
+        .eq('id', eventId)
+        .maybeSingle()
+      const current = ev?.interested_students ?? 0
+      const next = Math.max(0, current + delta)
+      await supabase.from('events').update({ interested_students: next }).eq('id', eventId)
+    } catch (err) {
+      console.error('Failed to sync interested_students counter:', err.message)
     }
   }
 

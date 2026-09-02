@@ -44,6 +44,8 @@ const result = ref(null)
 const editExisting = ref(props.editMode)
 const existingResponseMeta = ref(null)
 
+const anyUploading = computed(() => Object.values(uploadingField.value).some(Boolean))
+
 watch(
   () => props.showModal,
   async (open) => {
@@ -125,7 +127,10 @@ async function handleFileChange(field, event) {
     }
     setAnswer(key, r.path)
     if (previousPath && previousPath !== r.path) {
-      await removeFiles([previousPath])
+      const removed = await removeFiles([previousPath])
+      if (removed && !removed.success) {
+        console.warn('Failed to remove previous upload file:', removed.error)
+      }
     }
   } finally {
     uploadingField.value = { ...uploadingField.value, [key]: false }
@@ -138,7 +143,10 @@ async function handleRemoveFile(field) {
   const previousPath = typeof answers.value[key] === 'string' ? answers.value[key] : null
   setAnswer(key, '')
   if (previousPath) {
-    await removeFiles([previousPath])
+    const removed = await removeFiles([previousPath])
+    if (removed && !removed.success) {
+      console.warn('Failed to remove upload file:', removed.error)
+    }
   }
 }
 
@@ -218,6 +226,14 @@ function validate() {
 
 async function handleSubmit() {
   submitError.value = ''
+  // Block submit while any file upload is still in progress — otherwise the
+  // file-path answer would be empty and the submission would fail or store
+  // an orphan reference.
+  const anyUploading = Object.values(uploadingField.value).some(Boolean)
+  if (anyUploading) {
+    submitError.value = 'Please wait for file uploads to finish before submitting.'
+    return
+  }
   if (!validate()) {
     return
   }
@@ -233,7 +249,10 @@ async function handleSubmit() {
     if (r.success) {
       const removed = Array.isArray(r.removedFilePaths) ? r.removedFilePaths : []
       if (removed.length) {
-        await removeFiles(removed)
+        const res = await removeFiles(removed)
+        if (res && !res.success) {
+          console.warn('Failed to remove orphaned upload files:', res.error)
+        }
       }
       emit('close')
     } else {
@@ -248,6 +267,10 @@ async function handleSubmit() {
     if (r.status === 'form_outdated') {
       await loadForm()
       submitError.value = 'The form was just updated. Please review your answers and submit again.'
+    } else if (r.status === 'already_registered') {
+      submitError.value = 'You are already registered for this event.'
+    } else if (r.status === 'already_waitlisted') {
+      submitError.value = 'You are already on the waiting list for this event.'
     } else {
       submitError.value = 'Registration could not be completed. Please try again.'
     }
@@ -264,6 +287,9 @@ function closeResult() {
 
 function handleOverlayClick() {
   if (loading.value) return
+  // Don't allow closing while a file upload is in flight — the uploaded file
+  // would become an orphan with no answer referencing it.
+  if (Object.values(uploadingField.value).some(Boolean)) return
   emit('close')
 }
 
@@ -514,6 +540,7 @@ const eventDateLabel = computed(() => {
             block
             type="submit"
             :loading="loading"
+            :disabled="anyUploading"
           >
             {{ editExisting ? 'Save Updates' : 'Submit Registration' }}
           </BaseButton>

@@ -97,28 +97,38 @@ onMounted(async () => {
 
   // syncEventsInBackground()
  const { data } = supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT') {
-    univentStore.$reset()
-    resetSessionInit()
-    toast.success('Logged out successfully')
-    return
-  }
+   if (event === 'SIGNED_OUT') {
+     univentStore.$reset()
+     resetSessionInit()
+     toast.success('Logged out successfully')
+     // Redirect off any protected route so the UI matches the reset state.
+     if (route.path !== '/') {
+       router.push('/')
+     }
+     return
+   }
 
-  if (univentStore.userProfile?.id === session?.user?.id) {
-    return
-  }
+   // For SIGNED_IN with the same user, the store is already correct — skip.
+   // For USER_UPDATED / PASSWORD_RECOVERY / TOKEN_REFRESHED with the same user,
+   // the profile/email may have changed, so we must re-init.
+   if (
+     event === 'SIGNED_IN' &&
+     univentStore.userProfile?.id === session?.user?.id
+   ) {
+     return
+   }
 
-  // Don't call Supabase methods directly inside
-  // the auth state change callback.
-  setTimeout(async () => {
-    try {
-      resetSessionInit()
-      await ensureSessionInit()
-    } catch (error) {
-      console.error('Failed to initialize session:', error)
-    }
-  }, 0)
-})
+   // Don't call Supabase methods directly inside
+   // the auth state change callback.
+   setTimeout(async () => {
+     try {
+       await resetSessionInit()
+       await ensureSessionInit()
+     } catch (error) {
+       console.error('Failed to initialize session:', error)
+     }
+   }, 0)
+ })
   subscription = data.subscription
 })
 

@@ -19,8 +19,10 @@ async function runInit() {
   if (session?.user) {
     const profileResult = await ensureProfile(session.user)
     univentStore.userProfile = profileResult
+    univentStore.imageUrl = profileResult?.profile_pics || null
   } else {
     univentStore.userProfile = {}
+    univentStore.imageUrl = null
   }
 
   isInitialized.value = true
@@ -33,7 +35,16 @@ export function ensureSessionInit() {
   return initPromise
 }
 
-export function resetSessionInit() {
+export async function resetSessionInit() {
+  // Await any in-flight init so a second init can't overlap the first and
+  // write userProfile/isAuthenticated out of order.
+  if (initPromise) {
+    try {
+      await initPromise
+    } catch {
+      // ignore — we're resetting anyway
+    }
+  }
   initPromise = null
   isInitialized.value = false
 }
