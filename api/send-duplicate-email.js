@@ -2,8 +2,8 @@
 import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
-import { requireAuth } from './auth.js'
-import { sendPushToUser } from './push-utils.js'
+import { requireAuth } from './_lib/auth.js'
+import { sendPushToUser } from './_lib/push-utils.js'
 
 const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY)
 async function sendEmail({ to }) {

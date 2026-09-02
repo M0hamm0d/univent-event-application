@@ -2,7 +2,7 @@
 import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
-import { requireAuth } from './_lib/auth.js'
+import { requireAuth } from '../../api/auth.js'
 
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Must be an App Password
+    pass: process.env.EMAIL_PASS,
   },
 })
 
@@ -30,8 +30,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Calculate 7 days ago in ISO format
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    // Calculate 5 days ago in ISO format
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
 
     let page = 0
     let done = false
@@ -39,40 +39,40 @@ export default async function handler(req, res) {
       const from = page * PAGE_SIZE
       const { data: users, error: usersError } = await supabaseAdmin
         .from('profile')
-        .select('id, user_email, interested_events')
+        .select('id, user_email, faculty')
         .range(from, from + PAGE_SIZE - 1)
 
       if (usersError) throw usersError
       if (!users || users.length < PAGE_SIZE) done = true
 
-      // Process this page with bounded concurrency.
       for (let i = 0; i < (users || []).length; i += MAX_CONCURRENCY) {
         const batch = users.slice(i, i + MAX_CONCURRENCY)
         await Promise.all(
           batch.map(async (user) => {
             try {
-              let categories = []
+              let faculty = ''
 
               // Parsing logic
-              if (typeof user.interested_events === 'string') {
+              if (typeof user.faculty === 'string') {
                 try {
-                  categories = JSON.parse(user.interested_events)
+                  const parsed = JSON.parse(user.faculty)
+                  faculty = Array.isArray(parsed) ? parsed : [parsed]
                 } catch {
-                  categories = [user.interested_events]
+                  faculty = user.faculty
                 }
               } else {
-                categories = user.interested_events || []
+                faculty = user.faculty || ''
               }
 
-              if (!categories.length) return
+              if (!faculty) return
+
+              const facultyArr = Array.isArray(faculty) ? faculty : [faculty]
 
               const { data: events, error: eventsError } = await supabaseAdmin
                 .from('events')
-                .select(
-                  'event_title, description, date, location, id, image_url, category, price',
-                )
-                .overlaps('category', categories)
-                .gt('created_at', sevenDaysAgo) // ISO string used here
+                .select('event_title, description, date, location, id, image_url, category, price')
+                .overlaps('faculty', facultyArr)
+                .gt('created_at', fiveDaysAgo)
 
               if (eventsError) throw eventsError
 
@@ -104,6 +104,9 @@ export default async function handler(req, res) {
           <tr>
             <td style="font-size:12px;color:#ff4fa3;font-weight:bold;">
               ${e.category || 'Event'}
+            </td>
+            <td align="right" style="font-size:12px;font-weight:bold;">
+              ${e.price || 'Free'}
             </td>
           </tr>
         </table>
@@ -180,10 +183,10 @@ export default async function handler(req, res) {
                 const htmlContent = `
   <div style="max-width:600px;margin:auto;font-family:Arial,sans-serif;">
 
-    <h2 style="text-align:center;">🎉 New Events For You</h2>
+    <h2 style="text-align:center;">🎉 New Faculty Events For You</h2>
 
     <p style="text-align:center;color:#666;">
-      We found ${events.length} new event(s) that match your interests.
+      We found ${events.length} new event(s) happening in your faculty.
     </p>
 
     ${eventsList}
@@ -208,7 +211,7 @@ export default async function handler(req, res) {
                 await transporter.sendMail({
                   from: `"UniVent" <${process.env.EMAIL_USER}>`,
                   to: user.user_email,
-                  subject: `New Events You'll Love! 🎊`,
+                  subject: `Checkout what's new in your faculty! 🎊`,
                   html: htmlContent,
                 })
               }
