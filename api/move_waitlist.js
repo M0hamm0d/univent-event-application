@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
 import 'dotenv/config'
-import { requireAuth } from './auth.js'
-import { sendPushToUser, isPushAlreadySent, recordPushSent } from './push-utils.js'
+import { requireAuth } from './_lib/auth.js'
+import { sendPushToUser, isPushAlreadySent, recordPushSent } from './_lib/push-utils.js'
 
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
