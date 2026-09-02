@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { supabase } from '@/supabase'
+import { useUniventStore } from '@/stores/counter'
 
 /**
  * Composable for managing Web Push subscriptions.
@@ -180,6 +181,7 @@ export function usePushSubscription() {
 
       // 4. Update state.
       await checkSubscription()
+      syncStore()
       return true
     } catch (err) {
       console.error('enablePush error:', err)
@@ -234,6 +236,7 @@ export function usePushSubscription() {
 
       // 4. Update state.
       await checkSubscription()
+      syncStore()
       return true
     } catch (err) {
       console.error('disablePush error:', err)
@@ -241,6 +244,17 @@ export function usePushSubscription() {
       return false
     } finally {
       loading.value = false
+    }
+  }
+
+  /** Sync local state to the Pinia store. */
+  function syncStore() {
+    try {
+      const store = useUniventStore()
+      store.pushSubscribed = isSubscribed.value
+      store.pushSubscriptionCount = subscriptionCount.value
+    } catch {
+      // Store may not be available in non-component contexts.
     }
   }
 

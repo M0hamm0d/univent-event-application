@@ -1,6 +1,11 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
+import { createClient } from '@supabase/supabase-js'
+import 'dotenv/config'
 import { requireAuth } from './auth.js'
+import { sendPushToUser } from './push-utils.js'
+
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY)
 async function sendEmail({ to, message }) {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -42,6 +47,26 @@ export default async function handler(req, res) {
   }
   try {
     await sendEmail({ to: email, message: rejectionReason })
+
+    // --- Push notification: event rejected ---
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profile')
+        .select('id')
+        .eq('user_email', email)
+        .maybeSingle()
+      if (profile?.id) {
+        await sendPushToUser(profile.id, {
+          title: `❌ Event not approved`,
+          body: `Your event submission was not approved. Check your email for details and next steps.`,
+          url: '/settings?tab=dashboard',
+          tag: 'rejection',
+        })
+      }
+    } catch (pushErr) {
+      console.error('Push failed for rejection notification:', pushErr.message)
+    }
+
     return res.status(200).json({ message: 'Rejection email sent' })
   } catch (err) {
     console.error('Error sending rejection email:', err)

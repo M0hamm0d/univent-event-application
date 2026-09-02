@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { supabase } from '@/supabase'
 import { useUniventStore } from '@/stores/counter'
 import { useUserProfile } from '@/composables/useUserProfile'
+import { withAuthHeader } from '@/composables/useApiAuth'
 
 let initPromise = null
 const isInitialized = ref(false)
@@ -20,6 +21,18 @@ async function runInit() {
     const profileResult = await ensureProfile(session.user)
     univentStore.userProfile = profileResult
     univentStore.imageUrl = profileResult?.profile_pics || null
+
+    // Check push subscription state so Settings reflects reality on load.
+    try {
+      const res = await fetch('/api/push-subscribe', await withAuthHeader())
+      if (res.ok) {
+        const data = await res.json()
+        univentStore.pushSubscribed = data.subscribed || false
+        univentStore.pushSubscriptionCount = data.count || 0
+      }
+    } catch {
+      // Non-critical — push settings will load on demand if this fails.
+    }
   } else {
     univentStore.userProfile = {}
     univentStore.imageUrl = null

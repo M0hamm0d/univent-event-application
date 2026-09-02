@@ -1,9 +1,11 @@
 <script setup>
 import { onMounted } from 'vue'
 import { usePushSubscription } from '@/composables/usePushSubscription'
+import { useUniventStore } from '@/stores/counter'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
+const store = useUniventStore()
 const {
   isSupported,
   isDenied,
@@ -17,6 +19,10 @@ const {
 } = usePushSubscription()
 
 onMounted(async () => {
+  // Sync from store (populated on login) so the toggle shows correct state
+  // before the API round-trip completes.
+  isSubscribed.value = store.pushSubscribed
+  subscriptionCount.value = store.pushSubscriptionCount
   await checkSubscription()
 })
 
