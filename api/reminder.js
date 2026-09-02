@@ -1,12 +1,9 @@
 /* eslint-disable no-undef */
-import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 import nodemailer from 'nodemailer'
 import { requireAuth } from './_lib/auth.js'
 import { sendPushToUser, isPushAlreadySent, recordPushSent } from './_lib/push-utils.js'
-const baseUrl = process.env.SUPABASE_URL
-const serviceRoleKey = process.env.SERVICE_ROLE_KEY
-const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
+import { getSupabaseAdmin } from './_lib/supabase-admin.js'
 
 /**
  * Normalize a stored time value to "HH:MM" 24-hour format for comparison.
@@ -54,7 +51,7 @@ async function fetchInterestedEvents() {
   const todayStr = now.toISOString().split('T')[0]
   console.log(`Checking for Today (${todayStr}) at ${targetTime24h} and Tomorrow (${tomorrowStr})`)
   try {
-    let { data: interested_events, error } = await supabaseAdmin
+    let { data: interested_events, error } = await getSupabaseAdmin()
       .from('interested_events')
       .select(
         `
@@ -119,7 +116,7 @@ async function fetchRegisteredEvents() {
   const todayStr = now.toISOString().split('T')[0]
 
   try {
-    let { data: registered_events, error } = await supabaseAdmin
+    let { data: registered_events, error } = await getSupabaseAdmin()
       .from('registered_events')
       .select(
         `
@@ -228,7 +225,7 @@ async function setReminder() {
         </div>
       `,
         })
-        await supabaseAdmin
+        await getSupabaseAdmin()
           .from('interested_events')
           .update({ a_day_email: true })
           .eq('id', event.id)
@@ -305,7 +302,7 @@ async function setReminder() {
     </div>
   `,
         })
-        await supabaseAdmin
+        await getSupabaseAdmin()
           .from('interested_events')
           .update({ an_hr_email: true })
           .eq('id', event.id)
@@ -363,7 +360,7 @@ async function setReminder() {
         </div>
       `,
         })
-        await supabaseAdmin.from('registered_events').update({ a_day_email: true }).eq('id', event.id)
+        await getSupabaseAdmin().from('registered_events').update({ a_day_email: true }).eq('id', event.id)
         console.log(
           `Registered reminder sent to ${event.user_id.user_email} for ${event.event_id.event_title} tomorrow.`,
         )
@@ -416,7 +413,7 @@ async function setReminder() {
     </div>
   `,
         })
-        await supabaseAdmin.from('registered_events').update({ an_hr_email: true }).eq('id', event.id)
+        await getSupabaseAdmin().from('registered_events').update({ an_hr_email: true }).eq('id', event.id)
         console.log(
           `Registered reminder sent to ${event.user_id.user_email} for ${event.event_id.event_title} in an hour.`,
         )

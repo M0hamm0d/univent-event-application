@@ -1,13 +1,9 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
-import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 import { requireAuth } from './_lib/auth.js'
 import { sendPushToUser } from './_lib/push-utils.js'
-
-const baseUrl = process.env.SUPABASE_URL
-const serviceRoleKey = process.env.SERVICE_ROLE_KEY
-const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
+import { getSupabaseAdmin } from './_lib/supabase-admin.js'
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -34,7 +30,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { data: event, error: eventError } = await supabaseAdmin
+    const { data: event, error: eventError } = await getSupabaseAdmin()
       .from('events')
       .select('id, event_title, date, date_not_fixed')
       .eq('id', eventId)
@@ -55,7 +51,7 @@ export default async function handler(req, res) {
         .json({ message: 'Event still has a date; cannot send undecided email' })
     }
 
-    const { data: registrations, error: regError } = await supabaseAdmin
+    const { data: registrations, error: regError } = await getSupabaseAdmin()
       .from('registered_events')
       .select(
         `
@@ -73,7 +69,7 @@ export default async function handler(req, res) {
 
     // Also notify waitlisted attendees — they may be promoted later and would
     // otherwise miss the date change entirely.
-    const { data: waitlisted, error: waitError } = await supabaseAdmin
+    const { data: waitlisted, error: waitError } = await getSupabaseAdmin()
       .from('waiting_list')
       .select(
         `

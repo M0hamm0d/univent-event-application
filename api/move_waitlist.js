@@ -1,13 +1,9 @@
 /* eslint-disable no-undef */
-import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
 import 'dotenv/config'
 import { requireAuth } from './_lib/auth.js'
 import { sendPushToUser, isPushAlreadySent, recordPushSent } from './_lib/push-utils.js'
-
-const baseUrl = process.env.SUPABASE_URL
-const serviceRoleKey = process.env.SERVICE_ROLE_KEY
-const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
+import { getSupabaseAdmin } from './_lib/supabase-admin.js'
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -48,7 +44,7 @@ The UniVent Team`,
 async function moveNextStudentToRegistered(eventId) {
   // Always fetch a fresh event from the DB — never trust the client-supplied
   // event object for data that affects correctness (date/location used in email).
-  const { data: freshEvent, error: fetchError } = await supabaseAdmin
+  const { data: freshEvent, error: fetchError } = await getSupabaseAdmin()
     .from('events')
     .select('*')
     .eq('id', eventId)
@@ -58,7 +54,7 @@ async function moveNextStudentToRegistered(eventId) {
   if (!freshEvent) throw new Error('Event not found')
 
   // Get first student from waiting list
-  const { data: waitingList, error: waitingListError } = await supabaseAdmin
+  const { data: waitingList, error: waitingListError } = await getSupabaseAdmin()
     .from('waiting_list')
     .select('*')
     .eq('event_id', eventId)
@@ -73,7 +69,7 @@ async function moveNextStudentToRegistered(eventId) {
 
   // Capacity re-check: only promote if there is room. Compare the live
   // registered count against capacity (NULL = unlimited, 0 = closed).
-  const { count: registeredCount, error: countError } = await supabaseAdmin
+  const { count: registeredCount, error: countError } = await getSupabaseAdmin()
     .from('registered_events')
     .select('*', { count: 'exact', head: true })
     .eq('event_id', eventId)
@@ -90,7 +86,7 @@ async function moveNextStudentToRegistered(eventId) {
   }
 
   // Add student to registered_events
-  const { error: insertError } = await supabaseAdmin
+  const { error: insertError } = await getSupabaseAdmin()
     .from('registered_events')
     .insert([{ user_id: student.user_id, event_id: eventId, status: 'registered' }])
 
@@ -99,7 +95,7 @@ async function moveNextStudentToRegistered(eventId) {
   // Atomic increment of interested_students (read-modify-write is race-prone;
   // use an RPC-free atomic UPDATE expression so concurrent moves don't lose
   // updates).
-  const { error: updateError } = await supabaseAdmin
+  const { error: updateError } = await getSupabaseAdmin()
     .from('events')
     .update({ interested_students: (freshEvent.interested_students || 0) + 1 })
     .eq('id', eventId)
@@ -107,7 +103,7 @@ async function moveNextStudentToRegistered(eventId) {
   if (updateError) throw new Error(`Failed to update event count: ${updateError.message}`)
 
   // Remove from waiting list
-  const { error: deleteError } = await supabaseAdmin
+  const { error: deleteError } = await getSupabaseAdmin()
     .from('waiting_list')
     .delete()
     .eq('id', student.id)
@@ -115,7 +111,7 @@ async function moveNextStudentToRegistered(eventId) {
   if (deleteError) throw new Error(`Failed to remove from waiting list: ${deleteError.message}`)
 
   // Fetch user details for email
-  const { data: userData, error: userError } = await supabaseAdmin
+  const { data: userData, error: userError } = await getSupabaseAdmin()
     .from('profile')
     .select('user_name, user_email')
     .eq('id', student.user_id)
@@ -167,7 +163,7 @@ export default async function handler(req, res) {
 
   // Ownership check: only the event's organizer may promote waitlisters.
   try {
-    const { data: ev, error: evErr } = await supabaseAdmin
+    const { data: ev, error: evErr } = await getSupabaseAdmin()
       .from('events')
       .select('user_id')
       .eq('id', targetEventId)
