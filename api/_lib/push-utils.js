@@ -2,9 +2,9 @@
 /**
  * Shared Web Push utility for UniVent serverless endpoints.
  *
- * IMPORTANT: This module uses lazy initialization for the Supabase client
- * and VAPID configuration. Nothing runs at import time, so importing this
- * module will NEVER crash — even if push env vars are missing.
+ * IMPORTANT: This module uses lazy initialization for VAPID configuration.
+ * Nothing runs at import time, so importing this module will NEVER crash —
+ * even if push env vars are missing.
  *
  * Usage:
  *   import { sendPushToUser, sendPushToUsers } from './push-utils.js'
@@ -18,33 +18,14 @@
  * Requires env vars: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL
  * Also requires: SUPABASE_URL, SERVICE_ROLE_KEY (for DB access)
  */
-import { createClient } from '@supabase/supabase-js'
 import webPush from 'web-push'
+import { getSupabaseAdmin } from './supabase-admin.js'
 
 /* ------------------------------------------------------------------ */
-/*  Lazy initialization — runs once on first use, never at import time */
+/*  Lazy VAPID configuration — runs once on first use                  */
 /* ------------------------------------------------------------------ */
 
-let _supabaseAdmin = null
 let _vapidConfigured = false
-
-/**
- * Return a singleton Supabase admin client.
- * Creates it on first call; returns the cached instance afterward.
- * Never throws at import time.
- */
-function getSupabase() {
-  if (!_supabaseAdmin) {
-    const url = process.env.SUPABASE_URL
-    const key = process.env.SERVICE_ROLE_KEY
-    if (!url || !key) {
-      console.error('push-utils: SUPABASE_URL or SERVICE_ROLE_KEY is not set — push disabled')
-      return null
-    }
-    _supabaseAdmin = createClient(url, key)
-  }
-  return _supabaseAdmin
-}
 
 /**
  * Ensure VAPID details are configured on webPush.
@@ -70,7 +51,7 @@ function ensureVapid() {
  * (type, user, event, window) combination. Returns true if already sent.
  */
 export async function isPushAlreadySent(notificationType, userId, eventId, reminderWindow = null) {
-  const db = getSupabase()
+  const db = getSupabaseAdmin()
   if (!db) return false
 
   const { data, error } = await db
@@ -93,7 +74,7 @@ export async function isPushAlreadySent(notificationType, userId, eventId, remin
  * Record that a push notification was sent (for dedup).
  */
 export async function recordPushSent(notificationType, userId, eventId, reminderWindow = null) {
-  const db = getSupabase()
+  const db = getSupabaseAdmin()
   if (!db) return
 
   const { error } = await db
@@ -120,7 +101,7 @@ export async function recordPushSent(notificationType, userId, eventId, reminder
  * Delete a stale subscription (404 or 410 from push service).
  */
 async function deleteStaleSubscription(endpoint) {
-  const db = getSupabase()
+  const db = getSupabaseAdmin()
   if (!db) return
 
   const { error } = await db
@@ -153,7 +134,7 @@ export async function sendPushToUser(userId, payload) {
     return { sent: 0, failed: 0, skipped: true, reason: 'VAPID keys not configured' }
   }
 
-  const db = getSupabase()
+  const db = getSupabaseAdmin()
   if (!db) {
     return { sent: 0, failed: 0, skipped: true, reason: 'Supabase admin client unavailable' }
   }

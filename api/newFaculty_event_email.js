@@ -1,12 +1,8 @@
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
-import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 import { requireAuth } from './_lib/auth.js'
-
-const baseUrl = process.env.SUPABASE_URL
-const serviceRoleKey = process.env.SERVICE_ROLE_KEY
-const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
+import { getSupabaseAdmin } from './_lib/supabase-admin.js'
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -37,7 +33,7 @@ export default async function handler(req, res) {
     let done = false
     while (!done) {
       const from = page * PAGE_SIZE
-      const { data: users, error: usersError } = await supabaseAdmin
+      const { data: users, error: usersError } = await getSupabaseAdmin()
         .from('profile')
         .select('id, user_email, faculty')
         .range(from, from + PAGE_SIZE - 1)
@@ -68,7 +64,7 @@ export default async function handler(req, res) {
 
               const facultyArr = Array.isArray(faculty) ? faculty : [faculty]
 
-              const { data: events, error: eventsError } = await supabaseAdmin
+              const { data: events, error: eventsError } = await getSupabaseAdmin()
                 .from('events')
                 .select(
                   'event_title, description, date, location, id, image_url, category, price',

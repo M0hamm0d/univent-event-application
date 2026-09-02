@@ -1,12 +1,10 @@
 
 /* eslint-disable no-undef */
 import nodemailer from 'nodemailer'
-import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 import { requireAuth } from './_lib/auth.js'
 import { sendPushToUser } from './_lib/push-utils.js'
-
-const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY)
+import { getSupabaseAdmin } from './_lib/supabase-admin.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,7 +21,7 @@ export default async function handler(req, res) {
 
     // --- Push notification: event is now live ---
     try {
-      const { data: profile } = await supabaseAdmin
+      const { data: profile } = await getSupabaseAdmin()
         .from('profile')
         .select('id')
         .eq('user_email', email)

@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from './_lib/supabase-admin.js'
 
 /**
  * /api/form-file
@@ -32,9 +33,7 @@ const baseUrl = process.env.SUPABASE_URL
 const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
 
-const supabaseAdmin = createClient(baseUrl, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
-})
+
 
 function unauthorized(res, message = 'Unauthorized') {
   return res.status(401).json({ message })
@@ -88,7 +87,7 @@ export default async function handler(req, res) {
 
   let isOrganizer = false
   try {
-    const { data: ev, error: evErr } = await supabaseAdmin
+    const { data: ev, error: evErr } = await getSupabaseAdmin()
       .from('events')
       .select('id, user_id')
       .eq('id', eventId)
@@ -112,7 +111,7 @@ export default async function handler(req, res) {
   // since organizers get no storage SELECT — and more importantly guarantees
   // the path is a real submitted answer, not a probe.
   try {
-    const { data: resp, error: respErr } = await supabaseAdmin
+    const { data: resp, error: respErr } = await getSupabaseAdmin()
       .from('registration_form_responses')
       .select('answers')
       .eq('event_id', eventId)
@@ -132,7 +131,7 @@ export default async function handler(req, res) {
 
   // Issue the signed URL with the service-role key (bypasses storage RLS).
   try {
-    const { data, error } = await supabaseAdmin.storage
+    const { data, error } = await getSupabaseAdmin().storage
       .from(BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL, {
         download: true,
