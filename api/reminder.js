@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 import nodemailer from 'nodemailer'
 import { requireAuth } from './auth.js'
+import { sendPushToUser, isPushAlreadySent, recordPushSent } from './push-utils.js'
 const baseUrl = process.env.SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
 const supabaseAdmin = createClient(baseUrl, serviceRoleKey)
@@ -234,6 +235,23 @@ async function setReminder() {
         console.log(
           `Reminder sent to ${event.user_id.user_email} for event ${event.event_id.event_title} happening tomorrow.`,
         )
+        // --- Push notification for interested: 1 day reminder ---
+        try {
+          const userId = event.user_id.id
+          const eventId = event.event_id.id
+          const reminderWindow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+          if (!(await isPushAlreadySent('reminder_1day', userId, eventId, reminderWindow))) {
+            await sendPushToUser(userId, {
+              title: `📅 ${event.event_id.event_title} is tomorrow!`,
+              body: `Don't miss it — ${event.event_id.event_title} on ${event.event_id.date} at ${event.event_id.time}.`,
+              url: `/discover?modal=open&id=${eventId}`,
+              tag: `reminder-1day-${eventId}-${reminderWindow}`,
+            })
+            await recordPushSent('reminder_1day', userId, eventId, reminderWindow)
+          }
+        } catch (pushErr) {
+          console.error('Push failed for interested 1day reminder:', pushErr.message)
+        }
       }
     }
     for (let event of events.oneHrBeforeEvent) {
@@ -294,6 +312,23 @@ async function setReminder() {
         console.log(
           `Reminder sent to ${event.user_id.user_email} for event ${event.event_id.event_title} happening in an hour.`,
         )
+        // --- Push notification for interested: 1 hour reminder ---
+        try {
+          const userId = event.user_id.id
+          const eventId = event.event_id.id
+          const reminderWindow = new Date().toISOString().split('T')[0]
+          if (!(await isPushAlreadySent('reminder_1hr', userId, eventId, reminderWindow))) {
+            await sendPushToUser(userId, {
+              title: `⏰ ${event.event_id.event_title} starts in 1 hour!`,
+              body: `Happening at ${event.event_id.time} — ${event.event_id.location || 'check event details'}.`,
+              url: `/discover?modal=open&id=${eventId}`,
+              tag: `reminder-1hr-${eventId}-${reminderWindow}`,
+            })
+            await recordPushSent('reminder_1hr', userId, eventId, reminderWindow)
+          }
+        } catch (pushErr) {
+          console.error('Push failed for interested 1hr reminder:', pushErr.message)
+        }
       }
     }
 
@@ -332,6 +367,23 @@ async function setReminder() {
         console.log(
           `Registered reminder sent to ${event.user_id.user_email} for ${event.event_id.event_title} tomorrow.`,
         )
+        // --- Push notification for registered: 1 day reminder ---
+        try {
+          const userId = event.user_id.id
+          const eventId = event.event_id.id
+          const reminderWindow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+          if (!(await isPushAlreadySent('reminder_1day', userId, eventId, reminderWindow))) {
+            await sendPushToUser(userId, {
+              title: `📅 ${event.event_id.event_title} is tomorrow!`,
+              body: `Your registered spot is reserved — ${event.event_id.date} at ${event.event_id.time}.`,
+              url: `/discover?modal=open&id=${eventId}`,
+              tag: `reminder-1day-${eventId}-${reminderWindow}`,
+            })
+            await recordPushSent('reminder_1day', userId, eventId, reminderWindow)
+          }
+        } catch (pushErr) {
+          console.error('Push failed for registered 1day reminder:', pushErr.message)
+        }
       }
     }
     for (let event of regEvents.oneHrBeforeEvent) {
@@ -368,6 +420,23 @@ async function setReminder() {
         console.log(
           `Registered reminder sent to ${event.user_id.user_email} for ${event.event_id.event_title} in an hour.`,
         )
+        // --- Push notification for registered: 1 hour reminder ---
+        try {
+          const userId = event.user_id.id
+          const eventId = event.event_id.id
+          const reminderWindow = new Date().toISOString().split('T')[0]
+          if (!(await isPushAlreadySent('reminder_1hr', userId, eventId, reminderWindow))) {
+            await sendPushToUser(userId, {
+              title: `⏰ ${event.event_id.event_title} starts in 1 hour!`,
+              body: `Your registered spot is reserved — happening at ${event.event_id.time}.`,
+              url: `/discover?modal=open&id=${eventId}`,
+              tag: `reminder-1hr-${eventId}-${reminderWindow}`,
+            })
+            await recordPushSent('reminder_1hr', userId, eventId, reminderWindow)
+          }
+        } catch (pushErr) {
+          console.error('Push failed for registered 1hr reminder:', pushErr.message)
+        }
       }
     }
   } catch (err) {
