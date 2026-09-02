@@ -2,7 +2,6 @@ import { ref } from 'vue'
 import { supabase } from '@/supabase'
 import { useUniventStore } from '@/stores/counter'
 import { useUserProfile } from '@/composables/useUserProfile'
-import { withAuthHeader } from '@/composables/useApiAuth'
 
 let initPromise = null
 const isInitialized = ref(false)
@@ -24,11 +23,14 @@ async function runInit() {
 
     // Check push subscription state so Settings reflects reality on load.
     try {
-      const res = await fetch('/api/push-subscribe', await withAuthHeader())
-      if (res.ok) {
-        const data = await res.json()
-        univentStore.pushSubscribed = data.subscribed || false
-        univentStore.pushSubscriptionCount = data.count || 0
+      const { count, error: countErr } = await supabase
+        .from('push_subscriptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+
+      if (!countErr) {
+        univentStore.pushSubscriptionCount = count || 0
+        univentStore.pushSubscribed = (count || 0) > 0
       }
     } catch {
       // Non-critical — push settings will load on demand if this fails.

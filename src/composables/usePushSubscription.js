@@ -5,12 +5,14 @@ import { useUniventStore } from '@/stores/counter'
 /**
  * Composable for managing Web Push subscriptions.
  *
+ * Uses the Supabase client directly against the push_subscriptions table
+ * (RLS allows users to manage their own rows). No serverless endpoint needed.
+ *
  * Provides:
  *   - isSupported: whether Push API + Notification API are available
  *   - permissionState: current Notification.permission value
  *   - isSubscribed: whether this browser has an active subscription on the server
  *   - subscriptionCount: how many devices/browsers the user has subscribed
- *   - subscriptions: list of subscription metadata from the server
  *   - enablePush(): subscribe to push notifications
  *   - disablePush(): unsubscribe from push notifications
  *   - checkSubscription(): refresh subscription state from server
@@ -31,7 +33,6 @@ export function usePushSubscription() {
 
   const isSubscribed = ref(false)
   const subscriptionCount = ref(0)
-  const subscriptions = ref([])
   const loading = ref(false)
   const error = ref(null)
 
@@ -59,40 +60,60 @@ export function usePushSubscription() {
    */
   async function getSWRegistration() {
     if (!('serviceWorker' in navigator)) return null
-    // Wait for the SW to be ready.
     return navigator.serviceWorker.ready
   }
 
   /**
-   * Check the current subscription state from the server.
+   * Get the current push endpoint from the browser's PushManager.
+   */
+  async function getCurrentEndpoint() {
+    const registration = await getSWRegistration()
+    if (!registration) return null
+    const subscription = await registration.pushManager.getSubscription()
+    return subscription ? subscription.endpoint : null
+  }
+
+  /**
+   * Check the current subscription state from the Supabase push_subscriptions table.
    */
   async function checkSubscription() {
     if (!isSupported.value) return
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         isSubscribed.value = false
         subscriptionCount.value = 0
-        subscriptions.value = []
         return
       }
 
-      const res = await fetch('/api/push-subscribe', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      })
+      // Check if this browser's endpoint exists in push_subscriptions.
+      const endpoint = await getCurrentEndpoint()
 
-      if (!res.ok) {
-        console.error('checkSubscription: server returned', res.status)
-        return
+      if (endpoint) {
+        const { data, error: dbError } = await supabase
+          .from('push_subscriptions')
+          .select('id', { count: 'exact' })
+          .eq('user_id', user.id)
+          .eq('endpoint', endpoint)
+          .maybeSingle()
+
+        if (!dbError) {
+          isSubscribed.value = !!data
+        }
+      } else {
+        isSubscribed.value = false
       }
 
-      const data = await res.json()
-      isSubscribed.value = data.subscribed || false
-      subscriptionCount.value = data.count || 0
-      subscriptions.value = data.subscriptions || []
+      // Get total subscription count for this user.
+      const { count, error: countError } = await supabase
+        .from('push_subscriptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      if (!countError) {
+        subscriptionCount.value = count || 0
+      }
     } catch (err) {
       console.error('checkSubscription error:', err)
     }
@@ -104,7 +125,7 @@ export function usePushSubscription() {
    * Flow:
    * 1. Request browser notification permission
    * 2. Get or create a PushSubscription via the Push API
-   * 3. Save the subscription to the server
+   * 3. Save the subscription to push_subscriptions table via Supabase
    * 4. Update local state
    */
   async function enablePush() {
@@ -152,31 +173,29 @@ export function usePushSubscription() {
         })
       }
 
-      // 3. Save to server.
+      // 3. Save to Supabase push_subscriptions table.
       const subJson = subscription.toJSON()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         error.value = 'You must be logged in to enable push notifications.'
         return false
       }
 
-      const res = await fetch('/api/push-subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          endpoint: subscription.endpoint,
-          p256dh: subJson.keys.p256dh,
-          auth: subJson.keys.auth,
-          userAgent: navigator.userAgent,
-        }),
-      })
+      const { error: upsertError } = await supabase
+        .from('push_subscriptions')
+        .upsert(
+          {
+            user_id: user.id,
+            endpoint: subscription.endpoint,
+            p256dh: subJson.keys.p256dh,
+            auth_key: subJson.keys.auth,
+            user_agent: navigator.userAgent,
+          },
+          { onConflict: 'user_id,endpoint' },
+        )
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.message || 'Failed to save subscription on server')
+      if (upsertError) {
+        throw new Error(upsertError.message || 'Failed to save subscription')
       }
 
       // 4. Update state.
@@ -198,7 +217,7 @@ export function usePushSubscription() {
    * Flow:
    * 1. Get the current PushSubscription
    * 2. Unsubscribe from the Push API
-   * 3. Remove the subscription from the server
+   * 3. Remove the subscription from push_subscriptions table via Supabase
    * 4. Update local state
    */
   async function disablePush() {
@@ -219,18 +238,15 @@ export function usePushSubscription() {
         }
       }
 
-      // 3. Remove from server.
+      // 3. Remove from Supabase push_subscriptions table.
       if (endpoint) {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          await fetch('/api/push-subscribe', {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ endpoint }),
-          })
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('endpoint', endpoint)
         }
       }
 
@@ -265,7 +281,6 @@ export function usePushSubscription() {
     isDenied,
     isSubscribed,
     subscriptionCount,
-    subscriptions,
     loading,
     error,
     checkSubscription,
