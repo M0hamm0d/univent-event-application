@@ -133,29 +133,15 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('pushsubscriptionchange', (event) => {
   // The browser subscription expired or was revoked.
-  // Re-subscribe and update the server.
+  // Re-subscribe with the same options. The next time the user opens the app,
+  // checkSubscription() will detect the stale state and the user can re-enable
+  // from Settings if needed.
   event.waitUntil(
     (async () => {
       try {
-        // Try to re-subscribe with the same options.
-        const subscription = await self.registration.pushManager.subscribe(
+        await self.registration.pushManager.subscribe(
           event.oldSubscription ? event.oldSubscription.options : undefined,
         )
-
-        // Update the server with the new subscription.
-        const response = await fetch('/api/push-subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            endpoint: subscription.endpoint,
-            p256dh: subscription.toJSON().keys.p256dh,
-            auth: subscription.toJSON().keys.auth,
-          }),
-        })
-
-        if (!response.ok) {
-          console.error('pushsubscriptionchange: failed to update server subscription')
-        }
       } catch (err) {
         console.error('pushsubscriptionchange: re-subscription failed:', err)
       }
