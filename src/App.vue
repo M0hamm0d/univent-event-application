@@ -96,42 +96,38 @@ onMounted(async () => {
   // const { syncEventsInBackground } = useRequestedEvents()
 
   // syncEventsInBackground()
- const { data } = supabase.auth.onAuthStateChange((event, session) => {
-   if (event === 'SIGNED_OUT') {
-     univentStore.$reset()
-     resetSessionInit()
-     toast.success('Logged out successfully')
-     // Redirect off any protected route so the UI matches the reset state.
-     if (route.path !== '/') {
-       router.push('/')
-     }
-     return
-   }
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      univentStore.$reset()
+      resetSessionInit()
+      toast.success('Logged out successfully')
+      // Redirect off any protected route so the UI matches the reset state.
+      if (route.path !== '/') {
+        router.push('/')
+      }
+      return
+    }
 
-   // For SIGNED_IN with the same user, the store is already correct — skip.
-   // For USER_UPDATED / PASSWORD_RECOVERY / TOKEN_REFRESHED with the same user,
-   // the profile/email may have changed, so we must re-init.
-   if (
-     event === 'SIGNED_IN' &&
-     univentStore.userProfile?.id === session?.user?.id
-   ) {
-     return
-   }
+    // For SIGNED_IN with the same user, the store is already correct — skip.
+    // For USER_UPDATED / PASSWORD_RECOVERY / TOKEN_REFRESHED with the same user,
+    // the profile/email may have changed, so we must re-init.
+    if (event === 'SIGNED_IN' && univentStore.userProfile?.id === session?.user?.id) {
+      return
+    }
 
-   // Don't call Supabase methods directly inside
-   // the auth state change callback.
-   setTimeout(async () => {
-     try {
-       await resetSessionInit()
-       await ensureSessionInit()
-     } catch (error) {
-       console.error('Failed to initialize session:', error)
-     }
-   }, 0)
- })
+    // Don't call Supabase methods directly inside
+    // the auth state change callback.
+    setTimeout(async () => {
+      try {
+        await resetSessionInit()
+        await ensureSessionInit()
+      } catch (error) {
+        console.error('Failed to initialize session:', error)
+      }
+    }, 0)
+  })
   subscription = data.subscription
 })
-
 
 onUnmounted(() => {
   if (subscription) {
@@ -258,16 +254,16 @@ onUnmounted(() => {
         <RouterLink to="/discover">
           <div class="">
             <SearchIcon />
-            <p>Discover Events</p>
+            <p>Discover</p>
           </div>
         </RouterLink>
         <div @click="guardRoute('interested')" :class="{ activeRoute: activeNav == 'interested' }">
           <BookmarkIcon />
-          <p>My Interest</p>
+          <p>Interests</p>
         </div>
         <div @click="guardRoute('add-event')" :class="{ activeRoute: activeNav == 'add-event' }">
           <RequestEvent />
-          <p>Submit Event</p>
+          <p>Post</p>
         </div>
       </div>
     </div>
@@ -414,7 +410,7 @@ onUnmounted(() => {
 .header {
   max-width: 90%;
   width: 100%;
-  margin: 20px auto;
+  margin: 15px auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -471,7 +467,7 @@ onUnmounted(() => {
   width: 130px;
 }
 .nav div {
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 .mobile-header img,
 .nav img {
